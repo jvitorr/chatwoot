@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_24_102005) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_06_140414) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -334,7 +334,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_24_102005) do
     t.text "request_template"
     t.text "response_template"
     t.string "auth_type", default: "none"
-    t.jsonb "auth_config", default: {}
+    t.text "auth_config"
     t.jsonb "param_schema", default: []
     t.boolean "enabled", default: true, null: false
     t.datetime "created_at", null: false

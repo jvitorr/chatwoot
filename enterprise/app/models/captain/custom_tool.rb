@@ -3,7 +3,7 @@
 # Table name: captain_custom_tools
 #
 #  id                :bigint           not null, primary key
-#  auth_config       :jsonb
+#  auth_config       :text
 #  auth_type         :string           default("none")
 #  description       :text
 #  enabled           :boolean          default(TRUE), not null
@@ -30,6 +30,9 @@ class Captain::CustomTool < ApplicationRecord
 
   include Concerns::Toolable
   include Concerns::SafeEndpointValidatable
+
+  serialize :auth_config, coder: JSON
+  encrypts :auth_config if Chatwoot.encryption_configured?
 
   self.table_name = 'captain_custom_tools'
 
