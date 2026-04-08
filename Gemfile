@@ -39,7 +39,7 @@ gem 'json_refs'
 # Rack middleware for blocking & throttling abusive requests
 gem 'rack-attack', '>= 6.7.0'
 # a utility tool for streaming, flexible and safe downloading of remote files
-gem 'down'
+gem 'down', '>= 5.4.1'
 # SSRF-safe URL fetching
 gem 'ssrf_filter', '~> 1.5'
 # authentication type to fetch and send mail over oauth2.0
@@ -54,7 +54,7 @@ gem 'aws-sdk-s3', require: false
 # original gem isn't maintained actively
 # we wanted updated version of faraday which is a dependency for slack-ruby-client
 gem 'azure-storage-blob', git: 'https://github.com/chatwoot/azure-storage-ruby', branch: 'chatwoot', require: false
-gem 'google-cloud-storage', '>= 1.48.0', require: false
+gem 'google-cloud-storage', '>= 1.53.0', require: false
 gem 'image_processing'
 
 ##-- for actionmailbox --##
@@ -107,22 +107,22 @@ gem 'twilio-ruby'
 # gem 'twitty', git: 'https://github.com/chatwoot/twitty'
 gem 'twitty', '~> 0.1.5'
 # facebook client
-gem 'koala'
+gem 'koala', '>= 3.5.0'
 # slack client
 gem 'slack-ruby-client', '~> 2.7.0'
 # for dialogflow integrations
-gem 'google-cloud-dialogflow-v2', '>= 0.24.0'
+gem 'google-cloud-dialogflow-v2', '>= 0.32.0'
 gem 'grpc'
 # Translate integrations
 # 'google-cloud-translate' gem depends on faraday 2.0 version
 # this dependency breaks the slack-ruby-client gem
-gem 'google-cloud-translate-v3', '>= 0.7.0'
+gem 'google-cloud-translate-v3', '>= 0.11.0'
 
 ##-- apm and error monitoring ---#
 # loaded only when environment variables are set.
 # ref application.rb
 gem 'datadog', '~> 2.0', require: false
-gem 'elastic-apm', require: false
+gem 'elastic-apm', '>= 4.7.0', require: false
 gem 'newrelic_rpm', require: false
 gem 'newrelic-sidekiq-metrics', '>= 1.6.2', require: false
 gem 'scout_apm', require: false
@@ -138,7 +138,7 @@ gem 'sidekiq-cron', '>= 1.12.0'
 gem 'sidekiq_alive'
 
 ##-- Push notification service --##
-gem 'fcm'
+gem 'fcm', '>= 2.0.0'
 gem 'web-push', '>= 3.0.1'
 
 ##-- geocoding / parse location from ip --##
@@ -234,14 +234,14 @@ group :development do
   # Should install the associated chrome extension to view query logs
   gem 'meta_request', '>= 0.8.3'
 
-  gem 'tidewave'
+  gem 'tidewave', '>= 0.3.0'
 end
 
 group :test do
   # fast cleaning of database
   gem 'database_cleaner'
   # mock http calls
-  gem 'webmock'
+  gem 'webmock', '>= 3.24.0'
   # test profiling
   gem 'test-prof'
   gem 'simplecov_json_formatter', require: false
