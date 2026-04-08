@@ -35,7 +35,11 @@ class Voice::Provider::Twilio::ConferenceService
   def twilio_client
     @twilio_client ||= begin
       channel = conversation.inbox.channel
-      ::Twilio::REST::Client.new(channel.account_sid, channel.auth_token)
+      if channel.api_key_sid.present? && channel.try(:api_key_secret).present?
+        ::Twilio::REST::Client.new(channel.api_key_sid, channel.api_key_secret, channel.account_sid)
+      else
+        ::Twilio::REST::Client.new(channel.account_sid, channel.auth_token)
+      end
     end
   end
 end
