@@ -10,6 +10,21 @@ import { useMessageContext } from './provider.js';
 import { MESSAGE_STATUS, MESSAGE_TYPES } from './constants';
 
 const {
+  status,
+  isPrivate,
+  createdAt,
+  sourceId,
+  messageType,
+  contentAttributes,
+  inboxId,
+} = useMessageContext();
+
+// Resolve channel type from the message's own inbox so that the status
+// indicator does not depend on `getSelectedChat` being populated. In the
+// Agent SDK shell `setActiveChat` runs from a watcher in MessageList and can
+// race with the first render of MessageMeta, leaving `currentChat` empty and
+// every channel check returning false (the spinner stays forever).
+const {
   isAFacebookInbox,
   isALineChannel,
   isAPIInbox,
@@ -21,16 +36,7 @@ const {
   isAnEmailChannel,
   isAnInstagramChannel,
   isATiktokChannel,
-} = useInbox();
-
-const {
-  status,
-  isPrivate,
-  createdAt,
-  sourceId,
-  messageType,
-  contentAttributes,
-} = useMessageContext();
+} = useInbox(inboxId.value);
 
 const readableTime = computed(() =>
   messageTimestamp(createdAt.value, 'LLL d, h:mm a')
