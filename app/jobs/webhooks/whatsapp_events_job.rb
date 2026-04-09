@@ -93,7 +93,7 @@ class Webhooks::WhatsappEventsJob < ApplicationJob
   end
 
   def get_channel_from_wb_payload(wb_params)
-    display_phone_number = wb_params[:entry].first[:changes].first.dig(:value, :metadata, :display_phone_number)
+    display_phone_number = wb_params[:entry].first[:changes].first.dig(:value, :metadata, :display_phone_number)&.gsub(/[^0-9]/, '')
     phone_number_id = wb_params[:entry].first[:changes].first.dig(:value, :metadata, :phone_number_id)
 
     channel = Channel::Whatsapp.find_by(phone_number: "+#{display_phone_number}")

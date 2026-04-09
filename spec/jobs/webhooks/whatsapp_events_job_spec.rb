@@ -279,6 +279,7 @@ RSpec.describe Webhooks::WhatsappEventsJob do
       expect(Whatsapp::IncomingMessageWhatsappCloudService).to receive(:new).with(inbox: formatted_channel.inbox, params: wb_params)
       job.perform_now(wb_params)
     end
+
     it 'will not enque Whatsapp::IncomingMessageWhatsappCloudService when invalid phone number id' do
       other_channel = create(:channel_whatsapp, phone_number: '+1987654', provider: 'whatsapp_cloud', sync_templates: false,
                                                 validate_provider_config: false)
