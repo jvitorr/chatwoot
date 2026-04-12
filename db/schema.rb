@@ -275,6 +275,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_091202) do
     t.integer "provider", default: 0, null: false
     t.integer "direction", null: false
     t.string "status", default: "ringing", null: false
+    t.datetime "started_at"
     t.integer "duration_seconds"
     t.string "end_reason"
     t.jsonb "meta", default: {}
@@ -1300,27 +1301,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_091202) do
     t.index ["account_id", "url"], name: "index_webhooks_on_account_id_and_url", unique: true
   end
 
-  create_table "whatsapp_calls", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.bigint "inbox_id", null: false
-    t.bigint "conversation_id", null: false
-    t.bigint "accepted_by_agent_id"
-    t.string "call_id", null: false
-    t.string "direction", null: false
-    t.string "status", default: "ringing", null: false
-    t.integer "duration_seconds"
-    t.string "end_reason"
-    t.jsonb "meta", default: {}, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "message_id"
-    t.text "transcript"
-    t.index ["account_id", "conversation_id"], name: "index_whatsapp_calls_on_account_id_and_conversation_id"
-    t.index ["call_id"], name: "index_whatsapp_calls_on_call_id", unique: true
-    t.index ["inbox_id", "status"], name: "index_whatsapp_calls_on_inbox_id_and_status"
-    t.index ["message_id"], name: "index_whatsapp_calls_on_message_id"
-  end
-
   create_table "working_hours", force: :cascade do |t|
     t.bigint "inbox_id"
     t.bigint "account_id"
@@ -1340,7 +1320,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_091202) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "inboxes", "portals"
-  add_foreign_key "whatsapp_calls", "messages"
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").
       after(:insert).

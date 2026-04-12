@@ -1,36 +1,36 @@
 class Whatsapp::CallMessageBuilder
-  WHATSAPP_TO_VOICE_STATUS = {
+  # Maps Call model statuses to voice_call display statuses (hyphenated for frontend)
+  CALL_TO_VOICE_STATUS = {
     'ringing' => 'ringing',
-    'accepted' => 'in-progress',
-    'rejected' => 'failed',
-    'missed' => 'no-answer',
-    'ended' => 'completed',
-    'failed' => 'failed'
+    'in_progress' => 'in-progress',
+    'failed' => 'failed',
+    'no_answer' => 'no-answer',
+    'completed' => 'completed'
   }.freeze
 
-  def self.create!(conversation:, wa_call:, user: nil)
-    new(conversation: conversation, wa_call: wa_call, user: user).create!
+  def self.create!(conversation:, call:, user: nil)
+    new(conversation: conversation, call: call, user: user).create!
   end
 
-  def self.update_status!(wa_call:, status: nil, agent: nil, duration_seconds: nil)
-    new(conversation: wa_call.conversation, wa_call: wa_call).update_status!(
+  def self.update_status!(call:, status: nil, agent: nil, duration_seconds: nil)
+    new(conversation: call.conversation, call: call).update_status!(
       status: status, agent: agent, duration_seconds: duration_seconds
     )
   end
 
-  def self.update_recording_url!(wa_call:)
-    message = wa_call.message
+  def self.update_recording_url!(call:)
+    message = call.message
     return unless message
 
     data = (message.content_attributes || {}).dup
     data['data'] ||= {}
-    data['data']['recording_url'] = wa_call.recording_url
+    data['data']['recording_url'] = call.recording_url
     message.update!(content_attributes: data)
   end
 
-  def initialize(conversation:, wa_call:, user: nil)
+  def initialize(conversation:, call:, user: nil)
     @conversation = conversation
-    @wa_call = wa_call
+    @call = call
     @user = user
   end
 
@@ -46,7 +46,7 @@ class Whatsapp::CallMessageBuilder
   end
 
   def update_status!(status:, agent: nil, duration_seconds: nil)
-    message = wa_call.message
+    message = call.message
     return unless message
 
     data = (message.content_attributes || {}).dup
@@ -61,15 +61,15 @@ class Whatsapp::CallMessageBuilder
 
   private
 
-  attr_reader :conversation, :wa_call, :user
+  attr_reader :conversation, :call, :user
 
   def build_data_payload
     {
-      'call_sid' => wa_call.call_id,
-      'status' => map_status(wa_call.status),
-      'call_direction' => wa_call.direction,
+      'call_sid' => call.provider_call_id,
+      'status' => map_status(call.status),
+      'call_direction' => call.direction_label,
       'call_source' => 'whatsapp',
-      'wa_call_id' => wa_call.id,
+      'call_id' => call.id,
       'from_number' => from_number,
       'to_number' => to_number,
       'meta' => { 'created_at' => Time.zone.now.to_i }
@@ -77,17 +77,17 @@ class Whatsapp::CallMessageBuilder
   end
 
   def message_type
-    wa_call.direction == 'outbound' ? 'outgoing' : 'incoming'
+    call.outgoing? ? 'outgoing' : 'incoming'
   end
 
   def sender
-    return user if wa_call.direction == 'outbound' && user
+    return user if call.outgoing? && user
 
     conversation.contact
   end
 
   def from_number
-    if wa_call.direction == 'inbound'
+    if call.incoming?
       conversation.contact&.phone_number
     else
       conversation.inbox.channel&.phone_number
@@ -95,7 +95,7 @@ class Whatsapp::CallMessageBuilder
   end
 
   def to_number
-    if wa_call.direction == 'inbound'
+    if call.incoming?
       conversation.inbox.channel&.phone_number
     else
       conversation.contact&.phone_number
@@ -103,6 +103,6 @@ class Whatsapp::CallMessageBuilder
   end
 
   def map_status(status)
-    WHATSAPP_TO_VOICE_STATUS[status] || status
+    CALL_TO_VOICE_STATUS[status] || status
   end
 end

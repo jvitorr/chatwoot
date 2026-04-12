@@ -193,7 +193,7 @@ export async function acceptWhatsappCallById(waCallId) {
 
   // 1. Check if the call is already in the incoming store
   let call = callsStore.incomingCalls.find(
-    c => c.id === waCallId || c.waCallId === waCallId
+    c => c.id === waCallId || c.callId === String(waCallId)
   );
 
   // 2. Not in store (page was refreshed) → fetch from API
@@ -205,7 +205,6 @@ export async function acceptWhatsappCallById(waCallId) {
     call = {
       id: data.id,
       callId: data.call_id,
-      waCallId: data.id,
       direction: data.direction,
       inboxId: data.inbox_id,
       conversationId: data.conversation_id,

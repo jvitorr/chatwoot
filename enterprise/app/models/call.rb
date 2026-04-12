@@ -21,4 +21,36 @@ class Call < ApplicationRecord
   validates :status, presence: true, inclusion: { in: STATUSES }
 
   scope :active, -> { where.not(status: TERMINAL_STATUSES) }
+  scope :ringing, -> { where(status: 'ringing') }
+
+  def ringing?
+    status == 'ringing'
+  end
+
+  def in_progress?
+    status == 'in_progress'
+  end
+
+  def terminal?
+    TERMINAL_STATUSES.include?(status)
+  end
+
+  # Frontend-facing direction label: incoming→inbound, outgoing→outbound
+  def direction_label
+    incoming? ? 'inbound' : 'outbound'
+  end
+
+  def sdp_offer
+    meta&.dig('sdp_offer')
+  end
+
+  def ice_servers
+    meta&.dig('ice_servers') || []
+  end
+
+  def recording_url
+    return unless recording.attached?
+
+    Rails.application.routes.url_helpers.rails_blob_path(recording, only_path: true)
+  end
 end

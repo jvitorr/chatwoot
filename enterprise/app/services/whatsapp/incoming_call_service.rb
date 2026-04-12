@@ -23,18 +23,21 @@ class Whatsapp::IncomingCallService
   end
 
   def handle_call_connect(call_payload)
-    call_id = call_payload[:id]
+    provider_call_id = call_payload[:id]
     direction = map_direction(call_payload[:direction])
 
-    # For outbound calls, a WhatsappCall record already exists from initiate.
+    # For outbound calls, a Call record already exists from initiate.
     # Update it instead of creating a duplicate.
-    existing_call = WhatsappCall.find_by(call_id: call_id)
+    existing_call = Call.whatsapp.find_by(provider_call_id: provider_call_id)
     if existing_call
-      Rails.logger.info "[WHATSAPP CALL] call_connect for existing call #{call_id} (direction=#{direction})"
+      Rails.logger.info "[WHATSAPP CALL] call_connect for existing call #{provider_call_id} (direction=#{direction})"
+      # Guard against race condition: skip if already in_progress (agent accepted via CallService)
+      return if existing_call.in_progress?
+
       sdp_answer = fix_sdp_setup(call_payload.dig(:session, :sdp))
-      existing_call.update!(status: 'accepted', meta: existing_call.meta.merge('sdp_answer' => sdp_answer))
-      Whatsapp::CallMessageBuilder.update_status!(wa_call: existing_call, status: 'accepted')
-      update_conversation_call_status(existing_call.conversation, 'in-progress', direction)
+      existing_call.update!(status: 'in_progress', started_at: Time.current, meta: (existing_call.meta || {}).merge('sdp_answer' => sdp_answer))
+      Whatsapp::CallMessageBuilder.update_status!(call: existing_call, status: 'in_progress')
+      update_conversation_call_status(existing_call.conversation, 'in-progress', existing_call.direction_label)
       broadcast_outbound_call_connected(existing_call, sdp_answer)
       return
     end
@@ -45,27 +48,28 @@ class Whatsapp::IncomingCallService
     conversation = find_or_create_conversation(contact)
     return unless conversation
 
-    wa_call = create_call_record(call_payload, conversation, direction)
-    create_voice_call_message(conversation, wa_call)
-    update_conversation_call_status(conversation, 'ringing', direction)
-    broadcast_incoming_call(wa_call, contact, call_payload.dig(:session, :sdp))
+    call = create_call_record(call_payload, conversation, direction)
+    create_voice_call_message(conversation, call)
+    update_conversation_call_status(conversation, 'ringing', call.direction_label)
+    broadcast_incoming_call(call, contact, call_payload.dig(:session, :sdp))
   rescue ActiveRecord::RecordNotUnique
-    Rails.logger.warn "[WHATSAPP CALL] Duplicate call_id received: #{call_id}"
+    Rails.logger.warn "[WHATSAPP CALL] Duplicate provider_call_id received: #{provider_call_id}"
   end
 
-  def create_voice_call_message(conversation, wa_call, user: nil)
-    message = Whatsapp::CallMessageBuilder.create!(conversation: conversation, wa_call: wa_call, user: user)
-    wa_call.update!(message_id: message.id)
+  def create_voice_call_message(conversation, call, user: nil)
+    message = Whatsapp::CallMessageBuilder.create!(conversation: conversation, call: call, user: user)
+    call.update!(message_id: message.id)
   rescue StandardError => e
     Rails.logger.error "[WHATSAPP CALL] Failed to create voice_call message: #{e.message}"
   end
 
   def create_call_record(call_payload, conversation, direction)
-    WhatsappCall.create!(
+    Call.create!(
+      provider: :whatsapp,
       account: inbox.account,
       inbox: inbox,
       conversation: conversation,
-      call_id: call_payload[:id],
+      provider_call_id: call_payload[:id],
       direction: direction,
       status: 'ringing',
       meta: { sdp_offer: call_payload.dig(:session, :sdp), ice_servers: default_ice_servers }
@@ -73,28 +77,28 @@ class Whatsapp::IncomingCallService
   end
 
   def handle_call_terminate(call_payload)
-    call_id = call_payload[:id]
+    provider_call_id = call_payload[:id]
     duration = call_payload[:duration]&.to_i
     end_reason = call_payload[:terminate_reason]
 
-    wa_call = WhatsappCall.find_by(call_id: call_id)
-    return unless wa_call
+    call = Call.whatsapp.find_by(provider_call_id: provider_call_id)
+    return unless call
 
-    # Determine if the call was answered: check accepted status, duration > 0,
+    # Determine if the call was answered: check in_progress status, duration > 0,
     # or accepted_by_agent_id presence (handles webhook race conditions)
-    was_answered = wa_call.accepted? || duration.to_i.positive? || wa_call.accepted_by_agent_id.present?
-    final_status = was_answered ? 'ended' : 'missed'
-    wa_call.update!(
+    was_answered = call.in_progress? || duration.to_i.positive? || call.accepted_by_agent_id.present?
+    final_status = was_answered ? 'completed' : 'no_answer'
+    call.update!(
       status: final_status,
       duration_seconds: duration,
       end_reason: end_reason
     )
 
-    agent = wa_call.accepted_by_agent if wa_call.accepted_by_agent_id.present?
-    Whatsapp::CallMessageBuilder.update_status!(wa_call: wa_call, status: final_status, agent: agent, duration_seconds: duration)
-    mapped = Whatsapp::CallMessageBuilder::WHATSAPP_TO_VOICE_STATUS[final_status] || final_status
-    update_conversation_call_status(wa_call.conversation, mapped, wa_call.direction)
-    broadcast_call_ended(wa_call)
+    agent = call.accepted_by_agent if call.accepted_by_agent_id.present?
+    Whatsapp::CallMessageBuilder.update_status!(call: call, status: final_status, agent: agent, duration_seconds: duration)
+    mapped = Whatsapp::CallMessageBuilder::CALL_TO_VOICE_STATUS[final_status] || final_status
+    update_conversation_call_status(call.conversation, mapped, call.direction_label)
+    broadcast_call_ended(call)
   end
 
   def find_or_create_contact(phone_number)
@@ -136,16 +140,16 @@ class Whatsapp::IncomingCallService
     conversation.update!(additional_attributes: attrs)
   end
 
-  def broadcast_incoming_call(wa_call, contact, sdp_offer)
+  def broadcast_incoming_call(call, contact, sdp_offer)
     payload = {
       event: 'whatsapp_call.incoming',
       data: {
         account_id: inbox.account_id,
-        id: wa_call.id,
-        call_id: wa_call.call_id,
-        direction: wa_call.direction,
-        inbox_id: wa_call.inbox_id,
-        conversation_id: wa_call.conversation_id,
+        id: call.id,
+        call_id: call.provider_call_id,
+        direction: call.direction_label,
+        inbox_id: call.inbox_id,
+        conversation_id: call.conversation_id,
         caller: {
           name: contact.name,
           phone: contact.phone_number,
@@ -159,30 +163,30 @@ class Whatsapp::IncomingCallService
     ActionCable.server.broadcast("account_#{inbox.account_id}", payload)
   end
 
-  def broadcast_call_ended(wa_call)
+  def broadcast_call_ended(call)
     payload = {
       event: 'whatsapp_call.ended',
       data: {
         account_id: inbox.account_id,
-        id: wa_call.id,
-        call_id: wa_call.call_id,
-        status: wa_call.status,
-        duration_seconds: wa_call.duration_seconds,
-        conversation_id: wa_call.conversation_id
+        id: call.id,
+        call_id: call.provider_call_id,
+        status: call.status,
+        duration_seconds: call.duration_seconds,
+        conversation_id: call.conversation_id
       }
     }
 
     ActionCable.server.broadcast("account_#{inbox.account_id}", payload)
   end
 
-  def broadcast_outbound_call_connected(wa_call, sdp_answer)
+  def broadcast_outbound_call_connected(call, sdp_answer)
     payload = {
       event: 'whatsapp_call.outbound_connected',
       data: {
         account_id: inbox.account_id,
-        id: wa_call.id,
-        call_id: wa_call.call_id,
-        conversation_id: wa_call.conversation_id,
+        id: call.id,
+        call_id: call.provider_call_id,
+        conversation_id: call.conversation_id,
         sdp_answer: sdp_answer
       }
     }
@@ -190,11 +194,11 @@ class Whatsapp::IncomingCallService
     ActionCable.server.broadcast("account_#{inbox.account_id}", payload)
   end
 
-  # Meta sends "USER_INITIATED" / "BUSINESS_INITIATED", map to our model values
+  # Meta sends "USER_INITIATED" / "BUSINESS_INITIATED", map to Call enum values
   def map_direction(raw_direction)
-    return 'outbound' if raw_direction&.upcase == 'BUSINESS_INITIATED'
+    return :outgoing if raw_direction&.upcase == 'BUSINESS_INITIATED'
 
-    'inbound'
+    :incoming
   end
 
   def default_ice_servers

@@ -47,7 +47,7 @@ const isFailed = computed(() =>
 
 // Call source and metadata — all camelCase due to deep transform
 const isWhatsappCall = computed(() => data.value?.callSource === 'whatsapp');
-const waCallId = computed(() => data.value?.waCallId);
+const waCallId = computed(() => data.value?.callId);
 const acceptedBy = computed(() => data.value?.acceptedBy);
 const durationSeconds = computed(() => data.value?.durationSeconds);
 const recordingUrl = computed(() => data.value?.recordingUrl);

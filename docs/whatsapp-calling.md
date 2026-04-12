@@ -908,7 +908,9 @@ If any prerequisite is missing, the recording is still saved — only transcript
 
 ## 7. Data Model
 
-### `whatsapp_calls` table
+### `calls` table (unified Call model)
+
+WhatsApp calls use the unified `Call` model (from PR #14026) with `provider: :whatsapp`.
 
 | Column | Type | Description |
 |---|---|---|
@@ -918,9 +920,11 @@ If any prerequisite is missing, the recording is still saved — only transcript
 | `conversation_id` | bigint | FK → conversations |
 | `accepted_by_agent_id` | bigint | FK → users (nullable) |
 | `message_id` | bigint | FK → messages (nullable) — the voice_call message |
-| `call_id` | string | Unique Meta call ID |
-| `direction` | string | `inbound` or `outbound` |
-| `status` | string | `ringing`, `accepted`, `rejected`, `missed`, `ended`, `failed` |
+| `provider_call_id` | string | Unique provider call ID (Meta call ID for WhatsApp) |
+| `provider` | integer | Enum: `twilio` (0), `whatsapp` (1) |
+| `direction` | integer | Enum: `incoming` (0), `outgoing` (1) |
+| `status` | string | `ringing`, `in_progress`, `completed`, `no_answer`, `failed` |
+| `started_at` | datetime | When the call was answered |
 | `duration_seconds` | integer | Call duration (set on termination) |
 | `end_reason` | string | Reason from Meta (e.g., `caller_hangup`) |
 | `meta` | jsonb | Stores `sdp_offer`, `sdp_answer`, `ice_servers` |
@@ -930,7 +934,7 @@ If any prerequisite is missing, the recording is still saved — only transcript
 
 **ActiveStorage attachment:** `has_one_attached :recording` (audio/webm)
 
-**Indexes:** `call_id` (unique), `[account_id, conversation_id]`, `[inbox_id, status]`, `message_id`
+**Indexes:** `[provider, provider_call_id]` (unique), `[account_id, conversation_id]`, `message_id`
 
 ### Voice call message structure
 

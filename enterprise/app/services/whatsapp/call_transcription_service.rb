@@ -1,17 +1,17 @@
 class Whatsapp::CallTranscriptionService < Llm::LegacyBaseOpenAiService
   WHISPER_MODEL = 'whisper-1'.freeze
 
-  attr_reader :wa_call, :account
+  attr_reader :call, :account
 
-  def initialize(wa_call)
+  def initialize(call)
     super()
-    @wa_call = wa_call
-    @account = wa_call.account
+    @call = call
+    @account = call.account
   end
 
   def perform
     return { error: 'Transcription not available' } unless can_transcribe?
-    return { error: 'No recording attached' } unless wa_call.recording.attached?
+    return { error: 'No recording attached' } unless call.recording.attached?
 
     transcribed_text = transcribe_audio
     update_call_and_message(transcribed_text)
@@ -45,7 +45,7 @@ class Whatsapp::CallTranscriptionService < Llm::LegacyBaseOpenAiService
   end
 
   def fetch_audio_file
-    blob = wa_call.recording.blob
+    blob = call.recording.blob
     temp_dir = Rails.root.join('tmp/uploads/call-transcriptions')
     FileUtils.mkdir_p(temp_dir)
 
@@ -62,16 +62,16 @@ class Whatsapp::CallTranscriptionService < Llm::LegacyBaseOpenAiService
   def update_call_and_message(transcribed_text)
     return if transcribed_text.blank?
 
-    wa_call.update!(transcript: transcribed_text)
+    call.update!(transcript: transcribed_text)
     account.increment_response_usage
 
-    message = wa_call.message
+    message = call.message
     return unless message
 
     data = (message.content_attributes || {}).dup
     data['data'] ||= {}
     data['data']['transcript'] = transcribed_text
-    data['data']['recording_url'] = wa_call.recording_url
+    data['data']['recording_url'] = call.recording_url
     message.update!(content_attributes: data)
   end
 

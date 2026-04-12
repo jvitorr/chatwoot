@@ -1,72 +1,72 @@
 class Whatsapp::CallService
-  pattr_initialize [:wa_call!, :agent!]
+  pattr_initialize [:call!, :agent!]
 
   def pre_accept_and_accept(sdp_answer)
-    wa_call.with_lock do
+    call.with_lock do
       ensure_ringing!
       ensure_not_already_taken!
 
-      provider = wa_call.inbox.channel.provider_service
-      call_id = wa_call.call_id
+      provider = call.inbox.channel.provider_service
       fixed_sdp = fix_sdp_setup(sdp_answer)
 
-      # Step 1: pre_accept (with SDP answer — required by Meta)
-      pre_response = provider.pre_accept_call(call_id, fixed_sdp)
+      # Step 1: pre_accept (with SDP answer - required by Meta)
+      pre_response = provider.pre_accept_call(call.provider_call_id, fixed_sdp)
       raise Whatsapp::CallErrors::NotRinging, 'Meta pre_accept failed' unless pre_response
 
       # Step 2: accept with same SDP answer
-      accept_response = provider.accept_call(call_id, fixed_sdp)
+      accept_response = provider.accept_call(call.provider_call_id, fixed_sdp)
       raise Whatsapp::CallErrors::NotRinging, 'Meta accept failed' unless accept_response
 
-      wa_call.update!(
-        status: 'accepted',
-        accepted_by_agent_id: agent.id
+      call.update!(
+        status: 'in_progress',
+        accepted_by_agent_id: agent.id,
+        started_at: Time.current
       )
     end
 
-    Whatsapp::CallMessageBuilder.update_status!(wa_call: wa_call, status: 'accepted', agent: agent)
+    Whatsapp::CallMessageBuilder.update_status!(call: call, status: 'in_progress', agent: agent)
     update_conversation_call_status('in-progress')
     broadcast_accepted
-    wa_call
+    call
   end
 
   def reject
-    wa_call.reload
-    return wa_call if wa_call.terminal? || wa_call.accepted?
+    call.reload
+    return call if call.terminal? || call.in_progress?
 
-    provider = wa_call.inbox.channel.provider_service
-    success = provider.reject_call(wa_call.call_id)
-    Rails.logger.error "[WHATSAPP CALL] reject_call API returned false for call #{wa_call.call_id}" unless success
+    provider = call.inbox.channel.provider_service
+    success = provider.reject_call(call.provider_call_id)
+    Rails.logger.error "[WHATSAPP CALL] reject_call API returned false for call #{call.provider_call_id}" unless success
 
-    wa_call.update!(status: 'rejected')
-    Whatsapp::CallMessageBuilder.update_status!(wa_call: wa_call, status: 'rejected')
+    call.update!(status: 'failed')
+    Whatsapp::CallMessageBuilder.update_status!(call: call, status: 'failed')
     update_conversation_call_status('failed')
     broadcast_call_ended
-    wa_call
+    call
   end
 
   def terminate
-    return wa_call if wa_call.terminal?
+    return call if call.terminal?
 
-    provider = wa_call.inbox.channel.provider_service
-    success = provider.terminate_call(wa_call.call_id)
-    Rails.logger.error "[WHATSAPP CALL] terminate_call API returned false for call #{wa_call.call_id}" unless success
+    provider = call.inbox.channel.provider_service
+    success = provider.terminate_call(call.provider_call_id)
+    Rails.logger.error "[WHATSAPP CALL] terminate_call API returned false for call #{call.provider_call_id}" unless success
 
-    wa_call.update!(status: 'ended')
-    Whatsapp::CallMessageBuilder.update_status!(wa_call: wa_call, status: 'ended')
+    call.update!(status: 'completed')
+    Whatsapp::CallMessageBuilder.update_status!(call: call, status: 'completed')
     update_conversation_call_status('completed')
     broadcast_call_ended
-    wa_call
+    call
   end
 
   private
 
   def ensure_ringing!
-    raise Whatsapp::CallErrors::NotRinging, 'Call is not in ringing state' unless wa_call.ringing?
+    raise Whatsapp::CallErrors::NotRinging, 'Call is not in ringing state' unless call.ringing?
   end
 
   def ensure_not_already_taken!
-    raise Whatsapp::CallErrors::AlreadyAccepted, 'Call already accepted by another agent' if wa_call.accepted?
+    raise Whatsapp::CallErrors::AlreadyAccepted, 'Call already accepted by another agent' if call.in_progress?
   end
 
   def fix_sdp_setup(sdp)
@@ -74,7 +74,7 @@ class Whatsapp::CallService
   end
 
   def update_conversation_call_status(mapped_status)
-    conversation = wa_call.conversation
+    conversation = call.conversation
     attrs = (conversation.additional_attributes || {}).merge('call_status' => mapped_status)
     conversation.update!(additional_attributes: attrs)
   end
@@ -83,27 +83,27 @@ class Whatsapp::CallService
     payload = {
       event: 'whatsapp_call.accepted',
       data: {
-        account_id: wa_call.account_id,
-        id: wa_call.id,
-        call_id: wa_call.call_id,
+        account_id: call.account_id,
+        id: call.id,
+        call_id: call.provider_call_id,
         accepted_by_agent_id: agent.id,
-        conversation_id: wa_call.conversation_id
+        conversation_id: call.conversation_id
       }
     }
-    ActionCable.server.broadcast("account_#{wa_call.account_id}", payload)
+    ActionCable.server.broadcast("account_#{call.account_id}", payload)
   end
 
   def broadcast_call_ended
     payload = {
       event: 'whatsapp_call.ended',
       data: {
-        account_id: wa_call.account_id,
-        id: wa_call.id,
-        call_id: wa_call.call_id,
-        status: wa_call.status,
-        conversation_id: wa_call.conversation_id
+        account_id: call.account_id,
+        id: call.id,
+        call_id: call.provider_call_id,
+        status: call.status,
+        conversation_id: call.conversation_id
       }
     }
-    ActionCable.server.broadcast("account_#{wa_call.account_id}", payload)
+    ActionCable.server.broadcast("account_#{call.account_id}", payload)
   end
 end

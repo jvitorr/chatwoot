@@ -6,10 +6,10 @@ class Whatsapp::CallTranscriptionJob < ApplicationJob
     Rails.logger.warn("[WHATSAPP CALL] Discarding transcription job: call_id=#{job.arguments.first}, status=#{error.response&.dig(:status)}")
   end
 
-  def perform(whatsapp_call_id)
-    wa_call = WhatsappCall.find_by(id: whatsapp_call_id)
-    return if wa_call.blank? || !wa_call.recording.attached?
+  def perform(call_id)
+    call = Call.whatsapp.find_by(id: call_id)
+    return if call.blank? || !call.recording.attached?
 
-    Whatsapp::CallTranscriptionService.new(wa_call).perform
+    Whatsapp::CallTranscriptionService.new(call).perform
   end
 end
