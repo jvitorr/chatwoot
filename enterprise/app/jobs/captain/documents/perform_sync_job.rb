@@ -10,8 +10,7 @@ class Captain::Documents::PerformSyncJob < ApplicationJob
     document.update!(
       sync_status: :failed,
       last_sync_error_code: 'sync_error',
-      last_sync_attempted_at: Time.current,
-      metadata: (document.metadata || {}).except('sync_step')
+      last_sync_attempted_at: Time.current
     )
     raise
   end
