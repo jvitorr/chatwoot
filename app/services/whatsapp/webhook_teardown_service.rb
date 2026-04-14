@@ -6,9 +6,13 @@ class Whatsapp::WebhookTeardownService
   def perform
     return unless should_teardown_webhook?
 
-    teardown_webhook
-  rescue StandardError => e
-    handle_webhook_teardown_error(e)
+    access_token = @channel.provider_config['api_key']
+    api_client = Whatsapp::FacebookApiClient.new(access_token)
+
+    # Each clear is isolated so a failure on the phone-level clear
+    # still allows the legacy WABA-level fallback to run, and vice versa.
+    clear_phone_number_override(api_client)
+    clear_legacy_waba_override(api_client)
   end
 
   private
@@ -30,15 +34,12 @@ class Whatsapp::WebhookTeardownService
       @channel.provider_config['api_key'].present?
   end
 
-  def teardown_webhook
+  def clear_phone_number_override(api_client)
     phone_number_id = @channel.provider_config['phone_number_id']
-    access_token = @channel.provider_config['api_key']
-    api_client = Whatsapp::FacebookApiClient.new(access_token)
-
     api_client.clear_phone_number_callback_override(phone_number_id)
     Rails.logger.info "[WHATSAPP] Phone number webhook override cleared for channel #{@channel.id}"
-
-    clear_legacy_waba_override(api_client)
+  rescue StandardError => e
+    Rails.logger.error "[WHATSAPP] Phone number webhook override clear failed for channel #{@channel.id}: #{e.message}"
   end
 
   # Legacy channels (pre phone-number-level override) were configured with a
@@ -52,11 +53,5 @@ class Whatsapp::WebhookTeardownService
     Rails.logger.info "[WHATSAPP] Legacy WABA webhook override cleared for channel #{@channel.id}"
   rescue StandardError => e
     Rails.logger.error "[WHATSAPP] Legacy WABA webhook override clear failed for channel #{@channel.id}: #{e.message}"
-  end
-
-  def handle_webhook_teardown_error(error)
-    Rails.logger.error "[WHATSAPP] Webhook teardown failed: #{error.message}"
-    # Don't raise the error to prevent channel deletion from failing
-    # Failed webhook teardown shouldn't block deletion
   end
 end
