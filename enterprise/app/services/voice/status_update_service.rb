@@ -19,13 +19,10 @@ class Voice::StatusUpdateService
     normalized_status = normalize_status(call_status)
     return if normalized_status.blank?
 
-    conversation = account.conversations.find_by(identifier: call_sid)
-    return unless conversation
+    call = account.calls.find_by(provider: :twilio, provider_call_id: call_sid)
+    return unless call
 
-    Voice::CallStatus::Manager.new(
-      conversation: conversation,
-      call_sid: call_sid
-    ).process_status_update(
+    Voice::CallStatus::Manager.new(call: call).process_status_update(
       normalized_status,
       duration: payload_duration,
       timestamp: payload_timestamp

@@ -19,16 +19,21 @@ class Voice::CallMessageBuilder
 
   def perform!
     validate_sender!
-    message = latest_message
-    message ? update_message!(message) : create_message!
+    existing = existing_message
+    existing ? update_message!(existing) : create_message!
   end
 
   private
 
   attr_reader :conversation, :direction, :payload, :user, :timestamps
 
-  def latest_message
-    conversation.messages.voice_calls.order(created_at: :desc).first
+  def existing_message
+    sid = payload[:call_sid] || payload['call_sid']
+    return if sid.blank?
+
+    conversation.messages.voice_calls
+                .where("content_attributes -> 'data' ->> 'call_sid' = ?", sid)
+                .first
   end
 
   def update_message!(message)
@@ -37,6 +42,7 @@ class Voice::CallMessageBuilder
       content_attributes: { 'data' => base_payload },
       sender: sender
     )
+    message
   end
 
   def create_message!

@@ -25,8 +25,8 @@ class Twilio::VoiceController < ApplicationController
       "TWILIO_VOICE_TWIML account=#{account.id} call_sid=#{twilio_call_sid} from=#{twilio_from} direction=#{twilio_direction}"
     )
 
-    conversation = resolve_conversation
-    conference_sid = ensure_conference_sid!(conversation)
+    call = resolve_call
+    conference_sid = ensure_conference_sid!(call)
 
     render xml: conference_twiml(conference_sid, agent_leg?(twilio_from))
   end
@@ -35,15 +35,14 @@ class Twilio::VoiceController < ApplicationController
     event = mapped_conference_event
     return head :no_content unless event
 
-    conversation = find_conversation_for_conference!(
+    call = find_call_for_conference!(
       friendly_name: params[:FriendlyName],
       call_sid: twilio_call_sid
     )
 
     Voice::Conference::Manager.new(
-      conversation: conversation,
+      call: call,
       event: event,
-      call_sid: twilio_call_sid,
       participant_label: participant_label
     ).process
 
@@ -80,8 +79,8 @@ class Twilio::VoiceController < ApplicationController
     from_number.start_with?('client:')
   end
 
-  def resolve_conversation
-    return find_conversation_for_agent if agent_leg?(twilio_from)
+  def resolve_call
+    return find_call_for_agent if agent_leg?(twilio_from)
 
     case twilio_direction
     when 'inbound'
@@ -91,6 +90,7 @@ class Twilio::VoiceController < ApplicationController
         from_number: twilio_from,
         call_sid: twilio_call_sid
       )
+      find_call!(twilio_call_sid)
     when 'outbound-api', 'outbound-dial'
       sync_outbound_leg(
         call_sid: twilio_call_sid,
@@ -102,36 +102,47 @@ class Twilio::VoiceController < ApplicationController
     end
   end
 
-  def find_conversation_for_agent
+  def find_call_for_agent
     if params[:conversation_id].present?
-      current_account.conversations.find_by!(display_id: params[:conversation_id])
+      conversation = current_account.conversations.find_by!(display_id: params[:conversation_id])
+      current_account.calls.active.where(conversation_id: conversation.id).order(created_at: :desc).first!
     else
-      current_account.conversations.find_by!(identifier: twilio_call_sid)
+      find_call!(twilio_call_sid)
     end
+  end
+
+  def find_call!(sid)
+    current_account.calls.find_by!(provider: :twilio, provider_call_id: sid)
   end
 
   def sync_outbound_leg(call_sid:, from_number:, direction:)
     parent_sid = params['ParentCallSid'].presence
     lookup_sid = direction == 'outbound-dial' ? parent_sid || call_sid : call_sid
-    conversation = current_account.conversations.find_by!(identifier: lookup_sid)
+    call = find_call!(lookup_sid)
 
     Voice::CallSessionSyncService.new(
-      conversation: conversation,
-      call_sid: call_sid,
-      message_call_sid: conversation.identifier,
+      call: call,
+      leg_call_sid: call_sid,
       leg: {
         from_number: from_number,
         to_number: twilio_to,
         direction: 'outbound'
       }
     ).perform
+    call
   end
 
-  def ensure_conference_sid!(conversation)
+  def ensure_conference_sid!(call)
+    name = call.meta['conference_sid'].presence || Voice::Conference::Name.for(call)
+    call.update!(meta: call.meta.merge('conference_sid' => name)) if call.meta['conference_sid'].blank?
+
+    conversation = call.conversation
     attrs = conversation.additional_attributes || {}
-    attrs['conference_sid'] ||= Voice::Conference::Name.for(conversation)
-    conversation.update!(additional_attributes: attrs)
-    attrs['conference_sid']
+    if attrs['conference_sid'] != name
+      attrs['conference_sid'] = name
+      conversation.update!(additional_attributes: attrs)
+    end
+    name
   end
 
   def conference_twiml(conference_sid, agent_leg)
@@ -155,16 +166,16 @@ class Twilio::VoiceController < ApplicationController
     Rails.application.routes.url_helpers.twilio_voice_conference_status_url(phone: phone_digits)
   end
 
-  def find_conversation_for_conference!(friendly_name:, call_sid:)
+  def find_call_for_conference!(friendly_name:, call_sid:)
     name = friendly_name.to_s
-    scope = current_account.conversations
+    scope = current_account.calls
 
     if name.present?
-      conversation = scope.where("additional_attributes->>'conference_sid' = ?", name).first
-      return conversation if conversation
+      call = scope.where("meta ->> 'conference_sid' = ?", name).first
+      return call if call
     end
 
-    scope.find_by!(identifier: call_sid)
+    scope.find_by!(provider: :twilio, provider_call_id: call_sid)
   end
 
   def set_inbox!

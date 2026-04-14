@@ -13,20 +13,31 @@ class Voice::InboundCallBuilder
   end
 
   def perform!
+    existing = find_existing_call
+    return existing.conversation if existing
+
     timestamp = current_timestamp
 
     ActiveRecord::Base.transaction do
       contact = ensure_contact!
       contact_inbox = ensure_contact_inbox!(contact)
-      conversation = find_conversation || create_conversation!(contact, contact_inbox)
+      conversation = find_open_conversation(contact_inbox) || create_conversation!(contact, contact_inbox)
       conversation.reload
-      update_conversation!(conversation, timestamp)
-      build_voice_message!(conversation, timestamp)
+
+      call = create_call!(conversation, contact, timestamp)
+      message = build_voice_message!(conversation, call, timestamp)
+      call.update!(message_id: message.id)
+
+      denormalize_to_conversation!(conversation, call, timestamp)
       conversation
     end
   end
 
   private
+
+  def find_existing_call
+    account.calls.find_by(provider: :twilio, provider_call_id: call_sid)
+  end
 
   def ensure_contact!
     account.contacts.find_or_create_by!(phone_number: from_number) do |record|
@@ -43,10 +54,10 @@ class Voice::InboundCallBuilder
     end
   end
 
-  def find_conversation
-    return if call_sid.blank?
+  def find_open_conversation(contact_inbox)
+    return unless inbox.lock_to_single_conversation
 
-    account.conversations.includes(:contact).find_by(identifier: call_sid)
+    contact_inbox.conversations.where.not(status: :resolved).order(created_at: :desc).first
   end
 
   def create_conversation!(contact, contact_inbox)
@@ -54,38 +65,51 @@ class Voice::InboundCallBuilder
       contact_inbox_id: contact_inbox.id,
       inbox_id: inbox.id,
       contact_id: contact.id,
-      status: :open,
-      identifier: call_sid
+      status: :open
     )
   end
 
-  def update_conversation!(conversation, timestamp)
-    attrs = {
-      'call_direction' => 'inbound',
-      'call_status' => 'ringing',
-      'conference_sid' => Voice::Conference::Name.for(conversation),
-      'meta' => { 'initiated_at' => timestamp }
-    }
-
-    conversation.update!(
-      identifier: call_sid,
-      additional_attributes: attrs,
-      last_activity_at: current_time
+  def create_call!(conversation, contact, timestamp)
+    call = account.calls.create!(
+      inbox: inbox,
+      conversation: conversation,
+      contact: contact,
+      provider: :twilio,
+      direction: :incoming,
+      status: 'ringing',
+      provider_call_id: call_sid,
+      meta: { 'initiated_at' => timestamp }
     )
+    call.update!(meta: call.meta.merge('conference_sid' => Voice::Conference::Name.for(call)))
+    call
   end
 
-  def build_voice_message!(conversation, timestamp)
+  def build_voice_message!(conversation, call, timestamp)
     Voice::CallMessageBuilder.perform!(
       conversation: conversation,
       direction: 'inbound',
       payload: {
-        call_sid: call_sid,
+        call_sid: call.provider_call_id,
         status: 'ringing',
-        conference_sid: conversation.additional_attributes['conference_sid'],
+        conference_sid: call.meta['conference_sid'],
         from_number: from_number,
         to_number: inbox.channel&.phone_number
       },
       timestamps: { created_at: timestamp, ringing_at: timestamp }
+    )
+  end
+
+  def denormalize_to_conversation!(conversation, call, timestamp)
+    attrs = (conversation.additional_attributes || {}).merge(
+      'call_direction' => 'inbound',
+      'call_status' => 'ringing',
+      'conference_sid' => call.meta['conference_sid'],
+      'meta' => { 'initiated_at' => timestamp }
+    )
+
+    conversation.update!(
+      additional_attributes: attrs,
+      last_activity_at: current_time
     )
   end
 

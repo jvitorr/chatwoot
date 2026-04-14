@@ -1,13 +1,20 @@
 class Voice::CallStatus::Manager
-  pattr_initialize [:conversation!, :call_sid]
+  pattr_initialize [:call!]
 
   ALLOWED_STATUSES = %w[ringing in-progress completed no-answer failed].freeze
   TERMINAL_STATUSES = %w[completed no-answer failed].freeze
 
+  # Map dashed statuses (Twilio-native / frontend) to underscored Call model statuses.
+  CALL_MODEL_STATUS = {
+    'ringing' => 'ringing',
+    'in-progress' => 'in_progress',
+    'completed' => 'completed',
+    'no-answer' => 'no_answer',
+    'failed' => 'failed'
+  }.freeze
+
   def process_status_update(status, duration: nil, timestamp: nil)
     return unless ALLOWED_STATUSES.include?(status)
-
-    current_status = conversation.additional_attributes&.dig('call_status')
     return if current_status == status
 
     apply_status(status, duration: duration, timestamp: timestamp)
@@ -15,6 +22,12 @@ class Voice::CallStatus::Manager
   end
 
   private
+
+  delegate :conversation, to: :call
+
+  def current_status
+    conversation.additional_attributes&.dig('call_status')
+  end
 
   def apply_status(status, duration:, timestamp:)
     attrs = (conversation.additional_attributes || {}).dup
@@ -31,6 +44,16 @@ class Voice::CallStatus::Manager
       additional_attributes: attrs,
       last_activity_at: current_time
     )
+
+    persist_on_call!(status, attrs)
+  end
+
+  def persist_on_call!(status, attrs)
+    updates = { status: CALL_MODEL_STATUS[status] }
+    updates[:started_at] = Time.zone.at(attrs['call_started_at']) if status == 'in-progress' && attrs['call_started_at']
+    updates[:duration_seconds] = attrs['call_duration'] if TERMINAL_STATUSES.include?(status) && attrs['call_duration']
+
+    call.update!(updates)
   end
 
   def resolved_duration(attrs, provided_duration, timestamp)
@@ -43,10 +66,7 @@ class Voice::CallStatus::Manager
   end
 
   def update_message(status)
-    message = conversation.messages
-                          .where(content_type: 'voice_call')
-                          .order(created_at: :desc)
-                          .first
+    message = call.message || fallback_message
     return unless message
 
     data = (message.content_attributes || {}).dup
@@ -54,6 +74,13 @@ class Voice::CallStatus::Manager
     data['data']['status'] = status
 
     message.update!(content_attributes: data)
+  end
+
+  def fallback_message
+    conversation.messages.voice_calls
+                .where("content_attributes -> 'data' ->> 'call_sid' = ?", call.provider_call_id)
+                .order(created_at: :desc)
+                .first
   end
 
   def now_seconds

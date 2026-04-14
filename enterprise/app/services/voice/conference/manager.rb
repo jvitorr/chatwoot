@@ -1,5 +1,5 @@
 class Voice::Conference::Manager
-  pattr_initialize [:conversation!, :event!, :call_sid!, :participant_label]
+  pattr_initialize [:call!, :event!, :participant_label]
 
   def process
     case event
@@ -17,19 +17,21 @@ class Voice::Conference::Manager
 
   private
 
+  delegate :conversation, to: :call
+
   def status_manager
-    @status_manager ||= Voice::CallStatus::Manager.new(
-      conversation: conversation,
-      call_sid: call_sid
-    )
+    @status_manager ||= Voice::CallStatus::Manager.new(call: call)
   end
 
   def ensure_conference_sid!
-    attrs = conversation.additional_attributes || {}
-    return if attrs['conference_sid'].present?
+    name = Voice::Conference::Name.for(call)
+    call.update!(meta: call.meta.merge('conference_sid' => name)) if call.meta['conference_sid'].blank?
 
-    attrs['conference_sid'] = Voice::Conference::Name.for(conversation)
-    conversation.update!(additional_attributes: attrs)
+    conv_attrs = (conversation.additional_attributes || {}).dup
+    return if conv_attrs['conference_sid'].present?
+
+    conv_attrs['conference_sid'] = name
+    conversation.update!(additional_attributes: conv_attrs)
   end
 
   def mark_ringing!

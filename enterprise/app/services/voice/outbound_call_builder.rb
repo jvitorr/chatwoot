@@ -22,10 +22,13 @@ class Voice::OutboundCallBuilder
       contact_inbox = ensure_contact_inbox!
       conversation = create_conversation!(contact_inbox)
       conversation.reload
-      conference_sid = Voice::Conference::Name.for(conversation)
+
       call_sid = initiate_call!
-      update_conversation!(conversation, call_sid, conference_sid, timestamp)
-      build_voice_message!(conversation, call_sid, conference_sid, timestamp)
+      call = create_call!(conversation, call_sid, timestamp)
+      message = build_voice_message!(conversation, call, timestamp)
+      call.update!(message_id: message.id)
+
+      denormalize_to_conversation!(conversation, call, timestamp)
       { conversation: conversation, call_sid: call_sid }
     end
   end
@@ -56,35 +59,50 @@ class Voice::OutboundCallBuilder
     )[:call_sid]
   end
 
-  def update_conversation!(conversation, call_sid, conference_sid, timestamp)
-    attrs = {
-      'call_direction' => 'outbound',
-      'call_status' => 'ringing',
-      'agent_id' => user.id,
-      'conference_sid' => conference_sid,
-      'meta' => { 'initiated_at' => timestamp }
-    }
-
-    conversation.update!(
-      identifier: call_sid,
-      additional_attributes: attrs,
-      last_activity_at: current_time
+  def create_call!(conversation, call_sid, timestamp)
+    call = account.calls.create!(
+      inbox: inbox,
+      conversation: conversation,
+      contact: contact,
+      provider: :twilio,
+      direction: :outgoing,
+      status: 'ringing',
+      provider_call_id: call_sid,
+      accepted_by_agent_id: user.id,
+      meta: { 'initiated_at' => timestamp }
     )
+    call.update!(meta: call.meta.merge('conference_sid' => Voice::Conference::Name.for(call)))
+    call
   end
 
-  def build_voice_message!(conversation, call_sid, conference_sid, timestamp)
+  def build_voice_message!(conversation, call, timestamp)
     Voice::CallMessageBuilder.perform!(
       conversation: conversation,
       direction: 'outbound',
       payload: {
-        call_sid: call_sid,
+        call_sid: call.provider_call_id,
         status: 'ringing',
-        conference_sid: conference_sid,
+        conference_sid: call.meta['conference_sid'],
         from_number: inbox.channel&.phone_number,
         to_number: contact.phone_number
       },
       user: user,
       timestamps: { created_at: timestamp, ringing_at: timestamp }
+    )
+  end
+
+  def denormalize_to_conversation!(conversation, call, timestamp)
+    attrs = (conversation.additional_attributes || {}).merge(
+      'call_direction' => 'outbound',
+      'call_status' => 'ringing',
+      'agent_id' => user.id,
+      'conference_sid' => call.meta['conference_sid'],
+      'meta' => { 'initiated_at' => timestamp }
+    )
+
+    conversation.update!(
+      additional_attributes: attrs,
+      last_activity_at: current_time
     )
   end
 

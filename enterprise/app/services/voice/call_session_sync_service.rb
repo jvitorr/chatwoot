@@ -1,10 +1,9 @@
 class Voice::CallSessionSyncService
-  attr_reader :conversation, :call_sid, :message_call_sid, :from_number, :to_number, :direction
+  attr_reader :call, :leg_call_sid, :from_number, :to_number, :direction
 
-  def initialize(conversation:, call_sid:, leg:, message_call_sid: nil)
-    @conversation = conversation
-    @call_sid = call_sid
-    @message_call_sid = message_call_sid || call_sid
+  def initialize(call:, leg:, leg_call_sid: nil)
+    @call = call
+    @leg_call_sid = leg_call_sid || call.provider_call_id
     @from_number = leg[:from_number]
     @to_number = leg[:to_number]
     @direction = leg[:direction]
@@ -20,16 +19,18 @@ class Voice::CallSessionSyncService
       sync_voice_call_message!(attrs)
     end
 
-    conversation
+    call
   end
 
   private
+
+  delegate :conversation, to: :call
 
   def refreshed_attributes
     attrs = (conversation.additional_attributes || {}).dup
     attrs['call_direction'] = direction
     attrs['call_status'] ||= 'ringing'
-    attrs['conference_sid'] ||= Voice::Conference::Name.for(conversation)
+    attrs['conference_sid'] ||= call.meta['conference_sid'] || Voice::Conference::Name.for(call)
     attrs['meta'] ||= {}
     attrs['meta']['initiated_at'] ||= current_timestamp
     attrs
@@ -40,7 +41,7 @@ class Voice::CallSessionSyncService
       conversation: conversation,
       direction: direction,
       payload: {
-        call_sid: message_call_sid,
+        call_sid: call.provider_call_id,
         status: attrs['call_status'],
         conference_sid: attrs['conference_sid'],
         from_number: origin_number_for(direction),

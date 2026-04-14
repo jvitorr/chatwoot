@@ -11,9 +11,9 @@ class Api::V1::Accounts::ConferenceController < Api::V1::Accounts::BaseControlle
 
   def create
     conversation = fetch_conversation_by_display_id
-    ensure_call_sid!(conversation)
+    call = find_or_initialize_call!(conversation)
 
-    conference_service = Voice::Provider::Twilio::ConferenceService.new(conversation: conversation)
+    conference_service = Voice::Provider::Twilio::ConferenceService.new(call: call)
     conference_sid = conference_service.ensure_conference_sid
     conference_service.mark_agent_joined(user: current_user)
 
@@ -27,19 +27,34 @@ class Api::V1::Accounts::ConferenceController < Api::V1::Accounts::BaseControlle
 
   def destroy
     conversation = fetch_conversation_by_display_id
-    Voice::Provider::Twilio::ConferenceService.new(conversation: conversation).end_conference
+    call = Current.account.calls.where(conversation_id: conversation.id).order(created_at: :desc).first
+    return render(json: { status: 'success', id: conversation.display_id }) unless call
+
+    Voice::Provider::Twilio::ConferenceService.new(call: call).end_conference
     render json: { status: 'success', id: conversation.display_id }
   end
 
   private
 
-  def ensure_call_sid!(conversation)
-    return conversation.identifier if conversation.identifier.present?
+  def find_or_initialize_call!(conversation)
+    sid = params[:call_sid].presence
+    existing = Current.account.calls.where(conversation_id: conversation.id, provider: :twilio)
+    existing = existing.where(provider_call_id: sid) if sid
+    call = existing.order(created_at: :desc).first
+    return call if call
 
-    incoming_sid = params.require(:call_sid)
+    raise ActionController::ParameterMissing, :call_sid unless sid
 
-    conversation.update!(identifier: incoming_sid)
-    incoming_sid
+    Current.account.calls.create!(
+      inbox_id: conversation.inbox_id,
+      conversation: conversation,
+      contact_id: conversation.contact_id,
+      provider: :twilio,
+      direction: :outgoing,
+      status: 'ringing',
+      provider_call_id: sid,
+      accepted_by_agent_id: current_user.id
+    )
   end
 
   def set_voice_inbox_for_conference
