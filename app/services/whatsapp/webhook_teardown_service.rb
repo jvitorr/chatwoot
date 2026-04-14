@@ -29,13 +29,21 @@ class Whatsapp::WebhookTeardownService
     @channel.provider_config['source'] == 'embedded_signup'
   end
 
+  # Accept teardown as long as we have an access token and at least one of the
+  # two identifiers the clear APIs target. Legacy channels (and partially
+  # reauthorized ones) may have only business_account_id, and we still need to
+  # clear any lingering WABA-level override in that case.
   def webhook_config_present?
-    @channel.provider_config['phone_number_id'].present? &&
-      @channel.provider_config['api_key'].present?
+    return false if @channel.provider_config['api_key'].blank?
+
+    @channel.provider_config['phone_number_id'].present? ||
+      @channel.provider_config['business_account_id'].present?
   end
 
   def clear_phone_number_override(api_client)
     phone_number_id = @channel.provider_config['phone_number_id']
+    return if phone_number_id.blank?
+
     api_client.clear_phone_number_callback_override(phone_number_id)
     Rails.logger.info "[WHATSAPP] Phone number webhook override cleared for channel #{@channel.id}"
   rescue StandardError => e
