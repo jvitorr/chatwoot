@@ -43,15 +43,33 @@ class Whatsapp::WebhookTeardownService
   end
 
   # Legacy channels (pre phone-number-level override) were configured with a
-  # WABA-level override_callback_uri. Clearing only the phone-level override
-  # would leave that stale URL in place, so clear it as a best-effort fallback.
+  # WABA-level override_callback_uri that is SHARED across every phone number
+  # on the WABA. To avoid knocking out a sibling inbox's webhooks, only clear
+  # the WABA override when its current value matches this channel's own
+  # callback URL — i.e. this channel is the one that set it.
   def clear_legacy_waba_override(api_client)
     waba_id = @channel.provider_config['business_account_id']
-    return if waba_id.blank?
+    return if waba_id.blank? || @channel.phone_number.blank?
+
+    return unless waba_override_owned_by_channel?(api_client, waba_id)
 
     api_client.clear_waba_callback_override(waba_id)
     Rails.logger.info "[WHATSAPP] Legacy WABA webhook override cleared for channel #{@channel.id}"
   rescue StandardError => e
     Rails.logger.error "[WHATSAPP] Legacy WABA webhook override clear failed for channel #{@channel.id}: #{e.message}"
+  end
+
+  def waba_override_owned_by_channel?(api_client, waba_id)
+    subscribed_apps = api_client.fetch_waba_subscribed_apps(waba_id)
+    entries = subscribed_apps.is_a?(Hash) ? Array(subscribed_apps['data']) : []
+    current_override = entries.filter_map { |entry| entry['override_callback_uri'] }.find(&:present?)
+
+    return false if current_override.blank?
+
+    current_override == channel_callback_url
+  end
+
+  def channel_callback_url
+    "#{ENV.fetch('FRONTEND_URL', nil)}/webhooks/whatsapp/#{@channel.phone_number}"
   end
 end
