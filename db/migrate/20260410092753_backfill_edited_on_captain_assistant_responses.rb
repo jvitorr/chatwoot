@@ -6,7 +6,9 @@ class BackfillEditedOnCaptainAssistantResponses < ActiveRecord::Migration[7.0]
     # 15 days is arbitrary but seems reasonable for a user to go back and edit an FAQ.
     Captain::AssistantResponse
       .where('updated_at - created_at > interval ?', '15 days')
-      .update_all(edited: true)
+      .in_batches(of: 1000) do |batch|
+        batch.update_all(edited: true)
+      end
     # rubocop:enable Rails/SkipsModelValidations
   end
 
