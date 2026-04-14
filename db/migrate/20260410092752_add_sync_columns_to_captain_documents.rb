@@ -4,10 +4,8 @@ class AddSyncColumnsToCaptainDocuments < ActiveRecord::Migration[7.0]
       t.integer :sync_status
       t.datetime :last_synced_at
       t.datetime :last_sync_attempted_at
-      t.string :last_sync_error_code
-      t.string :content_fingerprint
     end
 
-    add_index :captain_documents, :sync_status
+    add_index :captain_documents, [:account_id, :sync_status]
   end
 end
