@@ -58,9 +58,16 @@ watch(
   }
 );
 
-// Parent bumps refreshTick after re-fetching on tab visibility, so the
-// store already holds the latest article by the time this fires.
-watch(() => props.refreshTick, syncLocalState);
+// Parent bumps refreshTick after re-fetching on tab visibility. Skip
+// the sync while a save is in flight so we don't overwrite edits the
+// user just made.
+watch(
+  () => props.refreshTick,
+  () => {
+    if (props.isUpdating) return;
+    syncLocalState();
+  }
+);
 
 const debouncedSave = debounce(value => emit('saveArticle', value), 500, false);
 
