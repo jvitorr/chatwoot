@@ -40,14 +40,14 @@ class Whatsapp::WebhookTeardownService
 
   # The WABA-level override_callback_uri is shared across every phone number on
   # the WABA, so we must not clear it while a sibling channel still depends on
-  # it. We use our own DB as the source of truth: if any other channel still
-  # references this WABA, leave the override alone (siblings on the new code
-  # path use phone-level overrides which take precedence anyway). Otherwise
-  # this channel is the last consumer in this install and the clear is safe.
+  # it. A sibling that has its own phone_number_id is using a phone-level
+  # override (which takes precedence over the WABA-level value) and does not
+  # depend on the WABA fallback. Only siblings without a phone_number_id are
+  # still relying on WABA-level webhooks and should block the clear.
   def clear_legacy_waba_override(api_client)
     waba_id = provider_config['business_account_id']
     return if waba_id.blank?
-    return if sibling_channel_on_waba?(waba_id)
+    return if waba_dependent_sibling_exists?(waba_id)
 
     api_client.clear_waba_callback_override(waba_id)
     Rails.logger.info "[WHATSAPP] Legacy WABA webhook override cleared for channel #{@channel.id}"
@@ -55,8 +55,13 @@ class Whatsapp::WebhookTeardownService
     Rails.logger.error "[WHATSAPP] Legacy WABA webhook clear failed for channel #{@channel.id}: #{e.message}"
   end
 
-  def sibling_channel_on_waba?(waba_id)
-    Channel::Whatsapp.where.not(id: @channel.id)
-                     .exists?(["provider_config ->> 'business_account_id' = ?", waba_id])
+  def waba_dependent_sibling_exists?(waba_id)
+    Channel::Whatsapp
+      .where.not(id: @channel.id)
+      .exists?([
+                 "provider_config ->> 'business_account_id' = ? AND " \
+                 "(provider_config ->> 'phone_number_id' IS NULL OR provider_config ->> 'phone_number_id' = '')",
+                 waba_id
+               ])
   end
 end
