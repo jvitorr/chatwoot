@@ -28,6 +28,7 @@ const portal = computed(() => portalBySlug.value(portalSlug));
 
 const isUpdating = ref(false);
 const isSaved = ref(false);
+const refreshTick = ref(0);
 
 const articleLink = computed(() => {
   const { slug: categorySlug, locale: categoryLocale } = article.value.category;
@@ -86,11 +87,12 @@ const goBackToArticles = () => {
   }
 };
 
-const fetchArticleDetails = () => {
-  store.dispatch('articles/show', {
+const fetchArticleDetails = async () => {
+  await store.dispatch('articles/show', {
     id: articleSlug,
     portalSlug,
   });
+  refreshTick.value += 1;
 };
 
 const previewArticle = () => {
@@ -113,6 +115,7 @@ onMounted(fetchArticleDetails);
     :article="article"
     :is-updating="isUpdating"
     :is-saved="isSaved"
+    :refresh-tick="refreshTick"
     @save-article="saveArticle"
     @preview-article="previewArticle"
     @go-back="goBackToArticles"

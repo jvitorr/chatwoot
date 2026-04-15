@@ -1,6 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
-import { useDocumentVisibility } from '@vueuse/core';
+import { ref, computed, watch } from 'vue';
 import { debounce } from '@chatwoot/utils';
 import { useI18n } from 'vue-i18n';
 import { ARTICLE_EDITOR_MENU_OPTIONS } from 'dashboard/constants/editor';
@@ -24,6 +23,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  refreshTick: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const emit = defineEmits([
@@ -36,7 +39,6 @@ const emit = defineEmits([
 ]);
 
 const { t } = useI18n();
-const visibility = useDocumentVisibility();
 
 const isNewArticle = computed(() => !props.article?.id);
 
@@ -56,12 +58,14 @@ watch(
   }
 );
 
-// Sync local state when user returns to tab (fresh data from re-fetch)
-watch(visibility, state => {
-  if (state === 'visible') {
-    nextTick(syncLocalState);
+// Parent increments refreshTick after article re-fetch completes.
+// Syncing on this signal avoids visibility/fetch timing races.
+watch(
+  () => props.refreshTick,
+  () => {
+    syncLocalState();
   }
-});
+);
 
 const debouncedSave = debounce(value => emit('saveArticle', value), 500, false);
 
