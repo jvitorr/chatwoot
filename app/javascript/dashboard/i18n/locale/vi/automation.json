@@ -130,6 +130,7 @@
       "ATLEAST_ONE_ACTION_REQUIRED": "At least one action is required"
     },
     "NONE_OPTION": "Không có",
+    "LAST_RESPONDING_AGENT": "Last Responding Agent",
     "EVENTS": {
       "CONVERSATION_CREATED": "Cuộc trò chuyện đã được tạo",
       "CONVERSATION_UPDATED": "Cuộc trò chuyện đã được cập nhật",
