@@ -130,6 +130,7 @@
       "ATLEAST_ONE_ACTION_REQUIRED": "Ir nepieciešama vismaz viena darbība"
     },
     "NONE_OPTION": "Nav",
+    "LAST_RESPONDING_AGENT": "Last Responding Agent",
     "EVENTS": {
       "CONVERSATION_CREATED": "Saruna izveidota",
       "CONVERSATION_UPDATED": "Saruna Atjaunināta",
