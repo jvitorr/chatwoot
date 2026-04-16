@@ -130,6 +130,7 @@
       "ATLEAST_ONE_ACTION_REQUIRED": "At least one action is required"
     },
     "NONE_OPTION": "Hiç",
+    "LAST_RESPONDING_AGENT": "Last Responding Agent",
     "EVENTS": {
       "CONVERSATION_CREATED": "Sohbet Oluşturuldu",
       "CONVERSATION_UPDATED": "Sohbet Güncellendi",
