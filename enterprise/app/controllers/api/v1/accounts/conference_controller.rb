@@ -33,14 +33,10 @@ class Api::V1::Accounts::ConferenceController < Api::V1::Accounts::BaseControlle
   private
 
   def resolve_call!
-    inbox_calls = Call.where(inbox_id: @voice_inbox.id, provider: :twilio)
+    sid = params[:call_sid].presence
+    raise ActionController::ParameterMissing, :call_sid if sid.blank?
 
-    if params[:call_sid].present?
-      inbox_calls.find_by!(provider_call_id: params[:call_sid])
-    else
-      conversation = fetch_conversation_by_display_id
-      inbox_calls.where(conversation_id: conversation.id).active.order(created_at: :desc).first!
-    end
+    Call.where(inbox_id: @voice_inbox.id, provider: :twilio).find_by!(provider_call_id: sid)
   end
 
   def set_voice_inbox_for_conference

@@ -19,7 +19,7 @@ class Voice::StatusUpdateService
     normalized_status = normalize_status(call_status)
     return if normalized_status.blank?
 
-    call = Call.find_by_provider_call_id(:twilio, call_sid)
+    call = Call.where(account_id: account.id).find_by(provider: :twilio, provider_call_id: call_sid)
     return unless call
 
     Voice::CallStatus::Manager.new(call: call).process_status_update(

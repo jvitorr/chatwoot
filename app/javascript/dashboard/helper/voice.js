@@ -63,6 +63,7 @@ export function handleVoiceCallUpdated(commit, message, currentUserId) {
   commit(types.UPDATE_MESSAGE_CALL_STATUS, {
     conversationId,
     callStatus: status,
+    callSid,
   });
 
   const isNewCall =

@@ -95,14 +95,10 @@ class Twilio::VoiceController < ApplicationController
   end
 
   def find_call_for_agent
-    if params[:call_sid].present?
-      Call.find_by!(provider: :twilio, provider_call_id: params[:call_sid])
-    elsif params[:conversation_id].present?
-      conversation = current_account.conversations.find_by!(display_id: params[:conversation_id])
-      Call.where(conversation_id: conversation.id).active.order(created_at: :desc).first!
-    else
-      Call.find_by!(provider: :twilio, provider_call_id: twilio_call_sid)
-    end
+    sid = params[:call_sid].presence
+    raise ArgumentError, 'call_sid is required for agent leg' if sid.blank?
+
+    Call.find_by!(provider: :twilio, provider_call_id: sid)
   end
 
   def sync_outbound_leg(call_sid:, direction:)
@@ -141,9 +137,10 @@ class Twilio::VoiceController < ApplicationController
   end
 
   def find_call_for_conference!(friendly_name:, call_sid:)
+    inbox_calls = Call.where(inbox_id: inbox.id, provider: :twilio)
     name = friendly_name.to_s
-    call = Call.twilio.by_conference_sid(name).first if name.present?
-    call || Call.find_by!(provider: :twilio, provider_call_id: call_sid)
+    call = inbox_calls.by_conference_sid(name).first if name.present?
+    call || inbox_calls.find_by!(provider_call_id: call_sid)
   end
 
   def set_inbox!

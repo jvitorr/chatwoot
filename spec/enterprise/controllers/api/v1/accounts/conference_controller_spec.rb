@@ -91,13 +91,13 @@ RSpec.describe Api::V1::Accounts::ConferenceController, type: :request do
         expect(conference_service).to have_received(:mark_agent_joined)
       end
 
-      it 'falls back to the most recent active call on the conversation when call_sid is missing' do
+      it 'rejects the request when call_sid is missing' do
         post "/api/v1/accounts/#{account.id}/inboxes/#{voice_inbox.id}/conference",
              headers: agent.create_new_auth_token,
              params: { conversation_id: conversation.display_id }
 
-        expect(response).to have_http_status(:ok)
-        expect(conference_service).to have_received(:ensure_conference_sid)
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(conference_service).not_to have_received(:ensure_conference_sid)
       end
 
       it 'does not allow accessing calls from inboxes without access' do

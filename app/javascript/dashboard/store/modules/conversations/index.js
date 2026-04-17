@@ -307,19 +307,23 @@ export const mutations = {
     }
   },
 
-  [types.UPDATE_MESSAGE_CALL_STATUS](_state, { conversationId, callStatus }) {
+  [types.UPDATE_MESSAGE_CALL_STATUS](
+    _state,
+    { conversationId, callStatus, callSid }
+  ) {
     const chat = getConversationById(_state)(conversationId);
     if (!chat) return;
 
-    const lastCall = (chat.messages || []).findLast(
-      m => m.content_type === CONTENT_TYPES.VOICE_CALL
+    const message = (chat.messages || []).find(
+      m =>
+        m.content_type === CONTENT_TYPES.VOICE_CALL &&
+        m.content_attributes?.data?.call_sid === callSid
     );
+    if (!message) return;
 
-    if (!lastCall) return;
-
-    lastCall.content_attributes ??= {};
-    lastCall.content_attributes.data = {
-      ...lastCall.content_attributes.data,
+    message.content_attributes ??= {};
+    message.content_attributes.data = {
+      ...message.content_attributes.data,
       status: callStatus,
     };
   },

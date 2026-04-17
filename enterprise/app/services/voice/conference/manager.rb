@@ -23,6 +23,9 @@ class Voice::Conference::Manager
   end
 
   def mark_ringing!
+    # Guard against delayed conference-start retries rolling a progressed call back to ringing.
+    return unless call.status == 'ringing'
+
     status_manager.process_status_update('ringing')
   end
 

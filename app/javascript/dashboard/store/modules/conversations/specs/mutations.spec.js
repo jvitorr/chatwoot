@@ -8,11 +8,12 @@ describe('#mutations', () => {
       mutations[types.UPDATE_MESSAGE_CALL_STATUS](state, {
         conversationId: 1,
         callStatus: 'ringing',
+        callSid: 'CA123',
       });
       expect(state.allConversations).toEqual([]);
     });
 
-    it('does nothing if no voice call message exists', () => {
+    it('does nothing if no matching voice call message exists', () => {
       const state = {
         allConversations: [
           { id: 1, messages: [{ id: 1, content_type: 'text' }] },
@@ -21,6 +22,7 @@ describe('#mutations', () => {
       mutations[types.UPDATE_MESSAGE_CALL_STATUS](state, {
         conversationId: 1,
         callStatus: 'ringing',
+        callSid: 'CA123',
       });
       expect(state.allConversations[0].messages[0]).toEqual({
         id: 1,
@@ -28,7 +30,7 @@ describe('#mutations', () => {
       });
     });
 
-    it('updates the last voice call message status', () => {
+    it('updates only the voice call message matching the given callSid', () => {
       const state = {
         allConversations: [
           {
@@ -37,12 +39,16 @@ describe('#mutations', () => {
               {
                 id: 1,
                 content_type: 'voice_call',
-                content_attributes: { data: { status: 'ringing' } },
+                content_attributes: {
+                  data: { call_sid: 'CA111', status: 'ringing' },
+                },
               },
               {
                 id: 2,
                 content_type: 'voice_call',
-                content_attributes: { data: { status: 'ringing' } },
+                content_attributes: {
+                  data: { call_sid: 'CA222', status: 'ringing' },
+                },
               },
             ],
           },
@@ -51,31 +57,14 @@ describe('#mutations', () => {
       mutations[types.UPDATE_MESSAGE_CALL_STATUS](state, {
         conversationId: 1,
         callStatus: 'in-progress',
+        callSid: 'CA111',
       });
       expect(
         state.allConversations[0].messages[0].content_attributes.data.status
-      ).toBe('ringing');
+      ).toBe('in-progress');
       expect(
         state.allConversations[0].messages[1].content_attributes.data.status
-      ).toBe('in-progress');
-    });
-
-    it('creates content_attributes.data if it does not exist', () => {
-      const state = {
-        allConversations: [
-          {
-            id: 1,
-            messages: [{ id: 1, content_type: 'voice_call' }],
-          },
-        ],
-      };
-      mutations[types.UPDATE_MESSAGE_CALL_STATUS](state, {
-        conversationId: 1,
-        callStatus: 'completed',
-      });
-      expect(
-        state.allConversations[0].messages[0].content_attributes.data.status
-      ).toBe('completed');
+      ).toBe('ringing');
     });
 
     it('preserves existing data in content_attributes.data', () => {
@@ -98,6 +87,7 @@ describe('#mutations', () => {
       mutations[types.UPDATE_MESSAGE_CALL_STATUS](state, {
         conversationId: 1,
         callStatus: 'in-progress',
+        callSid: 'CA123',
       });
       expect(
         state.allConversations[0].messages[0].content_attributes.data
@@ -114,6 +104,7 @@ describe('#mutations', () => {
       mutations[types.UPDATE_MESSAGE_CALL_STATUS](state, {
         conversationId: 1,
         callStatus: 'ringing',
+        callSid: 'CA123',
       });
       expect(state.allConversations[0].messages).toEqual([]);
     });
