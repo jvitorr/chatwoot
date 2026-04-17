@@ -13,7 +13,7 @@ class Voice::InboundCallBuilder
   end
 
   def perform!
-    existing = Call.find_by(provider: :twilio, provider_call_id: call_sid)
+    existing = find_existing_call
     return existing if existing
 
     ActiveRecord::Base.transaction do
@@ -25,9 +25,17 @@ class Voice::InboundCallBuilder
       call.update!(message_id: message.id)
       call
     end
+  rescue ActiveRecord::RecordNotUnique
+    # A concurrent Twilio retry won the create race; return what now exists.
+    find_existing_call || raise
   end
 
   private
+
+  def find_existing_call
+    Call.where(account_id: account.id, inbox_id: inbox.id)
+        .find_by(provider: :twilio, provider_call_id: call_sid)
+  end
 
   def ensure_contact!
     account.contacts.find_or_create_by!(phone_number: from_number) do |record|
