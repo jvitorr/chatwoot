@@ -17,13 +17,14 @@ class Voice::CallMessageBuilder
   attr_reader :call
 
   def find_message
-    call.conversation.messages.voice_calls.find do |m|
-      m.content_attributes.dig('data', 'call_sid') == call.provider_call_id
-    end
+    return call.message if call.message_id.present?
+
+    call.conversation.messages.voice_calls
+        .find_by("content_attributes -> 'data' ->> 'call_sid' = ?", call.provider_call_id)
   end
 
   def update_message!(message)
-    existing = message.content_attributes.fetch('data', {})
+    existing = (message.content_attributes || {}).fetch('data', {})
     message.update!(content_attributes: { 'data' => data_payload(existing) })
     message
   end
