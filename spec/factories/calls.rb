@@ -1,9 +1,9 @@
 FactoryBot.define do
   factory :call do
-    association :account
-    association :inbox
     association :conversation
-    association :contact
+    account { conversation.account }
+    inbox { conversation.inbox }
+    contact { conversation.contact }
     provider { :twilio }
     direction { :incoming }
     status { 'ringing' }

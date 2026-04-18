@@ -114,10 +114,12 @@ class Twilio::VoiceController < ApplicationController
   end
 
   def conference_twiml(call)
+    conference_sid = ensure_conference_sid!(call)
+
     Twilio::TwiML::VoiceResponse.new.tap do |response|
       response.dial do |dial|
         dial.conference(
-          call.conference_sid,
+          conference_sid,
           start_conference_on_enter: agent_leg?(twilio_from),
           end_conference_on_exit: false,
           status_callback: conference_status_callback_url,
@@ -127,6 +129,13 @@ class Twilio::VoiceController < ApplicationController
         )
       end
     end.to_s
+  end
+
+  def ensure_conference_sid!(call)
+    return call.conference_sid if call.conference_sid.present?
+
+    call.update!(conference_sid: Voice::Conference::Name.for(call))
+    call.conference_sid
   end
 
   def participant_label_for(from_number)
