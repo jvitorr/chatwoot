@@ -71,7 +71,8 @@
     "REPLY_MESSAGE_NOT_FOUND": "ההודעה אינה זמינה",
     "CARD": {
       "SHOW_LABELS": "הצג תויות",
-      "HIDE_LABELS": "הסתר תוויות"
+      "HIDE_LABELS": "הסתר תוויות",
+      "LABELS_COUNT": "{count} labels"
     },
     "VOICE_CALL": {
       "INCOMING_CALL": "שיחה נכנסת",
