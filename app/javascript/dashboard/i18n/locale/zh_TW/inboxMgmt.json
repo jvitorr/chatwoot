@@ -745,6 +745,7 @@
       "SENDER_NAME_SECTION_TEXT": "啟用/停用在郵件中顯示客服人員名稱，停用時將顯示企業名稱",
       "ENABLE_CONTINUITY_VIA_EMAIL": "透過電子郵件啟用對話延續",
       "ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT": "若聯絡人有電子郵件地址，對話將透過電子郵件繼續。",
+      "ENABLE_CONTINUITY_VIA_EMAIL_DISABLED_TEXT": "This feature is available on a paid plan. Upgrade to enable conversation continuity via email.",
       "LOCK_TO_SINGLE_CONVERSATION": "對話路由",
       "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "設定現有聯絡人的對話建立方式",
       "INBOX_UPDATE_TITLE": "收件匣設定",
