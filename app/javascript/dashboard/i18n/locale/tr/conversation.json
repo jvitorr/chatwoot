@@ -71,7 +71,8 @@
     "REPLY_MESSAGE_NOT_FOUND": "Mesaj bulunamadı",
     "CARD": {
       "SHOW_LABELS": "Etiketleri Göster",
-      "HIDE_LABELS": "Etiketleri Gizle"
+      "HIDE_LABELS": "Etiketleri Gizle",
+      "LABELS_COUNT": "{count} labels"
     },
     "VOICE_CALL": {
       "INCOMING_CALL": "Gelen arama",
