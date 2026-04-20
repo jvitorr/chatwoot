@@ -71,7 +71,8 @@
     "REPLY_MESSAGE_NOT_FOUND": "सन्देश उपलब्ध छैन",
     "CARD": {
       "SHOW_LABELS": "लेबलहरू देखाउनुहोस्",
-      "HIDE_LABELS": "लेबलहरू लुकाउनुहोस्"
+      "HIDE_LABELS": "लेबलहरू लुकाउनुहोस्",
+      "LABELS_COUNT": "{count} labels"
     },
     "VOICE_CALL": {
       "INCOMING_CALL": "आउँदै गरेको कल",
