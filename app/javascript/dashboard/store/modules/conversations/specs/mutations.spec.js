@@ -39,16 +39,12 @@ describe('#mutations', () => {
               {
                 id: 1,
                 content_type: 'voice_call',
-                content_attributes: {
-                  data: { call_sid: 'CA111', status: 'ringing' },
-                },
+                call: { provider_call_id: 'CA111', status: 'ringing' },
               },
               {
                 id: 2,
                 content_type: 'voice_call',
-                content_attributes: {
-                  data: { call_sid: 'CA222', status: 'ringing' },
-                },
+                call: { provider_call_id: 'CA222', status: 'ringing' },
               },
             ],
           },
@@ -59,15 +55,13 @@ describe('#mutations', () => {
         callStatus: 'in-progress',
         callSid: 'CA111',
       });
-      expect(
-        state.allConversations[0].messages[0].content_attributes.data.status
-      ).toBe('in-progress');
-      expect(
-        state.allConversations[0].messages[1].content_attributes.data.status
-      ).toBe('ringing');
+      expect(state.allConversations[0].messages[0].call.status).toBe(
+        'in-progress'
+      );
+      expect(state.allConversations[0].messages[1].call.status).toBe('ringing');
     });
 
-    it('preserves existing data in content_attributes.data', () => {
+    it('preserves existing call fields when updating status', () => {
       const state = {
         allConversations: [
           {
@@ -76,8 +70,11 @@ describe('#mutations', () => {
               {
                 id: 1,
                 content_type: 'voice_call',
-                content_attributes: {
-                  data: { call_sid: 'CA123', status: 'ringing' },
+                call: {
+                  provider_call_id: 'CA123',
+                  status: 'ringing',
+                  direction: 'incoming',
+                  duration_seconds: null,
                 },
               },
             ],
@@ -89,11 +86,11 @@ describe('#mutations', () => {
         callStatus: 'in-progress',
         callSid: 'CA123',
       });
-      expect(
-        state.allConversations[0].messages[0].content_attributes.data
-      ).toEqual({
-        call_sid: 'CA123',
+      expect(state.allConversations[0].messages[0].call).toEqual({
+        provider_call_id: 'CA123',
         status: 'in-progress',
+        direction: 'incoming',
+        duration_seconds: null,
       });
     });
 
@@ -107,6 +104,31 @@ describe('#mutations', () => {
         callSid: 'CA123',
       });
       expect(state.allConversations[0].messages).toEqual([]);
+    });
+
+    it('does nothing if matching message has no call object yet', () => {
+      const state = {
+        allConversations: [
+          {
+            id: 1,
+            messages: [
+              {
+                id: 1,
+                content_type: 'voice_call',
+                call: { provider_call_id: 'CA-OTHER' },
+              },
+            ],
+          },
+        ],
+      };
+      mutations[types.UPDATE_MESSAGE_CALL_STATUS](state, {
+        conversationId: 1,
+        callStatus: 'completed',
+        callSid: 'CA-MISSING',
+      });
+      expect(state.allConversations[0].messages[0].call).toEqual({
+        provider_call_id: 'CA-OTHER',
+      });
     });
   });
 });

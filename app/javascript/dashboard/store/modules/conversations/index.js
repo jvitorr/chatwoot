@@ -317,15 +317,11 @@ export const mutations = {
     const message = (chat.messages || []).find(
       m =>
         m.content_type === CONTENT_TYPES.VOICE_CALL &&
-        m.content_attributes?.data?.call_sid === callSid
+        m.call?.provider_call_id === callSid
     );
-    if (!message) return;
+    if (!message?.call) return;
 
-    message.content_attributes ??= {};
-    message.content_attributes.data = {
-      ...message.content_attributes.data,
-      status: callStatus,
-    };
+    message.call = { ...message.call, status: callStatus };
   },
 
   [types.SET_ACTIVE_INBOX](_state, inboxId) {

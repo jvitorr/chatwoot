@@ -23,11 +23,11 @@ const shouldSkipCall = (callDirection, senderId, currentUserId) => {
 };
 
 function extractCallData(message) {
-  const contentData = message?.content_attributes?.data || {};
+  const call = message?.call || {};
   return {
-    callSid: contentData.call_sid,
-    status: contentData.status,
-    callDirection: contentData.call_direction,
+    callSid: call.provider_call_id,
+    status: call.status,
+    callDirection: call.direction === 'outgoing' ? 'outbound' : 'inbound',
     conversationId: message?.conversation_id,
     senderId: message?.sender?.id,
   };

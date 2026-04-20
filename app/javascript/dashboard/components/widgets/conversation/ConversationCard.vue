@@ -97,10 +97,13 @@ const lastMessageInChat = computed(() => getLastMessage(props.chat));
 
 const voiceCallData = computed(() => {
   const last = lastMessageInChat.value;
-  if (last?.content_type !== 'voice_call')
+  if (last?.content_type !== 'voice_call' || !last.call) {
     return { status: null, direction: null };
-  const data = last.content_attributes?.data ?? {};
-  return { status: data.status, direction: data.call_direction };
+  }
+  return {
+    status: last.call.status,
+    direction: last.call.direction === 'outgoing' ? 'outbound' : 'inbound',
+  };
 });
 
 const inboxId = computed(() => props.chat.inbox_id);
