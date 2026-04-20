@@ -71,7 +71,8 @@
     "REPLY_MESSAGE_NOT_FOUND": "Message indisponible",
     "CARD": {
       "SHOW_LABELS": "Afficher les étiquettes",
-      "HIDE_LABELS": "Masquer les étiquettes"
+      "HIDE_LABELS": "Masquer les étiquettes",
+      "LABELS_COUNT": "{count} labels"
     },
     "VOICE_CALL": {
       "INCOMING_CALL": "Appel entrant",
