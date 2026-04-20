@@ -71,7 +71,8 @@
     "REPLY_MESSAGE_NOT_FOUND": "消息不可用",
     "CARD": {
       "SHOW_LABELS": "显示标签",
-      "HIDE_LABELS": "隐藏标签"
+      "HIDE_LABELS": "隐藏标签",
+      "LABELS_COUNT": "{count} labels"
     },
     "VOICE_CALL": {
       "INCOMING_CALL": "来电",
