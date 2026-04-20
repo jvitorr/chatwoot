@@ -745,6 +745,7 @@
       "SENDER_NAME_SECTION_TEXT": "Միացնել/անջատել գործակալի անունի ցուցադրումը էլփոստում, եթե անջատված է, կցուցադրվի բիզնեսի անունը",
       "ENABLE_CONTINUITY_VIA_EMAIL": "Միացնել զրույցի շարունակականությունը էլ. փոստով",
       "ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT": "Զրույցները կշարունակվեն էլ. փոստով, եթե կոնտակտի էլ. փոստի հասցեն հասանելի է։",
+      "ENABLE_CONTINUITY_VIA_EMAIL_DISABLED_TEXT": "This feature is available on a paid plan. Upgrade to enable conversation continuity via email.",
       "LOCK_TO_SINGLE_CONVERSATION": "Զրույցների ուղղորդում",
       "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "Կարգավորեք զրույցների ստեղծումը գոյություն ունեցող կոնտակտների համար",
       "INBOX_UPDATE_TITLE": "Զամբյուղի կարգավորումներ",
