@@ -71,7 +71,8 @@
     "REPLY_MESSAGE_NOT_FOUND": "訊息無法使用",
     "CARD": {
       "SHOW_LABELS": "顯示標籤",
-      "HIDE_LABELS": "隱藏標籤"
+      "HIDE_LABELS": "隱藏標籤",
+      "LABELS_COUNT": "{count} labels"
     },
     "VOICE_CALL": {
       "INCOMING_CALL": "來電",
