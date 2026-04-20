@@ -745,6 +745,7 @@
       "SENDER_NAME_SECTION_TEXT": "ഇമെയിലിൽ ഏജന്റിന്റെ പേര് കാണിക്കുന്നതിനെ സജ്ജമാക്കുക/അസജ്ജമാക്കുക, അസജ്ജമാക്കിയാൽ ബിസിനസ് പേര് കാണിക്കും",
       "ENABLE_CONTINUITY_VIA_EMAIL": "ഇമെയിൽ വഴി സംഭാഷണ തുടർച്ച പ്രവർത്തനക്ഷമമാക്കുക",
       "ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT": "ബന്ധപ്പെടാനുള്ള ഇമെയിൽ വിലാസം ലഭ്യമാണെങ്കിൽ സംഭാഷണങ്ങൾ ഇമെയിൽ വഴി തുടരും.",
+      "ENABLE_CONTINUITY_VIA_EMAIL_DISABLED_TEXT": "This feature is available on a paid plan. Upgrade to enable conversation continuity via email.",
       "LOCK_TO_SINGLE_CONVERSATION": "സംഭാഷണ റൂട്ടിംഗ്",
       "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "ഇതിനകം ഉള്ള കോൺടാക്റ്റുകൾക്കായി സംഭാഷണം സൃഷ്ടിക്കൽ ക്രമീകരിക്കുക",
       "INBOX_UPDATE_TITLE": "ഇൻബോക്സ് ക്രമീകരണങ്ങൾ",
