@@ -8,26 +8,18 @@ class Voice::CallMessageBuilder
   end
 
   def perform!
-    find_message || create_message!
+    call.message || create_message!
   end
 
   private
 
   attr_reader :call
 
-  def find_message
-    return call.message if call.message_id.present?
-
-    call.conversation.messages.voice_calls
-        .find_by("content_attributes -> 'data' ->> 'call_sid' = ?", call.provider_call_id)
-  end
-
   def create_message!
     params = {
       content: 'Voice Call',
       message_type: call.outgoing? ? 'outgoing' : 'incoming',
-      content_type: 'voice_call',
-      content_attributes: { 'data' => { 'call_sid' => call.provider_call_id } }
+      content_type: 'voice_call'
     }
     Messages::MessageBuilder.new(sender, call.conversation, params).perform
   end

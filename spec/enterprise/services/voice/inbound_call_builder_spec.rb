@@ -48,7 +48,6 @@ RSpec.describe Voice::InboundCallBuilder do
         expect(voice_message).to be_present
         expect(voice_message.message_type).to eq('incoming')
         expect(call.message_id).to eq(voice_message.id)
-        expect(voice_message.content_attributes['data']['call_sid']).to eq(call_sid)
         expect(voice_message.call).to eq(call)
       end
     end

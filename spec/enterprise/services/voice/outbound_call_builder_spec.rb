@@ -40,7 +40,6 @@ RSpec.describe Voice::OutboundCallBuilder do
         voice_message = call.conversation.messages.voice_calls.last
         expect(call.message_id).to eq(voice_message.id)
         expect(voice_message.message_type).to eq('outgoing')
-        expect(voice_message.content_attributes['data']['call_sid']).to eq(call_sid)
         expect(voice_message.call).to eq(call)
       end
     end
