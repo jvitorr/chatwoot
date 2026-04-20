@@ -745,6 +745,7 @@
       "SENDER_NAME_SECTION_TEXT": "மின்னஞ்சலில் முகவரின் பெயரை காட்ட/மறைக்க இயக்கு, மறைக்கப்பட்டால் வணிகப் பெயர் காட்டப்படும்",
       "ENABLE_CONTINUITY_VIA_EMAIL": "மின்னஞ்சல் மூலம் உரையாடல் தொடர்ச்சியை இயக்கு",
       "ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT": "தொடர்பு மின்னஞ்சல் முகவரி கிடைக்கும் போது உரையாடல்கள் மின்னஞ்சல் வழியாக தொடரும்.",
+      "ENABLE_CONTINUITY_VIA_EMAIL_DISABLED_TEXT": "This feature is available on a paid plan. Upgrade to enable conversation continuity via email.",
       "LOCK_TO_SINGLE_CONVERSATION": "Conversation Routing",
       "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "Configure conversation creation for existing contacts",
       "INBOX_UPDATE_TITLE": "இன்பாக்ஸ் அமைப்புகள்",
