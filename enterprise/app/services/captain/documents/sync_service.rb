@@ -21,20 +21,20 @@ class Captain::Documents::SyncService
     end
 
     @document.update!(sync_step: 'comparing')
-    fingerprint = compute_fingerprint(result.content)
+    new_fingerprint = compute_fingerprint(result.content)
+    previous_fingerprint = @document.content_fingerprint
 
-    # Baseline: with no prior fingerprint there is nothing to compare against,
-    # so record the current fetch silently rather than reporting a content change.
-    baselining = @document.content_fingerprint.blank?
-
-    if !baselining && fingerprint == @document.content_fingerprint
+    if new_fingerprint == previous_fingerprint
       mark_synced
       return :unchanged
     end
 
     @document.update!(sync_step: 'updating')
-    update_content(result, fingerprint)
-    baselining ? :unchanged : :updated
+    update_content(result, new_fingerprint)
+
+    # Without a prior fingerprint we cannot tell a first-ever sync apart from a real
+    # change, so treat it as unchanged to keep downstream signals quiet on baseline.
+    previous_fingerprint.present? ? :updated : :unchanged
   end
 
   private

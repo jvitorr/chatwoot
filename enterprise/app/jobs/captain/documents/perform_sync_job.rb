@@ -1,6 +1,11 @@
 class Captain::Documents::PerformSyncJob < ApplicationJob
   queue_as :low
 
+  # A single page fetch + fingerprint compare should complete in seconds.
+  # 10 minutes is generous headroom — if still "syncing" after that, the worker likely died mid-run.
+  # Shared with ScheduleSyncsJob so stale locks are re-enqueued at the same threshold.
+  STALE_LOCK_THRESHOLD = 10.minutes
+
   # Permanent errors (404, 403, empty content) — no point retrying, discard immediately.
   # Document is already marked failed by SyncService before the exception reaches here.
   discard_on(Captain::Documents::SyncService::PermanentSyncError)
@@ -48,9 +53,7 @@ class Captain::Documents::PerformSyncJob < ApplicationJob
     acquired
   end
 
-  # A single page fetch + fingerprint compare should complete in seconds.
-  # 10 minutes is generous headroom — if still "syncing" after that, the worker likely died mid-run.
   def sync_stale?(document)
-    document.last_sync_attempted_at.present? && document.last_sync_attempted_at < 10.minutes.ago
+    document.last_sync_attempted_at.present? && document.last_sync_attempted_at < STALE_LOCK_THRESHOLD.ago
   end
 end

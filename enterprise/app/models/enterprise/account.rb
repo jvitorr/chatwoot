@@ -48,8 +48,8 @@ module Enterprise::Account
     CAPTAIN_SYNC_INTERVALS[plan.downcase]
   end
 
-  def captain_document_sync_enabled?
-    captain_document_sync_interval.present?
+  def captain_document_auto_sync_enabled?
+    ActiveModel::Type::Boolean.new.cast(captain_document_auto_sync_enabled)
   end
 
   def saml_enabled?
