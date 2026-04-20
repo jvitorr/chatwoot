@@ -71,7 +71,8 @@
     "REPLY_MESSAGE_NOT_FOUND": "Messaggio non disponibile",
     "CARD": {
       "SHOW_LABELS": "Mostra etichette",
-      "HIDE_LABELS": "Nascondi etichette"
+      "HIDE_LABELS": "Nascondi etichette",
+      "LABELS_COUNT": "{count} etichette"
     },
     "VOICE_CALL": {
       "INCOMING_CALL": "Chiamata in arrivo",
