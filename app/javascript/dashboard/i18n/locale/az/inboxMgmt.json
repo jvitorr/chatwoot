@@ -745,6 +745,7 @@
       "SENDER_NAME_SECTION_TEXT": "E-poçtda Agentin adının göstərilməsini aktivləşdirin/deaktivləşdirin, deaktiv edilsə biznes adı göstəriləcək",
       "ENABLE_CONTINUITY_VIA_EMAIL": "E-poçt vasitəsilə söhbət davamlılığını aktiv edin",
       "ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT": "Əlaqə e-poçt ünvanı mövcuddursa, söhbətlər e-poçt vasitəsilə davam edəcək.",
+      "ENABLE_CONTINUITY_VIA_EMAIL_DISABLED_TEXT": "This feature is available on a paid plan. Upgrade to enable conversation continuity via email.",
       "LOCK_TO_SINGLE_CONVERSATION": "Söhbət yönləndirilməsi",
       "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "Mövcud əlaqələr üçün söhbət yaradılmasını qurun",
       "INBOX_UPDATE_TITLE": "Gələn Qutu Parametrləri",
