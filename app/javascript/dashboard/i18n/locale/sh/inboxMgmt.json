@@ -745,6 +745,7 @@
       "SENDER_NAME_SECTION_TEXT": "Omogući/onemogući prikaz imena agenta u e-pošti, ako je onemogućeno prikazat će se naziv tvrtke",
       "ENABLE_CONTINUITY_VIA_EMAIL": "Omogući kontinuitet razgovora putem e-pošte",
       "ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT": "Razgovori će se nastaviti putem e-pošte ako je dostupna adresa e-pošte kontakta.",
+      "ENABLE_CONTINUITY_VIA_EMAIL_DISABLED_TEXT": "This feature is available on a paid plan. Upgrade to enable conversation continuity via email.",
       "LOCK_TO_SINGLE_CONVERSATION": "Usmjeravanje razgovora",
       "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "Configure conversation creation for existing contacts",
       "INBOX_UPDATE_TITLE": "Postavke pristigle pošte",
