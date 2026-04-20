@@ -3,6 +3,7 @@ class Captain::Documents::SinglePageFetcher
 
   CONTENT_MAX_LENGTH = 200_000
   FIRECRAWL_EXCLUDE_TAGS = %w[iframe nav footer header .sidebar .cookie-banner [role=navigation] [role=banner] [role=contentinfo]].freeze
+  TITLE_MAX_LENGTH = 255 # captain_documents.name is a varchar(255)
 
   def initialize(url)
     @url = url
@@ -49,7 +50,7 @@ class Captain::Documents::SinglePageFetcher
     data = response.parsed_response&.dig('data')
     Result.new(
       success: true,
-      title: data&.dig('metadata', 'title'),
+      title: data&.dig('metadata', 'title')&.truncate(TITLE_MAX_LENGTH, omission: ''),
       content: data&.dig('markdown')&.truncate(CONTENT_MAX_LENGTH, omission: '')
     )
   end
@@ -65,7 +66,7 @@ class Captain::Documents::SinglePageFetcher
 
     Result.new(
       success: true,
-      title: title,
+      title: title&.truncate(TITLE_MAX_LENGTH, omission: ''),
       content: content&.truncate(CONTENT_MAX_LENGTH, omission: '')
     )
   end
