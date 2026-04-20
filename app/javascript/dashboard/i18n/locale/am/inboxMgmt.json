@@ -745,6 +745,7 @@
       "SENDER_NAME_SECTION_TEXT": "በኢሜይል ውስጥ የAgent ስም እንዲታይ/እንዳይታይ አርግ፣ ካልተከናወነ የንግድ ስም ይታያል",
       "ENABLE_CONTINUITY_VIA_EMAIL": "በኢሜል የውይይት ቀጥታነት አንቀሳቅስ",
       "ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT": "ከኮንታክት ኢሜይል አድራሻ ካለ ውይይቶች በኢሜይል ይቀጥላሉ።",
+      "ENABLE_CONTINUITY_VIA_EMAIL_DISABLED_TEXT": "This feature is available on a paid plan. Upgrade to enable conversation continuity via email.",
       "LOCK_TO_SINGLE_CONVERSATION": "የውይይት መላኪያ",
       "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "ለአሁን ያሉ እውቂያዎች ውይይት ፍጠራ ያስተካክሉ",
       "INBOX_UPDATE_TITLE": "የኢንቦክስ ቅንብሮች",
