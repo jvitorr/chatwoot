@@ -45,7 +45,7 @@ class Call < ApplicationRecord
   belongs_to :inbox
   belongs_to :conversation
   belongs_to :contact
-  belongs_to :message, optional: true
+  belongs_to :message, optional: true, inverse_of: :call
   belongs_to :accepted_by_agent, class_name: 'User', optional: true
 
   has_one_attached :recording
@@ -69,5 +69,42 @@ class Call < ApplicationRecord
 
   def display_direction
     DISPLAY_DIRECTION[direction]
+  end
+
+  def display_status
+    status.to_s.tr('_', '-')
+  end
+
+  def from_number
+    incoming? ? contact.phone_number : inbox.channel&.phone_number
+  end
+
+  def to_number
+    incoming? ? inbox.channel&.phone_number : contact.phone_number
+  end
+
+  def recording_url
+    return nil unless recording.attached?
+
+    Rails.application.routes.url_helpers.rails_blob_url(recording)
+  end
+
+  def push_event_data
+    {
+      id: id,
+      provider_call_id: provider_call_id,
+      provider: provider,
+      direction: direction,
+      status: display_status,
+      duration_seconds: duration_seconds,
+      conference_sid: conference_sid,
+      accepted_by_agent_id: accepted_by_agent_id,
+      started_at: started_at&.to_i,
+      ended_at: ended_at,
+      from_number: from_number,
+      to_number: to_number,
+      recording_url: recording_url,
+      transcript: transcript
+    }
   end
 end

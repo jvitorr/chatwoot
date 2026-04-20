@@ -11,7 +11,9 @@ class MessageFinder
   private
 
   def conversation_messages
-    @conversation.messages.includes(:attachments, :sender, sender: { avatar_attachment: [:blob] })
+    scope = @conversation.messages.includes(:attachments, :sender, sender: { avatar_attachment: [:blob] })
+    scope = scope.includes(call: [:contact, { inbox: :channel }]) if Message.reflect_on_association(:call)
+    scope
   end
 
   def messages
