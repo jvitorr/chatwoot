@@ -130,7 +130,7 @@
       "ATLEAST_ONE_ACTION_REQUIRED": "Pelo menos uma ação é necessária"
     },
     "NONE_OPTION": "Nenhuma",
-    "LAST_RESPONDING_AGENT": "Last Responding Agent",
+    "LAST_RESPONDING_AGENT": "Último Agente que Respondeu",
     "EVENTS": {
       "CONVERSATION_CREATED": "Conversa Criada",
       "CONVERSATION_UPDATED": "Conversa Atualizada",
@@ -141,7 +141,7 @@
     "ACTIONS": {
       "ASSIGN_AGENT": "Atribuir ao Agente",
       "ASSIGN_TEAM": "Atribuir um Time",
-      "REMOVE_ASSIGNED_AGENT": "Remove Assigned Agent",
+      "REMOVE_ASSIGNED_AGENT": "Remover Agente Atribuído",
       "REMOVE_ASSIGNED_TEAM": "Remover Time Atribuído",
       "ADD_LABEL": "Adicionar uma Etiqueta",
       "REMOVE_LABEL": "Remover uma Etiqueta",
