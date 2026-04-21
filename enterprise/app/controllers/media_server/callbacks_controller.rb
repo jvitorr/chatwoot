@@ -1,6 +1,4 @@
-class Api::V1::Accounts::MediaServer::CallbacksController < Api::V1::Accounts::BaseController
-  skip_before_action :authenticate_user!, raise: false
-  skip_before_action :authenticate_access_token!, raise: false
+class MediaServer::CallbacksController < ApplicationController
   before_action :validate_media_server_token
 
   def agent_disconnected
@@ -44,9 +42,7 @@ class Api::V1::Accounts::MediaServer::CallbacksController < Api::V1::Accounts::B
       }
     )
 
-    # Also terminate on Meta side
-    provider = call.inbox.channel.provider_service
-    provider.terminate_call(call.provider_call_id)
+    call.inbox.channel.provider_service.terminate_call(call.provider_call_id)
   rescue StandardError => e
     Rails.logger.error "[MEDIA SERVER] Failed to terminate on provider: #{e.message}"
   ensure

@@ -38,7 +38,12 @@ class Whatsapp::IncomingCallService
       existing_call.update!(status: 'in_progress', started_at: Time.current, meta: (existing_call.meta || {}).merge('sdp_answer' => sdp_answer))
       Whatsapp::CallMessageBuilder.update_status!(call: existing_call, status: 'in_progress')
       update_conversation_call_status(existing_call.conversation, 'in-progress', existing_call.direction_label)
-      broadcast_outbound_call_connected(existing_call, sdp_answer)
+
+      if existing_call.media_session_id.present?
+        finalize_outbound_server_relay(existing_call, sdp_answer)
+      else
+        broadcast_outbound_call_connected(existing_call, sdp_answer)
+      end
       return
     end
 
@@ -198,6 +203,31 @@ class Whatsapp::IncomingCallService
     }
 
     ActionCable.server.broadcast("account_#{inbox.account_id}", payload)
+  end
+
+  # Server-relay outbound: deliver Meta's SDP answer to the media server so it
+  # completes Peer A, then ask it for an SDP offer to send to the agent (Peer B).
+  # Broadcast that offer so the agent browser can negotiate directly with the
+  # media server.
+  def finalize_outbound_server_relay(call, sdp_answer)
+    client = Whatsapp::MediaServerClient.new
+    client.set_meta_answer(call.media_session_id, sdp_answer: sdp_answer)
+    agent_offer = client.generate_agent_offer(call.media_session_id)
+
+    payload = {
+      event: 'whatsapp_call.outbound_connected',
+      data: {
+        account_id: inbox.account_id,
+        id: call.id,
+        call_id: call.provider_call_id,
+        conversation_id: call.conversation_id,
+        sdp_offer: agent_offer['sdp_offer'],
+        ice_servers: agent_offer['ice_servers']
+      }
+    }
+    ActionCable.server.broadcast("account_#{inbox.account_id}", payload)
+  rescue Whatsapp::MediaServerClient::ConnectionError, Whatsapp::MediaServerClient::SessionError => e
+    Rails.logger.error "[WHATSAPP CALL] Failed to finalize outbound server-relay: #{e.message}"
   end
 
   # Meta sends "USER_INITIATED" / "BUSINESS_INITIATED", map to Call enum values

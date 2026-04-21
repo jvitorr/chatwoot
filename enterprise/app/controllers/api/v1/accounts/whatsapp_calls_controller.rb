@@ -199,13 +199,14 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     # Step 1: Create session on media server (generates SDP offer for Meta)
     session_response = client.create_session(
       call_id: "pending_#{SecureRandom.hex(8)}",
+      direction: 'outgoing',
       sdp_offer: nil,
       ice_servers: [{ urls: 'stun:stun.l.google.com:19302' }],
       account_id: current_account.id
     )
 
     # Step 2: Send the media server's SDP offer to Meta to initiate the call
-    sdp_offer = session_response['meta_sdp_answer'] || session_response['sdp_offer']
+    sdp_offer = session_response['meta_sdp_offer']
     result = conversation.inbox.channel.provider_service.initiate_call(contact_phone.delete('+'), sdp_offer)
     provider_call_id = result.dig('calls', 0, 'id') || result['call_id']
 

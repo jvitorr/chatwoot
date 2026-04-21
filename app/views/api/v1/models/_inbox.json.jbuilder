@@ -130,6 +130,7 @@ if resource.whatsapp?
   json.provider_config resource.channel.try(:provider_config) if Current.account_user&.administrator?
   json.reauthorization_required resource.channel.try(:reauthorization_required?)
   json.calling_enabled resource.channel.try(:provider_config)&.dig('calling_enabled') || false
+  json.media_server_enabled Call.media_server_enabled?
 end
 
 ## Voice Channel Attributes

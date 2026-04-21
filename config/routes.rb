@@ -320,12 +320,6 @@ Rails.application.routes.draw do
             end
           end
 
-          namespace :media_server do
-            post 'callbacks/agent_disconnected', to: 'callbacks#agent_disconnected'
-            post 'callbacks/recording_ready', to: 'callbacks#recording_ready'
-            post 'callbacks/session_terminated', to: 'callbacks#session_terminated'
-          end
-
           resources :webhooks, only: [:index, :create, :update, :destroy]
           namespace :integrations do
             resources :apps, only: [:index, :show]
@@ -629,6 +623,16 @@ Rails.application.routes.draw do
   get 'instagram/callback', to: 'instagram/callbacks#show'
   get 'tiktok/callback', to: 'tiktok/callbacks#show'
   get 'notion/callback', to: 'notion/callbacks#show'
+
+  # Media server callbacks — authenticated by shared MEDIA_SERVER_AUTH_TOKEN,
+  # not a user session. Intentionally top-level and not account-scoped.
+  namespace :callbacks do
+    namespace :media_server do
+      post :agent_disconnected, to: '/media_server/callbacks#agent_disconnected'
+      post :recording_ready, to: '/media_server/callbacks#recording_ready'
+      post :session_terminated, to: '/media_server/callbacks#session_terminated'
+    end
+  end
   # ----------------------------------------------------------------------
   # Routes for external service verifications
   get '.well-known/assetlinks.json' => 'android_app#assetlinks'

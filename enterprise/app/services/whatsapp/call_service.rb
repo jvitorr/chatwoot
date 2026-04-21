@@ -86,6 +86,7 @@ class Whatsapp::CallService
       # Step 1: Create session on Go server with Meta's SDP
       session_response = client.create_session(
         call_id: call.provider_call_id,
+        direction: 'incoming',
         sdp_offer: call.sdp_offer,
         ice_servers: call.ice_servers,
         account_id: call.account_id

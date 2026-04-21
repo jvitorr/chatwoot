@@ -4,8 +4,8 @@ class Whatsapp::MediaServerClient
 
   TIMEOUT = 10
 
-  def create_session(call_id:, sdp_offer:, ice_servers:, account_id: nil)
-    body = { call_id: call_id, meta_sdp_offer: sdp_offer, ice_servers: ice_servers, account_id: account_id }.compact
+  def create_session(call_id:, direction:, sdp_offer:, ice_servers:, account_id: nil)
+    body = { call_id: call_id, direction: direction, meta_sdp_offer: sdp_offer, ice_servers: ice_servers, account_id: account_id }.compact
     post('/sessions', body)
   end
 
@@ -15,6 +15,10 @@ class Whatsapp::MediaServerClient
 
   def set_agent_answer(session_id, sdp_answer:)
     post("/sessions/#{session_id}/agent-answer", { sdp_answer: sdp_answer })
+  end
+
+  def set_meta_answer(session_id, sdp_answer:)
+    post("/sessions/#{session_id}/meta-answer", { sdp_answer: sdp_answer })
   end
 
   def reconnect_agent(session_id)

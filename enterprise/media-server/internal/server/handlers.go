@@ -82,6 +82,13 @@ type AgentAnswerRequest struct {
 	SDPAnswer string `json:"sdp_answer"`
 }
 
+// MetaAnswerRequest is the JSON body for POST /sessions/:id/meta-answer.
+// Used for outgoing calls to deliver Meta's SDP answer to the media server
+// so it can complete the Peer A (Meta-side) WebRTC handshake.
+type MetaAnswerRequest struct {
+	SDPAnswer string `json:"sdp_answer"`
+}
+
 // AgentAnswerResponse is the JSON response for POST /sessions/:id/agent-answer.
 type AgentAnswerResponse struct {
 	Status    string `json:"status"`
@@ -314,6 +321,39 @@ func (h *Handlers) AgentAnswer(w http.ResponseWriter, r *http.Request) {
 		Status:    "bridged",
 		Recording: true,
 	})
+}
+
+// MetaAnswer handles POST /sessions/{id}/meta-answer. It sets Meta's SDP
+// answer on the Meta-side peer connection for outbound calls.
+func (h *Handlers) MetaAnswer(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.PathValue("id")
+	sess := h.manager.GetSession(sessionID)
+	if sess == nil {
+		writeError(w, http.StatusNotFound, "session not found")
+		return
+	}
+
+	var req MetaAnswerRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+	if req.SDPAnswer == "" {
+		writeError(w, http.StatusBadRequest, "sdp_answer is required")
+		return
+	}
+
+	if err := sess.SetMetaAnswer(req.SDPAnswer); err != nil {
+		slog.Error("handler: failed to set meta answer",
+			"session_id", sessionID,
+			"error", err,
+		)
+		writeError(w, http.StatusInternalServerError, "failed to set meta answer: "+err.Error())
+		return
+	}
+
+	slog.Info("handler: meta answer set", "session_id", sessionID)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // AgentReconnect handles POST /sessions/{id}/agent-reconnect. It tears down
@@ -603,7 +643,13 @@ func (h *Handlers) StopInjectAudio(w http.ResponseWriter, r *http.Request) {
 func readJSON(r *http.Request, v any) error {
 	defer r.Body.Close()
 	limited := io.LimitReader(r.Body, maxRequestBodySize)
-	return json.NewDecoder(limited).Decode(v)
+	err := json.NewDecoder(limited).Decode(v)
+	// Tolerate empty bodies — handlers with all-optional fields treat this
+	// as "use defaults" rather than failing.
+	if err == io.EOF {
+		return nil
+	}
+	return err
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

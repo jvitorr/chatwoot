@@ -2,3 +2,4 @@ backend: bin/rails s -p 3000
 # https://github.com/mperham/sidekiq/issues/3090#issuecomment-389748695
 worker: dotenv bundle exec sidekiq -C config/sidekiq.yml
 vite: bin/vite dev
+media_server: cd enterprise/media-server && AUTH_TOKEN=${MEDIA_SERVER_AUTH_TOKEN:-devtoken} RAILS_CALLBACK_URL=http://localhost:3000 PUBLIC_IP=${MEDIA_SERVER_PUBLIC_IP:-127.0.0.1} RECORDINGS_DIR=/tmp/chatwoot-recordings HTTP_PORT=4000 go run ./cmd/server
