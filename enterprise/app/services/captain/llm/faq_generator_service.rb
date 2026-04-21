@@ -1,11 +1,12 @@
 class Captain::Llm::FaqGeneratorService < Llm::BaseAiService
   include Integrations::LlmInstrumentation
 
-  def initialize(content, language = 'english', account_id: nil)
+  def initialize(content, language = 'english', account_id: nil, document: nil)
     super()
     @language = language
     @content = content
     @account_id = account_id
+    @document = document
   end
 
   def generate
@@ -40,7 +41,18 @@ class Captain::Llm::FaqGeneratorService < Llm::BaseAiService
       messages: [
         { role: 'system', content: system_prompt },
         { role: 'user', content: @content }
-      ]
+      ],
+      metadata: document_metadata
+    }
+  end
+
+  def document_metadata
+    return {} if @document.nil?
+
+    {
+      document_id: @document.id,
+      assistant_id: @document.assistant_id,
+      external_link: @document.external_link
     }
   end
 

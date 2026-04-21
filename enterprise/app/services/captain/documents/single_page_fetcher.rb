@@ -2,7 +2,7 @@ class Captain::Documents::SinglePageFetcher
   Result = Struct.new(:success, :title, :content, :error_code, keyword_init: true)
 
   CONTENT_MAX_LENGTH = 200_000
-  FIRECRAWL_EXCLUDE_TAGS = %w[iframe nav footer header .sidebar .cookie-banner [role=navigation] [role=banner] [role=contentinfo]].freeze
+  FIRECRAWL_EXCLUDE_TAGS = %w[iframe .sidebar .cookie-banner [role=navigation] [role=banner] [role=contentinfo]].freeze
   TITLE_MAX_LENGTH = 255 # captain_documents.name is a varchar(255)
 
   def initialize(url)
@@ -12,10 +12,10 @@ class Captain::Documents::SinglePageFetcher
   def fetch
     result = firecrawl_configured? ? fetch_with_firecrawl : fetch_with_fallback
     validate_content(result)
-  rescue Net::ReadTimeout, Net::OpenTimeout
+  rescue Net::ReadTimeout, Net::OpenTimeout, Errno::ETIMEDOUT
     Result.new(success: false, error_code: 'timeout')
-  rescue StandardError => e
-    Result.new(success: false, error_code: classify_error(e))
+  rescue SocketError, Errno::ECONNREFUSED, Errno::ECONNRESET, OpenSSL::SSL::SSLError
+    Result.new(success: false, error_code: 'fetch_failed')
   end
 
   private
@@ -61,7 +61,7 @@ class Captain::Documents::SinglePageFetcher
 
     doc = Nokogiri::HTML(response.body)
     title = doc.at_xpath('//title')&.text&.strip
-    main_node = doc.at_xpath('//main') || doc.at_xpath('//article') || doc.at_xpath('//body')
+    main_node = doc.at_xpath('//main') || doc.at_xpath('//body')
     content = ReverseMarkdown.convert(main_node, unknown_tags: :bypass, github_flavored: true)
 
     Result.new(
@@ -83,15 +83,6 @@ class Captain::Documents::SinglePageFetcher
     when 401, 403 then 'access_denied'
     when 408, 504 then 'timeout'
     else 'fetch_failed'
-    end
-  end
-
-  def classify_error(error)
-    case error
-    when HTTParty::ResponseError
-      http_error_code(error.response&.code.to_i)
-    else
-      'fetch_failed'
     end
   end
 end

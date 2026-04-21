@@ -51,7 +51,8 @@ class Captain::Llm::PaginatedFaqGeneratorService < Llm::LegacyBaseOpenAiService
       account_id: @document&.account_id,
       feature_name: 'faq_generation',
       model: @model,
-      messages: params[:messages]
+      messages: params[:messages],
+      metadata: document_metadata
     }
 
     response = instrument_llm_call(instrumentation_params) do
@@ -214,12 +215,15 @@ class Captain::Llm::PaginatedFaqGeneratorService < Llm::LegacyBaseOpenAiService
       feature_name: 'paginated_faq_generation',
       model: @model,
       messages: params[:messages],
-      metadata: {
-        document_id: @document&.id,
-        start_page: start_page,
-        end_page: end_page,
-        iteration: @iterations_completed + 1
-      }
+      metadata: document_metadata.merge(start_page: start_page, end_page: end_page, iteration: @iterations_completed + 1)
+    }
+  end
+
+  def document_metadata
+    {
+      document_id: @document&.id,
+      assistant_id: @document&.assistant_id,
+      external_link: @document&.external_link
     }
   end
 end
