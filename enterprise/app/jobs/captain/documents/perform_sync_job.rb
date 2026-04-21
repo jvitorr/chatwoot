@@ -7,32 +7,60 @@ class Captain::Documents::PerformSyncJob < ApplicationJob
 
   # Transient errors (timeouts, 5xx) — retry with backoff (4 total attempts = initial + 3 retries).
   # Wait times stay well under the 10-minute stale lock threshold to avoid conflicts.
-  # On exhaustion, document is already marked failed by SyncService.
+  # On exhaustion, document is already marked failed by SyncService. Also excluded from Sentry
+  # in config/initializers/sentry.rb — third-party-site flakiness isn't an application bug.
   retry_on(
     Captain::Documents::SyncService::TransientSyncError,
     wait: ->(executions) { [30.seconds, 2.minutes, 5.minutes][executions - 1] || 5.minutes },
     attempts: 4
-  )
+  ) do |job, error|
+    document = job.arguments.first
+    job.send(:log_sync_outcome, document, result: :transient_retry_exhausted, error_code: error.message)
+  end
 
   def perform(document)
+    start_time = Time.current
     return if document.pdf_document?
     return unless acquire_sync_lock(document)
 
     Captain::Documents::SyncService.new(document.reload).perform
-  rescue Captain::Documents::SyncService::PermanentSyncError,
-         Captain::Documents::SyncService::TransientSyncError
-    # Let discard_on / retry_on handle these
-    raise
-  rescue StandardError
-    document.update!(
-      sync_status: :failed,
-      last_sync_error_code: 'sync_error',
-      last_sync_attempted_at: Time.current
-    )
-    raise
+  rescue Captain::Documents::SyncService::PermanentSyncError => e
+    log_failure_and_raise(document, :permanent_failure, e, start_time)
+  rescue Captain::Documents::SyncService::TransientSyncError => e
+    log_failure_and_raise(document, :transient_failure, e, start_time)
+  rescue StandardError => e
+    handle_unexpected_failure(document, e, start_time)
   end
 
   private
+
+  def log_sync_outcome(document, **fields)
+    payload = {
+      document_id: document.id,
+      account_id: document.account_id,
+      assistant_id: document.assistant_id
+    }.merge(fields)
+    Rails.logger.info("[Captain::Documents::PerformSyncJob] #{payload.to_json}")
+  end
+
+  def log_failure_and_raise(document, result, error, start_time)
+    log_sync_outcome(document, result: result, error_code: error.message,
+                               duration_ms: duration_ms_since(start_time))
+    raise error
+  end
+
+  def handle_unexpected_failure(document, error, start_time)
+    document.update!(
+      sync_status: :failed,
+      last_sync_error_code: 'sync_error',
+      last_sync_exception_class: error.class.name,
+      last_sync_attempted_at: Time.current
+    )
+    log_sync_outcome(document, result: :unexpected_failure, error_code: 'sync_error',
+                               exception_class: error.class.name,
+                               duration_ms: duration_ms_since(start_time))
+    ChatwootExceptionTracker.new(error, account: document.account).capture_exception
+  end
 
   def acquire_sync_lock(document)
     acquired = false
@@ -52,5 +80,9 @@ class Captain::Documents::PerformSyncJob < ApplicationJob
   # 10 minutes is generous headroom — if still "syncing" after that, the worker likely died mid-run.
   def sync_stale?(document)
     document.last_sync_attempted_at.present? && document.last_sync_attempted_at < 10.minutes.ago
+  end
+
+  def duration_ms_since(start_time)
+    ((Time.current - start_time) * 1000).round
   end
 end

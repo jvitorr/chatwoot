@@ -7,7 +7,15 @@ if ENV['SENTRY_DSN'].present?
     # We recommend adjusting the value in production:
     config.traces_sample_rate = 0.1 if ENV['ENABLE_SENTRY_TRANSACTIONS']
 
-    config.excluded_exceptions += ['Rack::Timeout::RequestTimeoutException', 'MutexApplicationJob::LockAcquisitionError']
+    # TransientSyncError only surfaces after all retries fail on a document fetch —
+    # timeouts, TLS errors, 5xx, connection drops from the customer's server. Those
+    # are site-availability issues, not application bugs, so we keep them out of
+    # Sentry. PerformSyncJob logs them so we can still investigate via the dashboard.
+    config.excluded_exceptions += [
+      'Rack::Timeout::RequestTimeoutException',
+      'MutexApplicationJob::LockAcquisitionError',
+      'Captain::Documents::SyncService::TransientSyncError'
+    ]
 
     # to track post data in sentry
     config.send_default_pii = true unless ENV['DISABLE_SENTRY_PII']
