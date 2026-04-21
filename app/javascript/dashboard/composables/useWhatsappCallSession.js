@@ -143,9 +143,15 @@ function waitForIceGatheringComplete(pc) {
   });
 }
 
-// ── Server-relay mode: detect by absence of sdpOffer in incoming call data ──
+// ── Server-relay mode detection ──
+// Prefer the explicit flag set by Rails whenever it's available (call object
+// from GET /whatsapp_calls/:id, inbox serializer, or the incoming ActionCable
+// broadcast). Fall back to the presence of sdpOffer so legacy deployments keep
+// working when the field isn't set.
 function isServerRelayCall(call) {
-  return !call.sdpOffer;
+  if (call?.mediaServerEnabled === true) return true;
+  if (call?.mediaServerEnabled === false) return false;
+  return !call?.sdpOffer;
 }
 
 /**
@@ -290,6 +296,7 @@ export async function acceptWhatsappCallById(callId) {
       conversationId: data.conversation_id,
       sdpOffer: data.sdp_offer,
       iceServers: data.ice_servers,
+      mediaServerEnabled: data.media_server_enabled,
       caller: data.caller,
     };
     callsStore.addIncomingCall(call);

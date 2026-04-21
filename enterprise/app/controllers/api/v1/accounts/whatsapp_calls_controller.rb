@@ -14,8 +14,14 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
       conversation_id: @call.conversation_id,
       inbox_id: @call.inbox_id,
       message_id: @call.message_id,
-      sdp_offer: @call.ringing? ? @call.sdp_offer : nil,
-      ice_servers: @call.ice_servers,
+      # In server-relay mode the browser must not talk WebRTC to Meta directly
+      # — the media server owns that peer connection. Omitting sdp_offer forces
+      # the FE's isServerRelayCall() check to return true so the accept flow
+      # waits for the whatsapp_call.agent_offer broadcast from Rails instead of
+      # negotiating straight with Meta.
+      sdp_offer: @call.ringing? && !Call.media_server_enabled? ? @call.sdp_offer : nil,
+      ice_servers: Call.media_server_enabled? ? [] : @call.ice_servers,
+      media_server_enabled: Call.media_server_enabled?,
       caller: caller_info
     }
   end

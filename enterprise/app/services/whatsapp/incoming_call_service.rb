@@ -157,6 +157,7 @@ class Whatsapp::IncomingCallService
       direction: call.direction_label,
       inbox_id: call.inbox_id,
       conversation_id: call.conversation_id,
+      media_server_enabled: Call.media_server_enabled?,
       caller: {
         name: contact.name,
         phone: contact.phone_number,
