@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_09_091202) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_21_042235) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -282,9 +282,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_091202) do
     t.text "transcript"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "media_session_id"
+    t.index ["accepted_by_agent_id", "status"], name: "index_calls_on_accepted_by_agent_id_and_status"
     t.index ["account_id", "conversation_id"], name: "index_calls_on_account_id_and_conversation_id"
+    t.index ["media_session_id"], name: "index_calls_on_media_session_id", unique: true
     t.index ["message_id"], name: "index_calls_on_message_id"
-    t.index ["meta"], name: "index_calls_on_meta", using: :gin
     t.index ["provider", "provider_call_id"], name: "index_calls_on_provider_and_provider_call_id", unique: true
   end
 

@@ -1,9 +1,11 @@
 <script setup>
-import { watch, onUnmounted } from 'vue';
+import { watch, onUnmounted, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useWhatsappCallSession } from 'dashboard/composables/useWhatsappCallSession';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import { useI18n } from 'vue-i18n';
+import { emitter } from 'shared/helpers/mitt';
+import { BUS_EVENTS } from 'shared/constants/busEvents';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -16,6 +18,7 @@ const {
   isAccepting,
   isMuted,
   isOutboundRinging,
+  isReconnecting,
   callError,
   formattedCallDuration,
   acceptCall,
@@ -23,7 +26,26 @@ const {
   endActiveCall,
   toggleMute,
   dismissIncomingCall,
+  startDurationTimer,
 } = useWhatsappCallSession();
+
+// In server-relay mode, the timer starts when the Peer B WebRTC handshake
+// completes (not when the agent clicks accept). Listen for this event.
+const onAgentWebRTCConnected = () => {
+  startDurationTimer();
+};
+
+const onPermissionGranted = ({ contactName }) => {
+  emitter.emit(BUS_EVENTS.SHOW_ALERT, {
+    message: t('WHATSAPP_CALL.PERMISSION_GRANTED', { contactName }),
+    type: 'success',
+  });
+};
+
+onMounted(() => {
+  emitter.on('whatsapp_call:agent_webrtc_connected', onAgentWebRTCConnected);
+  emitter.on('whatsapp_call:permission_granted', onPermissionGranted);
+});
 
 // Auto-dismiss ringing calls after 30 seconds
 const autoRejectTimers = new Map();
@@ -77,6 +99,8 @@ watch(
 onUnmounted(() => {
   autoRejectTimers.forEach(timer => clearTimeout(timer));
   autoRejectTimers.clear();
+  emitter.off('whatsapp_call:agent_webrtc_connected', onAgentWebRTCConnected);
+  emitter.off('whatsapp_call:permission_granted', onPermissionGranted);
 });
 </script>
 
@@ -173,14 +197,20 @@ onUnmounted(() => {
         <p
           class="text-sm"
           :class="
-            isOutboundRinging ? 'text-n-slate-11' : 'font-mono text-n-teal-9'
+            isOutboundRinging || isReconnecting
+              ? 'text-n-slate-11'
+              : 'font-mono text-n-teal-9'
           "
         >
-          {{
-            isOutboundRinging
-              ? t('WHATSAPP_CALL.RINGING')
-              : formattedCallDuration
-          }}
+          <template v-if="isReconnecting">
+            {{ t('WHATSAPP_CALL.RECONNECTING') }}
+          </template>
+          <template v-else-if="isOutboundRinging">
+            {{ t('WHATSAPP_CALL.RINGING') }}
+          </template>
+          <template v-else>
+            {{ formattedCallDuration }}
+          </template>
         </p>
       </div>
       <div class="flex shrink-0 gap-2">

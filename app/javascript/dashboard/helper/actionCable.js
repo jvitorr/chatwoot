@@ -8,6 +8,7 @@ import {
   useWhatsappCallsStore,
   getOutboundCallState,
 } from 'dashboard/stores/whatsappCalls';
+import { handleAgentOffer } from 'dashboard/composables/useWhatsappCallSession';
 
 const { isImpersonating } = useImpersonation();
 
@@ -43,6 +44,7 @@ class ActionCableConnector extends BaseActionCableConnector {
       'whatsapp_call.ended': this.onWhatsappCallEnded,
       'whatsapp_call.outbound_connected': this.onWhatsappCallOutboundConnected,
       'whatsapp_call.permission_granted': this.onWhatsappCallPermissionGranted,
+      'whatsapp_call.agent_offer': this.onWhatsappCallAgentOffer,
     };
   }
 
@@ -213,6 +215,8 @@ class ActionCableConnector extends BaseActionCableConnector {
   // eslint-disable-next-line class-methods-use-this
   onWhatsappCallIncoming = data => {
     const whatsappCallsStore = useWhatsappCallsStore();
+    // In server-relay mode, sdp_offer and ice_servers are absent — the media
+    // server handles WebRTC with Meta, and the browser only needs call metadata.
     whatsappCallsStore.addIncomingCall({
       id: data.id,
       callId: data.call_id,
@@ -220,8 +224,8 @@ class ActionCableConnector extends BaseActionCableConnector {
       inboxId: data.inbox_id,
       conversationId: data.conversation_id,
       caller: data.caller,
-      sdpOffer: data.sdp_offer,
-      iceServers: data.ice_servers,
+      sdpOffer: data.sdp_offer || null,
+      iceServers: data.ice_servers || null,
     });
   };
 
@@ -242,6 +246,31 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   // eslint-disable-next-line class-methods-use-this
   onWhatsappCallOutboundConnected = data => {
+    const whatsappCallsStore = useWhatsappCallsStore();
+
+    // Server-relay mode: data contains sdp_offer (media server generated offer
+    // for Peer B) instead of sdp_answer.
+    if (data.sdp_offer) {
+      const activeCall = whatsappCallsStore.activeCall;
+      if (activeCall && activeCall.callId === data.call_id) {
+        handleAgentOffer(activeCall.id, data.sdp_offer, data.ice_servers)
+          .then(() => {
+            whatsappCallsStore.markActiveCallConnected();
+            // Emit event so the composable can start the timer
+            emitter.emit('whatsapp_call:agent_webrtc_connected');
+          })
+          .catch(err => {
+            // eslint-disable-next-line no-console
+            console.error(
+              '[WhatsApp Call] Failed to handle outbound agent offer:',
+              err
+            );
+          });
+      }
+      return;
+    }
+
+    // Legacy mode: data contains sdp_answer (Meta's answer to browser's offer)
     const { pc, callId } = getOutboundCallState();
     if (pc && callId === data.call_id && data.sdp_answer) {
       pc.setRemoteDescription({ type: 'answer', sdp: data.sdp_answer }).catch(
@@ -258,10 +287,33 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   // eslint-disable-next-line class-methods-use-this
   onWhatsappCallPermissionGranted = data => {
-    emitter.emit(BUS_EVENTS.SHOW_ALERT, {
-      message: `${data.contact_name} approved the call permission request. You can now call them.`,
-      type: 'success',
+    emitter.emit('whatsapp_call:permission_granted', {
+      contactName: data.contact_name,
     });
+  };
+
+  // Server-relay mode: the media server created Peer B and sent an SDP offer
+  // for the agent's browser. This fires after POST /accept or POST /reconnect.
+  // eslint-disable-next-line class-methods-use-this
+  onWhatsappCallAgentOffer = data => {
+    const whatsappCallsStore = useWhatsappCallsStore();
+    const activeCall = whatsappCallsStore.activeCall;
+
+    if (!activeCall) return;
+    // Verify this offer is for the current active call
+    if (activeCall.callId !== data.call_id && activeCall.id !== data.id) return;
+
+    handleAgentOffer(activeCall.id, data.sdp_offer, data.ice_servers)
+      .then(() => {
+        whatsappCallsStore.markActiveCallConnected();
+        whatsappCallsStore.setReconnecting(false);
+        // Emit event so the composable can start the timer
+        emitter.emit('whatsapp_call:agent_webrtc_connected');
+      })
+      .catch(err => {
+        // eslint-disable-next-line no-console
+        console.error('[WhatsApp Call] Failed to handle agent offer:', err);
+      });
   };
 }
 

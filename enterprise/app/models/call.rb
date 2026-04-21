@@ -22,6 +22,11 @@ class Call < ApplicationRecord
 
   scope :active, -> { where.not(status: TERMINAL_STATUSES) }
   scope :ringing, -> { where(status: 'ringing') }
+  scope :active_for_agent, ->(agent_id) { active.where(accepted_by_agent_id: agent_id) }
+
+  def self.media_server_enabled?
+    ENV['MEDIA_SERVER_URL'].present?
+  end
 
   def ringing?
     status == 'ringing'

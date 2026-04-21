@@ -304,15 +304,26 @@ Rails.application.routes.draw do
           end
 
           resources :whatsapp_calls, only: [:show] do
+            collection do
+              get :active
+              post :initiate
+            end
             member do
               post :accept
               post :reject
               post :terminate
+              post :agent_answer
+              post :reconnect
+              post :join
+              post :play_audio
               post :upload_recording
             end
-            collection do
-              post :initiate
-            end
+          end
+
+          namespace :media_server do
+            post 'callbacks/agent_disconnected', to: 'callbacks#agent_disconnected'
+            post 'callbacks/recording_ready', to: 'callbacks#recording_ready'
+            post 'callbacks/session_terminated', to: 'callbacks#session_terminated'
           end
 
           resources :webhooks, only: [:index, :create, :update, :destroy]

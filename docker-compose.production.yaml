@@ -57,7 +57,34 @@ services:
     ports:
       - '127.0.0.1:6379:6379'
 
+  # Optional: WhatsApp Calling media server (server-side WebRTC relay)
+  # Uncomment to enable call persistence across page reloads and server-side recording.
+  # media-server:
+  #   image: chatwoot/media-server:latest
+  #   env_file: .env
+  #   ports:
+  #     - '4000:4000'
+  #     - '10000-10100:10000-10100/udp'
+  #   environment:
+  #     - AUTH_TOKEN=${MEDIA_SERVER_AUTH_TOKEN}
+  #     - RAILS_CALLBACK_URL=http://rails:3000
+  #     - RECORDINGS_DIR=/recordings
+  #     - LOG_LEVEL=info
+  #     - UDP_PORT_MIN=10000
+  #     - UDP_PORT_MAX=10100
+  #     - PUBLIC_IP=${MEDIA_SERVER_PUBLIC_IP}
+  #     - STUN_SERVERS=stun:stun.l.google.com:19302
+  #   volumes:
+  #     - media_recordings:/recordings
+  #   restart: always
+  #   healthcheck:
+  #     test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:4000/health']
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+
 volumes:
   storage_data:
   postgres_data:
   redis_data:
+  # media_recordings:

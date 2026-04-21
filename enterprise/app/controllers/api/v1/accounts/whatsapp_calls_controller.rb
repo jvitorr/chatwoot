@@ -1,6 +1,9 @@
 class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseController
+  ALLOWED_PEER_ROLES = %w[listen_only participant].freeze
+  ALLOWED_AUDIO_MODES = %w[replace mix].freeze
+
   before_action :ensure_whatsapp_call_enabled
-  before_action :set_call, only: [:show, :accept, :reject, :terminate, :upload_recording]
+  before_action :set_call, only: [:show, :accept, :reject, :terminate, :upload_recording, :agent_answer, :reconnect, :join, :play_audio]
 
   def show
     render json: {
@@ -18,11 +21,16 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
   end
 
   def accept
-    sdp_answer = params[:sdp_answer]
-    return render json: { error: 'sdp_answer is required' }, status: :unprocessable_entity if sdp_answer.blank?
+    if Call.media_server_enabled?
+      call = Whatsapp::CallService.new(call: @call, agent: current_user).accept
+      render json: { id: call.id, status: call.status, message_id: call.message_id, media_session_id: call.media_session_id }
+    else
+      sdp_answer = params[:sdp_answer]
+      return render json: { error: 'sdp_answer is required' }, status: :unprocessable_entity if sdp_answer.blank?
 
-    call = Whatsapp::CallService.new(call: @call, agent: current_user).pre_accept_and_accept(sdp_answer)
-    render json: { id: call.id, status: call.status, message_id: call.message_id }
+      call = Whatsapp::CallService.new(call: @call, agent: current_user).pre_accept_and_accept(sdp_answer)
+      render json: { id: call.id, status: call.status, message_id: call.message_id }
+    end
   rescue Whatsapp::CallErrors::NotRinging, Whatsapp::CallErrors::AlreadyAccepted => e
     render json: { error: e.message }, status: :unprocessable_entity
   rescue StandardError => e
@@ -57,6 +65,89 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     render json: { error: 'Failed to upload recording' }, status: :internal_server_error
   end
 
+  def active
+    call = current_account.calls.whatsapp.active_for_agent(current_user.id).last
+    if call
+      elapsed = call.started_at ? (Time.current - call.started_at).to_i : 0
+      render json: {
+        id: call.id,
+        call_id: call.provider_call_id,
+        conversation_id: call.conversation_id,
+        status: call.status,
+        elapsed_seconds: elapsed,
+        media_session_id: call.media_session_id
+      }
+    else
+      render json: { call: nil }
+    end
+  end
+
+  def agent_answer
+    return render json: { error: 'sdp_answer is required' }, status: :unprocessable_entity if params[:sdp_answer].blank?
+    return render json: { error: 'No media session' }, status: :unprocessable_entity if @call.media_session_id.blank?
+
+    client = Whatsapp::MediaServerClient.new
+    client.set_agent_answer(@call.media_session_id, sdp_answer: params[:sdp_answer])
+    render json: { success: true }
+  rescue Whatsapp::MediaServerClient::SessionError, Whatsapp::MediaServerClient::ConnectionError => e
+    Rails.logger.error "[WHATSAPP CALL] agent_answer failed: #{e.message}"
+    render json: { error: 'Failed to set agent answer' }, status: :internal_server_error
+  end
+
+  def reconnect
+    return render json: { error: 'No media session' }, status: :unprocessable_entity if @call.media_session_id.blank?
+    return render json: { error: 'Call is not in progress' }, status: :unprocessable_entity unless @call.in_progress?
+
+    client = Whatsapp::MediaServerClient.new
+    response = client.reconnect_agent(@call.media_session_id)
+    render json: {
+      sdp_offer: response['sdp_offer'],
+      ice_servers: response['ice_servers']
+    }
+  rescue Whatsapp::MediaServerClient::SessionError, Whatsapp::MediaServerClient::ConnectionError => e
+    Rails.logger.error "[WHATSAPP CALL] reconnect failed: #{e.message}"
+    render json: { error: 'Failed to reconnect' }, status: :internal_server_error
+  end
+
+  def join
+    return render json: { error: 'No media session' }, status: :unprocessable_entity if @call.media_session_id.blank?
+
+    role = params[:role] || 'listen_only'
+    return render json: { error: 'Invalid role' }, status: :unprocessable_entity unless ALLOWED_PEER_ROLES.include?(role)
+
+    client = Whatsapp::MediaServerClient.new
+    response = client.add_peer(@call.media_session_id, role: role, label: current_user.name)
+    render json: {
+      peer_id: response['peer_id'],
+      sdp_offer: response['sdp_offer'],
+      ice_servers: response['ice_servers']
+    }
+  rescue Whatsapp::MediaServerClient::SessionError, Whatsapp::MediaServerClient::ConnectionError => e
+    Rails.logger.error "[WHATSAPP CALL] join failed: #{e.message}"
+    render json: { error: 'Failed to join call' }, status: :internal_server_error
+  end
+
+  def play_audio
+    return render json: { error: 'No media session' }, status: :unprocessable_entity if @call.media_session_id.blank?
+    return render json: { error: 'file_path is required' }, status: :unprocessable_entity if params[:file_path].blank?
+    return render json: { error: 'Invalid file_path' }, status: :unprocessable_entity if params[:file_path].include?('..')
+
+    mode = params[:mode] || 'replace'
+    return render json: { error: 'Invalid mode' }, status: :unprocessable_entity unless ALLOWED_AUDIO_MODES.include?(mode)
+
+    client = Whatsapp::MediaServerClient.new
+    response = client.inject_audio(
+      @call.media_session_id,
+      file_path: params[:file_path],
+      mode: mode,
+      loop: ActiveModel::Type::Boolean.new.cast(params[:loop])
+    )
+    render json: { injection_id: response['injection_id'] }
+  rescue Whatsapp::MediaServerClient::SessionError, Whatsapp::MediaServerClient::ConnectionError => e
+    Rails.logger.error "[WHATSAPP CALL] play_audio failed: #{e.message}"
+    render json: { error: 'Failed to play audio' }, status: :internal_server_error
+  end
+
   def initiate
     conversation = current_account.conversations.find(params[:conversation_id])
     authorize conversation, :show?
@@ -81,8 +172,16 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
   def create_outbound_call(conversation)
     contact_phone = conversation.contact&.phone_number
     raise ArgumentError, 'Contact phone number not available' if contact_phone.blank?
-    raise ArgumentError, 'sdp_offer is required' if params[:sdp_offer].blank?
+    raise ArgumentError, 'sdp_offer is required' if params[:sdp_offer].blank? && !Call.media_server_enabled?
 
+    if Call.media_server_enabled?
+      create_outbound_call_via_media_server(conversation, contact_phone)
+    else
+      create_outbound_call_direct(conversation, contact_phone)
+    end
+  end
+
+  def create_outbound_call_direct(conversation, contact_phone)
     result = conversation.inbox.channel.provider_service.initiate_call(contact_phone.delete('+'), params[:sdp_offer])
     provider_call_id = result.dig('calls', 0, 'id') || result['call_id']
 
@@ -91,6 +190,31 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
       inbox: conversation.inbox, conversation: conversation,
       provider_call_id: provider_call_id, direction: :outgoing, status: 'ringing',
       meta: { sdp_offer: params[:sdp_offer] }
+    )
+  end
+
+  def create_outbound_call_via_media_server(conversation, contact_phone)
+    client = Whatsapp::MediaServerClient.new
+
+    # Step 1: Create session on media server (generates SDP offer for Meta)
+    session_response = client.create_session(
+      call_id: "pending_#{SecureRandom.hex(8)}",
+      sdp_offer: nil,
+      ice_servers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      account_id: current_account.id
+    )
+
+    # Step 2: Send the media server's SDP offer to Meta to initiate the call
+    sdp_offer = session_response['meta_sdp_answer'] || session_response['sdp_offer']
+    result = conversation.inbox.channel.provider_service.initiate_call(contact_phone.delete('+'), sdp_offer)
+    provider_call_id = result.dig('calls', 0, 'id') || result['call_id']
+
+    current_account.calls.create!(
+      provider: :whatsapp,
+      inbox: conversation.inbox, conversation: conversation,
+      provider_call_id: provider_call_id, direction: :outgoing, status: 'ringing',
+      media_session_id: session_response['session_id'],
+      meta: { sdp_offer: sdp_offer }
     )
   end
 

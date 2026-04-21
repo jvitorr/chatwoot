@@ -47,7 +47,7 @@ const isFailed = computed(() =>
 
 // Call source and metadata — all camelCase due to deep transform
 const isWhatsappCall = computed(() => data.value?.callSource === 'whatsapp');
-const waCallId = computed(() => data.value?.callId);
+const callId = computed(() => data.value?.callId);
 const acceptedBy = computed(() => data.value?.acceptedBy);
 const durationSeconds = computed(() => data.value?.durationSeconds);
 const recordingUrl = computed(() => data.value?.recordingUrl);
@@ -64,10 +64,19 @@ const formattedDuration = computed(() => {
 });
 
 // Show join/accept button logic
-// WhatsApp: only ringing (peer-to-peer WebRTC — cannot rejoin after accept)
+// WhatsApp with media server: ringing + in_progress (server-relay supports rejoin)
+// WhatsApp without media server: only ringing (peer-to-peer WebRTC — cannot rejoin after accept)
 // Twilio: ringing + in-progress (conference model supports rejoin)
 const showJoinButton = computed(() => {
   if (isWhatsappCall.value) {
+    // Server-relay mode enables rejoining in-progress calls
+    const isMediaServerMode = data.value?.mediaServerEnabled;
+    if (isMediaServerMode) {
+      return [
+        VOICE_CALL_STATUS.RINGING,
+        VOICE_CALL_STATUS.IN_PROGRESS,
+      ].includes(status.value);
+    }
     return status.value === VOICE_CALL_STATUS.RINGING;
   }
   return [VOICE_CALL_STATUS.RINGING, VOICE_CALL_STATUS.IN_PROGRESS].includes(
@@ -133,7 +142,7 @@ const handleJoinCall = async () => {
 
   try {
     if (isWhatsappCall.value) {
-      const result = await acceptWhatsappCallById(waCallId.value);
+      const result = await acceptWhatsappCallById(callId.value);
       if (result?.success && result.call) {
         router.push({
           name: 'inbox_conversation',

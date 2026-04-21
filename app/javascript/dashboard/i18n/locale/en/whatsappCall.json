@@ -15,6 +15,8 @@
     "PERMISSION_PENDING": "Waiting for the contact to approve the call permission request. Please try again shortly.",
     "UNKNOWN_CALLER": "Unknown caller",
     "MIC_DENIED": "Microphone access denied. Please allow mic access and try again.",
-    "CALL_TAKEN": "Call accepted by another agent"
+    "CALL_TAKEN": "Call accepted by another agent",
+    "RECONNECTING": "Reconnecting…",
+    "PERMISSION_GRANTED": "{contactName} approved the call permission request. You can now call them."
   }
 }

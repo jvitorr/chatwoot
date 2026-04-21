@@ -104,32 +104,118 @@ const hasSlaPolicyId = computed(() => props.chat?.sla_policy_id);
 const canInitiateWhatsappCall = computed(() => {
   if (!isAWhatsAppCloudChannel.value) return false;
   if (!inbox.value?.calling_enabled) return false;
-  // Block if there's already an active or ringing WhatsApp call
   if (whatsappCallsStore.hasWhatsappCall) return false;
   return true;
 });
 
+// Detect if the media server is enabled for this inbox.
+// When enabled, the browser should NOT create its own WebRTC offer.
+const isMediaServerEnabled = computed(
+  () => !!inbox.value?.media_server_enabled
+);
+
 const waitForOutboundIceGathering = pc =>
-  new Promise(resolve => {
+  new Promise((resolve, reject) => {
     if (pc.iceGatheringState === 'complete') {
       resolve();
       return;
     }
-    const timeout = setTimeout(() => resolve(), 10000);
+
+    let timeout = null;
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      pc.onicegatheringstatechange = null;
+      pc.oniceconnectionstatechange = null;
+    };
+
+    timeout = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, 10000);
+
     pc.onicegatheringstatechange = () => {
       if (pc.iceGatheringState === 'complete') {
-        clearTimeout(timeout);
+        cleanup();
         resolve();
+      }
+    };
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'failed') {
+        cleanup();
+        reject(new Error('ICE connection failed'));
       }
     };
   });
 
-const initiateWhatsappCall = async () => {
+/**
+ * Server-relay mode: POST /initiate without SDP. The media server creates
+ * Peer A (Meta-side) and later sends the agent Peer B offer via ActionCable
+ * (whatsapp_call.outbound_connected with sdp_offer).
+ */
+const initiateServerRelayCall = async () => {
+  if (isInitiatingCall.value || !currentChat.value?.id) return;
+  isInitiatingCall.value = true;
+
+  try {
+    const response = await WhatsappCallsAPI.initiate(currentChat.value.id);
+
+    const callStatus = response.data?.status;
+    if (
+      callStatus === 'permission_requested' ||
+      callStatus === 'permission_pending'
+    ) {
+      const message =
+        callStatus === 'permission_requested'
+          ? t('WHATSAPP_CALL.PERMISSION_REQUESTED')
+          : t('WHATSAPP_CALL.PERMISSION_PENDING');
+      emitter.emit(BUS_EVENTS.SHOW_ALERT, { message, type: 'info' });
+      return;
+    }
+
+    emitter.emit(BUS_EVENTS.SHOW_ALERT, {
+      message: t('WHATSAPP_CALL.CALLING'),
+      type: 'success',
+    });
+
+    const outboundCallId = response.data?.call_id;
+
+    // Set active call — WebRTC setup happens when ActionCable delivers agent_offer
+    whatsappCallsStore.setActiveCall({
+      id: response.data?.id,
+      callId: outboundCallId,
+      direction: 'outbound',
+      status: 'ringing',
+      serverRelay: true,
+      conversationId: currentChat.value.id,
+      caller: {
+        name: currentContact.value?.name,
+        phone: currentContact.value?.phone_number,
+        avatar: currentContact.value?.thumbnail,
+      },
+    });
+  } catch (err) {
+    const errorMessage =
+      err.response?.data?.error || t('WHATSAPP_CALL.CALL_FAILED');
+    emitter.emit(BUS_EVENTS.SHOW_ALERT, {
+      message: errorMessage,
+      type: 'error',
+    });
+  } finally {
+    isInitiatingCall.value = false;
+  }
+};
+
+/**
+ * Legacy mode: Browser creates RTCPeerConnection, generates SDP offer,
+ * sends it to backend which forwards to Meta.
+ */
+const initiateLegacyCall = async () => {
   if (isInitiatingCall.value || !currentChat.value?.id) return;
   isInitiatingCall.value = true;
   let pc = null;
   let localStream = null;
-  let waCallId = null;
+  let recordCallId = null;
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     pc = new RTCPeerConnection({
@@ -137,7 +223,6 @@ const initiateWhatsappCall = async () => {
     });
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-    // Handle remote audio from Meta — ontrack fires when the callee picks up
     pc.ontrack = event => {
       const [stream] = event.streams;
       if (!stream) return;
@@ -146,21 +231,13 @@ const initiateWhatsappCall = async () => {
       audio.autoplay = true;
       document.body.appendChild(audio);
       setOutboundCallProperty('audio', audio);
-      // Remote audio arrived — callee picked up, transition from ringing to connected
       whatsappCallsStore.markActiveCallConnected();
-      // Start recording both local + remote audio
-      if (waCallId) startCallRecording(pc, localStream, waCallId);
-    };
-
-    pc.oniceconnectionstatechange = () => {
-      // eslint-disable-next-line no-console
-      console.log('[WhatsApp Call] Outbound ICE state:', pc.iceConnectionState);
+      if (recordCallId) startCallRecording(pc, localStream, recordCallId);
     };
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    // Wait for ICE gathering to complete before sending offer
     await waitForOutboundIceGathering(pc);
     const completeSdp = pc.localDescription.sdp;
 
@@ -190,18 +267,17 @@ const initiateWhatsappCall = async () => {
     });
 
     const outboundCallId = response.data?.call_id;
-    waCallId = response.data?.id;
+    recordCallId = response.data?.id;
     setOutboundCallProperty('pc', pc);
     setOutboundCallProperty('stream', localStream);
     setOutboundCallProperty('callId', outboundCallId);
 
-    // Set active call in store so the WhatsappCallWidget renders
-    // Status starts as 'ringing' — updated to 'connected' when SDP answer arrives
     whatsappCallsStore.setActiveCall({
       id: response.data?.id,
       callId: outboundCallId,
       direction: 'outbound',
       status: 'ringing',
+      serverRelay: false,
       conversationId: currentChat.value.id,
       caller: {
         name: currentContact.value?.name,
@@ -221,6 +297,13 @@ const initiateWhatsappCall = async () => {
   } finally {
     isInitiatingCall.value = false;
   }
+};
+
+const initiateWhatsappCall = () => {
+  if (isMediaServerEnabled.value) {
+    return initiateServerRelayCall();
+  }
+  return initiateLegacyCall();
 };
 </script>
 

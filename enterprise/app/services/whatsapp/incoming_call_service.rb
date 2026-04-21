@@ -99,6 +99,9 @@ class Whatsapp::IncomingCallService
     mapped = Whatsapp::CallMessageBuilder::CALL_TO_VOICE_STATUS[final_status] || final_status
     update_conversation_call_status(call.conversation, mapped, call.direction_label)
     broadcast_call_ended(call)
+
+    # Fetch recording from media server if a session was active
+    Whatsapp::CallRecordingFetchJob.perform_later(call.id) if call.media_session_id.present?
   end
 
   def find_or_create_contact(phone_number)
@@ -141,26 +144,28 @@ class Whatsapp::IncomingCallService
   end
 
   def broadcast_incoming_call(call, contact, sdp_offer)
-    payload = {
-      event: 'whatsapp_call.incoming',
-      data: {
-        account_id: inbox.account_id,
-        id: call.id,
-        call_id: call.provider_call_id,
-        direction: call.direction_label,
-        inbox_id: call.inbox_id,
-        conversation_id: call.conversation_id,
-        caller: {
-          name: contact.name,
-          phone: contact.phone_number,
-          avatar: contact.avatar_url
-        },
-        sdp_offer: sdp_offer,
-        ice_servers: default_ice_servers
+    data = {
+      account_id: inbox.account_id,
+      id: call.id,
+      call_id: call.provider_call_id,
+      direction: call.direction_label,
+      inbox_id: call.inbox_id,
+      conversation_id: call.conversation_id,
+      caller: {
+        name: contact.name,
+        phone: contact.phone_number,
+        avatar: contact.avatar_url
       }
     }
 
-    ActionCable.server.broadcast("account_#{inbox.account_id}", payload)
+    # When media server is enabled, the browser does not need Meta's SDP since
+    # the Go sidecar handles the Meta-side peer connection directly.
+    unless Call.media_server_enabled?
+      data[:sdp_offer] = sdp_offer
+      data[:ice_servers] = default_ice_servers
+    end
+
+    ActionCable.server.broadcast("account_#{inbox.account_id}", { event: 'whatsapp_call.incoming', data: data })
   end
 
   def broadcast_call_ended(call)
