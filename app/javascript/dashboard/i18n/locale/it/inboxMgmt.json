@@ -578,7 +578,7 @@
         "FOR_EG": "Per es.:",
         "FRIENDLY": {
           "TITLE": "Amichevole",
-          "FROM": "da",
+          "FROM": "di",
           "SUBTITLE": "Aggiungi il nome dell'operatore che ha inviato la risposta nel nome mittente, per renderla amichevole."
         },
         "PROFESSIONAL": {
