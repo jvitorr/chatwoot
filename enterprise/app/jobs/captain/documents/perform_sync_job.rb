@@ -1,6 +1,12 @@
 class Captain::Documents::PerformSyncJob < ApplicationJob
   queue_as :low
 
+  # Safety net for anything we didn't rescue by name — parser bugs, ActiveRecord blips,
+  # random infra issues. Three attempts lets a real hiccup recover without Sidekiq's
+  # default 25 retries piling up for what's actually a deterministic bug.
+  # Goes first because retry_on handlers dispatch bottom-to-top.
+  retry_on StandardError, wait: 5.seconds, attempts: 3
+
   # Permanent errors (404, 403, empty content) — no point retrying, discard immediately.
   # Document is already marked failed by SyncService before the exception reaches here.
   discard_on(Captain::Documents::SyncService::PermanentSyncError)
@@ -58,13 +64,13 @@ class Captain::Documents::PerformSyncJob < ApplicationJob
     document.update!(
       sync_status: :failed,
       last_sync_error_code: 'sync_error',
-      last_sync_exception_class: error.class.name,
       last_sync_attempted_at: Time.current
     )
     log_sync_outcome(document, result: :unexpected_failure, error_code: 'sync_error',
                                exception_class: error.class.name,
                                duration_ms: duration_ms_since(start_time))
     ChatwootExceptionTracker.new(error, account: document.account).capture_exception
+    raise error
   end
 
   def acquire_sync_lock(document)
