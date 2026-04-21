@@ -186,6 +186,7 @@ defineExpose({
         <Button
           link
           sm
+          type="button"
           :label="
             useBackupCodeToDisable
               ? $t('MFA_SETTINGS.DISABLE.USE_OTP_CODE')
