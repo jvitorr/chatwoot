@@ -40,6 +40,14 @@ type Recorder struct {
 	agentWriter *oggwriter.OggWriter
 	agentFile   string
 
+	// bothActive gates the first RTP write on either side until the *other*
+	// side has produced at least one packet. This clips the pre-answer ringing
+	// period — browsers send mic RTP as soon as Peer B connects, ~3-5 s before
+	// the contact picks up, which would otherwise inflate the agent OGG and
+	// produce a recording much longer than the real conversation.
+	customerSeen bool
+	agentSeen    bool
+
 	startedAt time.Time
 	finalized bool
 	mu        sync.Mutex
@@ -89,12 +97,19 @@ func NewRecorder(sessionID, dir string) (*Recorder, error) {
 }
 
 // WriteCustomerRTP writes an RTP packet from the customer's audio stream
-// (Meta-side, Peer A) to the customer-only OGG file.
+// (Meta-side, Peer A) to the customer-only OGG file. Drops packets until the
+// agent side has also produced RTP, so the recording spans only the actual
+// conversation — not the pre-answer window.
 func (r *Recorder) WriteCustomerRTP(pkt *rtp.Packet) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if r.finalized {
+		return nil
+	}
+
+	r.customerSeen = true
+	if !r.agentSeen {
 		return nil
 	}
 
@@ -105,12 +120,19 @@ func (r *Recorder) WriteCustomerRTP(pkt *rtp.Packet) error {
 }
 
 // WriteAgentRTP writes an RTP packet from the agent's audio stream
-// (browser-side, Peer B) to the agent-only OGG file.
+// (browser-side, Peer B) to the agent-only OGG file. Drops packets until the
+// customer side has also produced RTP so the two streams cover the same
+// wall-clock window and the combined ffmpeg mix has a sensible duration.
 func (r *Recorder) WriteAgentRTP(pkt *rtp.Packet) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if r.finalized {
+		return nil
+	}
+
+	r.agentSeen = true
+	if !r.customerSeen {
 		return nil
 	}
 
