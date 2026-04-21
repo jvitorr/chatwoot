@@ -228,7 +228,10 @@ export const mutations = {
   },
 
   [types.ADD_CONVERSATION](_state, conversation) {
-    _state.allConversations.push(conversation);
+    const exists = _state.allConversations.some(c => c.id === conversation.id);
+    if (!exists) {
+      _state.allConversations.push(conversation);
+    }
   },
 
   [types.DELETE_CONVERSATION](_state, conversationId) {
@@ -255,7 +258,11 @@ export const mutations = {
         emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE);
       }
     } else {
-      _state.allConversations.push(conversation);
+      const { conversationType } = _state.conversationFilters || {};
+      const { MENTION, PARTICIPATING } = wootConstants.CONVERSATION_TYPE;
+      if (![MENTION, PARTICIPATING].includes(conversationType)) {
+        _state.allConversations.push(conversation);
+      }
     }
   },
 

@@ -38,6 +38,8 @@ import Editor from 'dashboard/components-next/Editor/Editor.vue';
 import ColorPicker from 'dashboard/components-next/colorpicker/ColorPicker.vue';
 import SelectInput from 'dashboard/components-next/select/Select.vue';
 import Widget from 'dashboard/modules/widget-preview/components/Widget.vue';
+import AccessToken from 'dashboard/routes/dashboard/settings/profile/AccessToken.vue';
+import { copyTextToClipboard } from 'shared/helpers/clipboard';
 
 export default {
   components: {
@@ -69,6 +71,7 @@ export default {
     SelectInput,
     AccountHealth,
     Widget,
+    AccessToken,
   },
   mixins: [inboxMixin],
   setup() {
@@ -99,6 +102,7 @@ export default {
       healthData: null,
       isLoadingHealth: false,
       healthError: null,
+      isRegisteringWebhook: false,
       widgetBubblePosition: 'right',
       widgetBubbleType: 'standard',
       widgetBubbleLauncherTitle: '',
@@ -108,9 +112,33 @@ export default {
     ...mapGetters({
       accountId: 'getCurrentAccountId',
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
+      isOnChatwootCloud: 'globalConfig/isOnChatwootCloud',
       uiFlags: 'inboxes/getUIFlags',
       portals: 'portals/allPortals',
     }),
+    isInboundEmailEnabled() {
+      return this.isFeatureEnabledonAccount(
+        this.accountId,
+        FEATURE_FLAGS.INBOUND_EMAILS
+      );
+    },
+    showContinuityToggle() {
+      if (this.isInboundEmailEnabled) return true;
+      return this.isOnChatwootCloud;
+    },
+    isContinuityDisabled() {
+      return this.isOnChatwootCloud && !this.isInboundEmailEnabled;
+    },
+    continuityDescription() {
+      if (this.isContinuityDisabled) {
+        return this.$t(
+          'INBOX_MGMT.SETTINGS_POPUP.ENABLE_CONTINUITY_VIA_EMAIL_DISABLED_TEXT'
+        );
+      }
+      return this.$t(
+        'INBOX_MGMT.SETTINGS_POPUP.ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT'
+      );
+    },
     selectedTabKey() {
       return this.tabs[this.selectedTabIndex]?.key;
     },
@@ -217,13 +245,10 @@ export default {
       return getInboxIconByType(type, medium, 'line');
     },
     bannerMaxWidth() {
-      const narrowTabs = [
-        'collaborators',
-        'configuration',
-        'bot-configuration',
-      ];
+      const narrowTabs = ['collaborators', 'bot-configuration'];
+      const wideIfWebWidget = ['configuration', 'inbox-settings'];
       if (narrowTabs.includes(this.selectedTabKey)) return 'max-w-4xl';
-      if (this.selectedTabKey === 'inbox-settings') {
+      if (wideIfWebWidget.includes(this.selectedTabKey)) {
         return this.isAWebWidgetInbox ? 'max-w-7xl' : 'max-w-4xl';
       }
       return 'max-w-7xl';
@@ -353,6 +378,8 @@ export default {
           this.$nextTick(() => {
             this.setTabFromRouteParam();
           });
+        } else {
+          this.selectedFeatureFlags = newInbox?.selected_feature_flags || [];
         }
       },
       immediate: true,
@@ -362,6 +389,33 @@ export default {
     this.fetchSharedData();
   },
   methods: {
+    async copyWebhookSecret(value) {
+      await copyTextToClipboard(value);
+      useAlert(
+        this.$t(
+          'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_SECRET.COPY_SUCCESS'
+        )
+      );
+    },
+    async resetWebhookSecret() {
+      const response = await this.$store.dispatch(
+        'inboxes/resetSecret',
+        this.inbox.id
+      );
+      if (response) {
+        useAlert(
+          this.$t(
+            'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_SECRET.RESET_SUCCESS'
+          )
+        );
+      } else {
+        useAlert(
+          this.$t(
+            'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_SECRET.RESET_ERROR'
+          )
+        );
+      }
+    },
     fetchSharedData() {
       this.$store.dispatch('agents/get');
       this.$store.dispatch('teams/get');
@@ -422,6 +476,23 @@ export default {
         this.healthError = error.message || 'Failed to fetch health data';
       } finally {
         this.isLoadingHealth = false;
+      }
+    },
+    async registerWebhook() {
+      if (!this.inbox) return;
+
+      try {
+        this.isRegisteringWebhook = true;
+        await InboxHealthAPI.registerWebhook(this.inbox.id);
+        useAlert(this.$t('INBOX_MGMT.ACCOUNT_HEALTH.WEBHOOK.REGISTER_SUCCESS'));
+        await this.fetchHealthData();
+      } catch (error) {
+        useAlert(
+          error.message ||
+            this.$t('INBOX_MGMT.ACCOUNT_HEALTH.WEBHOOK.REGISTER_ERROR')
+        );
+      } finally {
+        this.isRegisteringWebhook = false;
       }
     },
     handleFeatureFlag(e) {
@@ -495,7 +566,8 @@ export default {
             welcome_tagline: this.channelWelcomeTagline || '',
             selectedFeatureFlags: this.selectedFeatureFlags,
             reply_time: this.replyTime || 'in_a_few_minutes',
-            continuity_via_email: this.continuityViaEmail,
+            continuity_via_email:
+              this.isInboundEmailEnabled && this.continuityViaEmail,
           },
         };
         if (this.avatarFile) {
@@ -694,6 +766,21 @@ export default {
                     : ''
                 "
                 @blur="v$.webhookUrl.$touch"
+              />
+            </SettingsFieldSection>
+
+            <SettingsFieldSection
+              v-if="isAPIInbox && inbox.secret"
+              :label="
+                $t(
+                  'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_SECRET.LABEL'
+                )
+              "
+            >
+              <AccessToken
+                :value="inbox.secret"
+                @on-copy="copyWebhookSecret"
+                @on-reset="resetWebhookSecret"
               />
             </SettingsFieldSection>
 
@@ -1086,15 +1173,15 @@ export default {
               />
 
               <SettingsToggleSection
-                v-if="isAWebWidgetInbox"
+                v-if="isAWebWidgetInbox && showContinuityToggle"
                 v-model="continuityViaEmail"
                 :header="
                   $t('INBOX_MGMT.SETTINGS_POPUP.ENABLE_CONTINUITY_VIA_EMAIL')
                 "
-                :description="
-                  $t(
-                    'INBOX_MGMT.SETTINGS_POPUP.ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT'
-                  )
+                :description="continuityDescription"
+                :hide-toggle="isContinuityDisabled"
+                :class="
+                  isContinuityDisabled ? 'cursor-not-allowed opacity-50' : ''
                 "
               />
             </SettingsAccordion>
@@ -1146,7 +1233,11 @@ export default {
         <div v-if="selectedTabKey === 'collaborators'" class="mx-6 max-w-4xl">
           <CollaboratorsPage :inbox="inbox" />
         </div>
-        <div v-if="selectedTabKey === 'configuration'" class="mx-6 max-w-4xl">
+        <div
+          v-if="selectedTabKey === 'configuration'"
+          class="mx-6"
+          :class="isAWebWidgetInbox ? 'max-w-7xl' : 'max-w-4xl'"
+        >
           <ConfigurationPage :inbox="inbox" />
         </div>
         <div v-if="selectedTabKey === 'csat'">
@@ -1162,7 +1253,11 @@ export default {
           <BotConfiguration :inbox="inbox" />
         </div>
         <div v-if="selectedTabKey === 'whatsapp-health'">
-          <AccountHealth :health-data="healthData" />
+          <AccountHealth
+            :health-data="healthData"
+            :is-registering-webhook="isRegisteringWebhook"
+            @register-webhook="registerWebhook"
+          />
         </div>
       </div>
     </section>
