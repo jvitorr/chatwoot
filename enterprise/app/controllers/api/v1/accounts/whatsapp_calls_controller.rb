@@ -149,7 +149,7 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
   end
 
   def initiate
-    conversation = current_account.conversations.find(params[:conversation_id])
+    conversation = current_account.conversations.find_by!(display_id: params[:conversation_id])
     authorize conversation, :show?
     error = validate_whatsapp_calling(conversation)
     return render json: { error: error }, status: :unprocessable_entity if error
