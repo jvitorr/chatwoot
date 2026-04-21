@@ -204,6 +204,22 @@ func (s *Session) CreateAgentPeer(peerID string, role peer.PeerRole, iceServers 
 	return sdpOffer, nil
 }
 
+// SoleAgentPeerID returns the peer_id when the session has exactly one agent
+// peer. Used by the agent-answer handler as a fallback for clients that don't
+// track peer ids.
+func (s *Session) SoleAgentPeerID() (string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(s.AgentPeers) != 1 {
+		return "", false
+	}
+	for id := range s.AgentPeers {
+		return id, true
+	}
+	return "", false
+}
+
 // SetAgentAnswer sets the agent browser's SDP answer on the specified agent
 // peer, completing the WebRTC handshake.
 func (s *Session) SetAgentAnswer(peerID, sdpAnswer string) error {

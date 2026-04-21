@@ -297,9 +297,16 @@ func (h *Handlers) AgentAnswer(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "sdp_answer is required")
 		return
 	}
+	// When peer_id is omitted (single-agent sessions), fall back to the only
+	// agent peer attached to the session. Rails doesn't currently surface
+	// peer_id through ActionCable, so browsers just send the SDP answer.
 	if req.PeerID == "" {
-		writeError(w, http.StatusBadRequest, "peer_id is required")
-		return
+		if only, ok := sess.SoleAgentPeerID(); ok {
+			req.PeerID = only
+		} else {
+			writeError(w, http.StatusBadRequest, "peer_id is required (session has multiple agent peers)")
+			return
+		}
 	}
 
 	if err := sess.SetAgentAnswer(req.PeerID, req.SDPAnswer); err != nil {
