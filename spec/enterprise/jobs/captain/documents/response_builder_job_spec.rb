@@ -13,7 +13,7 @@ RSpec.describe Captain::Documents::ResponseBuilderJob, type: :job do
 
   before do
     allow(Captain::Llm::FaqGeneratorService).to receive(:new)
-      .with(document.content, document.account.locale_english_name, account_id: document.account_id)
+      .with(document.content, document.account.locale_english_name, account_id: document.account_id, document: document)
       .and_return(faq_generator)
     allow(faq_generator).to receive(:generate).and_return(faqs)
   end
@@ -52,7 +52,7 @@ RSpec.describe Captain::Documents::ResponseBuilderJob, type: :job do
 
       before do
         allow(Captain::Llm::FaqGeneratorService).to receive(:new)
-          .with(spanish_document.content, 'portuguese', account_id: spanish_document.account_id)
+          .with(spanish_document.content, 'portuguese', account_id: spanish_document.account_id, document: spanish_document)
           .and_return(spanish_faq_generator)
         allow(spanish_faq_generator).to receive(:generate).and_return(faqs)
       end
@@ -61,7 +61,7 @@ RSpec.describe Captain::Documents::ResponseBuilderJob, type: :job do
         described_class.new.perform(spanish_document)
 
         expect(Captain::Llm::FaqGeneratorService).to have_received(:new)
-          .with(spanish_document.content, 'portuguese', account_id: spanish_document.account_id)
+          .with(spanish_document.content, 'portuguese', account_id: spanish_document.account_id, document: spanish_document)
       end
     end
 
