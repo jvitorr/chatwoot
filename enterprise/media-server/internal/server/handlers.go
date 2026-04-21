@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -447,27 +448,15 @@ func (h *Handlers) TerminateSession(w http.ResponseWriter, r *http.Request) {
 // GetRecording handles GET /sessions/{id}/recording. It serves the combined
 // recording file as a binary OGG download. An optional ?side=customer|agent
 // query parameter returns the per-direction recording instead, which Rails
-// uses to produce speaker-separated transcripts.
+// uses to produce speaker-separated transcripts. Falls back to looking the
+// files up on disk when the session has already been terminated and removed
+// from the in-memory manager — Rails typically fetches per-side recordings
+// shortly after calling terminate.
 func (h *Handlers) GetRecording(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.PathValue("id")
-	sess := h.manager.GetSession(sessionID)
-	if sess == nil {
-		writeError(w, http.StatusNotFound, "session not found")
-		return
-	}
+	side := r.URL.Query().Get("side")
 
-	var filePath, filename string
-	switch r.URL.Query().Get("side") {
-	case "customer":
-		filePath = sess.RecorderCustomerPath()
-		filename = sessionID + "_customer.ogg"
-	case "agent":
-		filePath = sess.RecorderAgentPath()
-		filename = sessionID + "_agent.ogg"
-	default:
-		filePath = sess.RecordingFilePath()
-		filename = sessionID + ".ogg"
-	}
+	filePath, filename := h.resolveRecordingPath(sessionID, side)
 
 	if filePath == "" {
 		writeError(w, http.StatusNotFound, "no recording available")
@@ -490,6 +479,41 @@ func (h *Handlers) GetRecording(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "audio/ogg")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	http.ServeContent(w, r, filePath, stat.ModTime(), f)
+}
+
+// resolveRecordingPath returns the filesystem path + download filename for a
+// session's recording. It prefers the live session's recorder (for sessions
+// still in memory) and falls back to deterministic on-disk paths so Rails can
+// download recordings even after the session was terminated and evicted from
+// the manager.
+func (h *Handlers) resolveRecordingPath(sessionID, side string) (string, string) {
+	var suffix, filename string
+	switch side {
+	case "customer":
+		suffix = "_customer.ogg"
+	case "agent":
+		suffix = "_agent.ogg"
+	default:
+		suffix = ".ogg"
+	}
+	filename = sessionID + suffix
+
+	if sess := h.manager.GetSession(sessionID); sess != nil {
+		switch side {
+		case "customer":
+			return sess.RecorderCustomerPath(), filename
+		case "agent":
+			return sess.RecorderAgentPath(), filename
+		default:
+			return sess.RecordingFilePath(), filename
+		}
+	}
+
+	diskPath := filepath.Join(h.cfg.RecordingsDir, filename)
+	if _, err := os.Stat(diskPath); err == nil {
+		return diskPath, filename
+	}
+	return "", filename
 }
 
 // DeleteSession handles DELETE /sessions/{id}. It terminates the session and

@@ -9,6 +9,14 @@ class Whatsapp::CallRecordingFetchJob < ApplicationJob
     return unless call.media_session_id.present?
 
     client = Whatsapp::MediaServerClient.new
+
+    # combined.ogg is only produced when the media-server session terminates
+    # (ffmpeg mix runs in Recorder.Finalize). For calls that ended via Meta's
+    # terminate webhook — not agent hang-up — nothing has triggered Finalize
+    # yet. Call terminate first; it's idempotent on the server and returns
+    # only after Finalize has written combined.ogg.
+    safe_terminate(client, call.media_session_id)
+
     recording_data = client.download_recording(call.media_session_id)
     return if recording_data.blank?
 
@@ -22,5 +30,13 @@ class Whatsapp::CallRecordingFetchJob < ApplicationJob
     Whatsapp::CallTranscriptionJob.perform_later(call.id) if call.recording.attached?
   rescue Whatsapp::MediaServerClient::SessionError => e
     Rails.logger.warn "[WHATSAPP CALL] Recording not available for session #{call.media_session_id}: #{e.message}"
+  end
+
+  private
+
+  def safe_terminate(client, session_id)
+    client.terminate_session(session_id)
+  rescue Whatsapp::MediaServerClient::SessionError, Whatsapp::MediaServerClient::ConnectionError => e
+    Rails.logger.info "[WHATSAPP CALL] terminate_session during fetch (#{session_id}): #{e.message}"
   end
 end
