@@ -48,14 +48,13 @@ func NewMetaPeer(cfg *config.Config, sdpOffer string, iceServers []webrtc.ICESer
 		return nil, "", fmt.Errorf("set UDP port range: %w", err)
 	}
 
-	// For inbound WhatsApp calls we answer Meta's offer. Meta doesn't know our
-	// DTLS fingerprint until Rails delivers the answer via pre_accept_call /
-	// accept_call, which happens ~1 second *after* pion is ready to handshake.
-	// If we're the DTLS client (pion default when remote is actpass) we blast
-	// ClientHello at Meta before Meta is listening for us; Meta responds with a
-	// fatal alert and pion closes the PC. Flip the roles so *we* are the DTLS
-	// server: Meta becomes the client and only starts ClientHello after it has
-	// our fingerprint, so the handshake happens in the right order.
+	// For inbound calls Meta doesn't know our DTLS fingerprint until Rails
+	// delivers the SDP answer via pre_accept_call / accept_call — which runs
+	// *after* create_session returns. If we're DTLS client (pion default when
+	// remote is actpass) we'd send ClientHello before Meta is listening for
+	// us and Meta would respond with a fatal alert. Answer as server so Meta
+	// becomes the client and only starts ClientHello after it has our
+	// fingerprint.
 	if err := se.SetAnsweringDTLSRole(webrtc.DTLSRoleServer); err != nil {
 		return nil, "", fmt.Errorf("set answering DTLS role: %w", err)
 	}
@@ -63,6 +62,11 @@ func NewMetaPeer(cfg *config.Config, sdpOffer string, iceServers []webrtc.ICESer
 		return context.WithTimeout(context.Background(), 30*time.Second)
 	})
 	se.SetDTLSRetransmissionInterval(200 * time.Millisecond)
+	// Skip the HelloVerify round-trip on the server side. Meta's WhatsApp
+	// calling stack sometimes uses stateless retry which loses the pion
+	// cookie between retransmits; skipping it makes the server accept the
+	// ClientHello in one go.
+	se.SetDTLSInsecureSkipHelloVerify(true)
 
 	// If a public IP is configured, use NAT1To1 so ICE candidates advertise
 	// the correct address instead of a private Docker/container IP.
