@@ -238,7 +238,7 @@ class Whatsapp::IncomingCallService
   end
 
   def default_ice_servers
-    [{ urls: 'stun:stun.l.google.com:19302' }]
+    [{ urls: ['stun:stun.l.google.com:19302'] }]
   end
 
   def fix_sdp_setup(sdp)

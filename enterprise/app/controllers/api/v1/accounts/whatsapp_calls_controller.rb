@@ -201,7 +201,7 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
       call_id: "pending_#{SecureRandom.hex(8)}",
       direction: 'outgoing',
       sdp_offer: nil,
-      ice_servers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      ice_servers: [{ urls: ['stun:stun.l.google.com:19302'] }],
       account_id: current_account.id
     )
 

@@ -5,7 +5,8 @@ class Whatsapp::MediaServerClient
   TIMEOUT = 10
 
   def create_session(call_id:, direction:, sdp_offer:, ice_servers:, account_id: nil)
-    body = { call_id: call_id, direction: direction, meta_sdp_offer: sdp_offer, ice_servers: ice_servers, account_id: account_id }.compact
+    body = { call_id: call_id, direction: direction, meta_sdp_offer: sdp_offer,
+             ice_servers: normalize_ice_servers(ice_servers), account_id: account_id&.to_s }.compact
     post('/sessions', body)
   end
 
@@ -109,5 +110,18 @@ class Whatsapp::MediaServerClient
       'Content-Type' => 'application/json',
       'Authorization' => "Bearer #{auth_token}"
     }
+  end
+
+  # Go media server expects `urls` to always be an array of strings.
+  # Accept legacy data that may have `urls` as a single string.
+  def normalize_ice_servers(servers)
+    return [] if servers.blank?
+
+    Array(servers).map do |srv|
+      s = srv.respond_to?(:to_h) ? srv.to_h.transform_keys(&:to_s) : srv.stringify_keys
+      urls = s['urls']
+      s['urls'] = urls.is_a?(Array) ? urls : Array(urls).compact
+      s
+    end
   end
 end
