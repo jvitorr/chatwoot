@@ -1,12 +1,12 @@
 class Captain::Llm::FaqGeneratorService < Llm::BaseAiService
   include Integrations::LlmInstrumentation
 
-  def initialize(content, language = 'english', account_id: nil, document: nil)
+  def initialize(document:)
     super()
-    @language = language
-    @content = content
-    @account_id = account_id
     @document = document
+    @content = document.content
+    @language = document.account.locale_english_name
+    @account_id = document.account_id
   end
 
   def generate
