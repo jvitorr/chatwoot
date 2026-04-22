@@ -36,6 +36,9 @@ class Captain::Documents::PerformSyncJob < MutexApplicationJob
     job.send(:log_sync_outcome, document, result: :transient_retry_exhausted, error_code: error.message)
   end
 
+  discard_on ActiveJob::DeserializationError
+  discard_on ActiveRecord::RecordNotFound
+
   def perform(document)
     start_time = Time.current
     return if document.pdf_document?
