@@ -6,6 +6,7 @@ RSpec.describe Tiktok::MessageService do
   let(:inbox) { channel.inbox }
   let(:contact) { create(:contact, account: account) }
   let(:contact_inbox) { create(:contact_inbox, inbox: inbox, contact: contact, source_id: 'tt-conv-1') }
+  let(:image_download_url) { 'https://chatwoot-assets.local/tiktok.png' }
   let(:text_content) do
     {
       type: 'text',
@@ -18,6 +19,12 @@ RSpec.describe Tiktok::MessageService do
       to: 'Biz',
       to_user: { id: 'biz-123' }
     }.deep_symbolize_keys
+  end
+
+  before do
+    allow(Resolv).to receive(:getaddresses).and_call_original
+    allow(Resolv).to receive(:getaddresses).with('chatwoot-assets.local').and_return(['93.184.216.34'])
+    allow(channel).to receive(:validated_access_token).and_return('valid-access-token')
   end
 
   describe '#perform' do
@@ -115,15 +122,13 @@ RSpec.describe Tiktok::MessageService do
         to_user: { id: 'biz-123' }
       }.deep_symbolize_keys
 
-      tempfile = Tempfile.new(['tiktok', '.png'])
-      tempfile.write('fake-image')
-      tempfile.rewind
-      tempfile.define_singleton_method(:original_filename) { 'tiktok.png' }
-      tempfile.define_singleton_method(:content_type) { 'image/png' }
+      stub_request(:get, image_download_url)
+        .with(headers: { 'X-User' => 'valid-access-token' })
+        .to_return(status: 200, body: File.read('spec/assets/sample.png'), headers: { 'Content-Type' => 'image/png' })
+      allow_any_instance_of(Tiktok::Client).to receive(:file_download_url).and_return(image_download_url)
 
       service = described_class.new(channel: channel, content: content)
       allow(service).to receive(:create_contact_inbox).and_return(contact_inbox)
-      allow(service).to receive(:fetch_attachment).and_return(tempfile)
 
       service.perform
 
@@ -131,8 +136,32 @@ RSpec.describe Tiktok::MessageService do
       expect(message.attachments.count).to eq(1)
       expect(message.attachments.last.file_type).to eq('image')
       expect(message.attachments.last.file).to be_attached
-    ensure
-      tempfile.close!
+      expect(WebMock).to(have_requested(:get, image_download_url)
+        .with { |request| request.headers['X-User'] == 'valid-access-token' })
+    end
+
+    it 'skips blocked image attachment URLs' do
+      content = {
+        type: 'image',
+        message_id: 'tt-msg-5',
+        timestamp: 1_700_000_000_000,
+        conversation_id: 'tt-conv-1',
+        image: { media_id: 'media-1' },
+        from: 'Alice',
+        from_user: { id: 'user-1' },
+        to: 'Biz',
+        to_user: { id: 'biz-123' }
+      }.deep_symbolize_keys
+
+      allow_any_instance_of(Tiktok::Client).to receive(:file_download_url).and_return('http://127.0.0.1/blocked.png')
+
+      service = described_class.new(channel: channel, content: content)
+      allow(service).to receive(:create_contact_inbox).and_return(contact_inbox)
+
+      expect { service.perform }.not_to raise_error
+
+      message = Message.last
+      expect(message.attachments).to be_empty
     end
 
     context 'when lock_to_single_conversation is enabled' do

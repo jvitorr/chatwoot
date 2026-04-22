@@ -148,18 +148,19 @@ class Whatsapp::IncomingMessageBaseService
     attachment_payload = messages_data.first[message_type.to_sym]
     @message.content ||= attachment_payload[:caption]
 
-    attachment_file = download_attachment_file(attachment_payload)
-    return if attachment_file.blank?
-
-    @message.attachments.new(
-      account_id: @message.account_id,
-      file_type: file_content_type(message_type),
-      file: {
-        io: attachment_file,
-        filename: attachment_file.original_filename,
-        content_type: attachment_file.content_type
-      }
-    )
+    download_attachment_file(attachment_payload) do |attachment_file|
+      @message.attachments.new(
+        account_id: @message.account_id,
+        file_type: file_content_type(message_type),
+        file: {
+          io: attachment_file.tempfile,
+          filename: attachment_file.original_filename,
+          content_type: attachment_file.content_type
+        }
+      )
+    end
+  rescue SafeFetch::Error => e
+    Rails.logger.info "Error downloading WhatsApp attachment: #{e.message}: Skipping"
   end
 
   def attach_location

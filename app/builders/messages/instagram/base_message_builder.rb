@@ -123,12 +123,9 @@ class Messages::Instagram::BaseMessageBuilder < Messages::Messenger::MessageBuil
       account_id: @message.account_id,
       external_url: story_url
     )
+    return unless attach_file(attachment, story_url)
+
     attachment.save!
-    begin
-      attach_file(attachment, story_url)
-    rescue Down::Error, StandardError => e
-      Rails.logger.warn "Failed to download Instagram story attachment: #{e.message}"
-    end
     @message.content_attributes[:image_type] = 'ig_story_reply'
     @message.save!
   end

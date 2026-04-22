@@ -7,11 +7,15 @@ class Messages::Messenger::MessageBuilder
 
     params = attachment_params(attachment)
     attachment_obj = @message.attachments.new(params.except(:remote_file_url))
-    attachment_obj.save!
     if facebook_reel?(attachment)
+      attachment_obj.save!
       update_facebook_reel_content(attachment)
     elsif params[:remote_file_url]
-      attach_file(attachment_obj, params[:remote_file_url])
+      return unless attach_file(attachment_obj, params[:remote_file_url])
+
+      attachment_obj.save!
+    else
+      attachment_obj.save!
     end
     fetch_story_link(attachment_obj) if attachment_obj.file_type == 'story_mention'
     fetch_ig_story_link(attachment_obj) if attachment_obj.file_type == 'ig_story'
@@ -20,14 +24,21 @@ class Messages::Messenger::MessageBuilder
   end
 
   def attach_file(attachment, file_url)
-    attachment_file = Down.download(
-      file_url
-    )
-    attachment.file.attach(
-      io: attachment_file,
-      filename: attachment_file.original_filename,
-      content_type: attachment_file.content_type
-    )
+    SafeFetch.fetch(
+      file_url,
+      allowed_content_type_prefixes: %w[image/ video/ audio/],
+      allowed_content_types: Attachment::ACCEPTABLE_FILE_TYPES
+    ) do |attachment_file|
+      attachment.file.attach(
+        io: attachment_file.tempfile,
+        filename: attachment_file.original_filename,
+        content_type: attachment_file.content_type
+      )
+    end
+    true
+  rescue SafeFetch::Error => e
+    Rails.logger.info "Error downloading Messenger attachment from #{file_url}: #{e.message}: Skipping"
+    false
   end
 
   def attachment_params(attachment)

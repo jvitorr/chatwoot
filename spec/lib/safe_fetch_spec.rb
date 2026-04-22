@@ -9,6 +9,8 @@ RSpec.describe SafeFetch do
   before do
     allow(Resolv).to receive(:getaddresses).and_call_original
     allow(Resolv).to receive(:getaddresses).with('example.com').and_return(['93.184.216.34'])
+    allow(Resolv).to receive(:getaddresses).with('redirect.example.com').and_return(['93.184.216.35'])
+    allow(Resolv).to receive(:getaddresses).with('cdn.example.com').and_return(['93.184.216.36'])
   end
 
   describe '.fetch' do
@@ -30,13 +32,17 @@ RSpec.describe SafeFetch do
         end
       end
 
-      it 'closes the tempfile after the block returns' do
+      it 'keeps the yielded tempfile readable after the block returns' do
         captured = nil
         described_class.fetch(url) { |result| captured = result.tempfile }
-        expect(captured.closed?).to be true
+        expect(captured.closed?).to be false
+        captured.rewind
+        expect(captured.read.bytesize).to be > 0
+      ensure
+        captured&.close!
       end
 
-      it 'closes the tempfile even when the block raises' do
+      it 'keeps the yielded tempfile readable even when the block raises' do
         captured = nil
         expect do
           described_class.fetch(url) do |result|
@@ -44,7 +50,11 @@ RSpec.describe SafeFetch do
             raise 'boom'
           end
         end.to raise_error('boom')
-        expect(captured.closed?).to be true
+        expect(captured.closed?).to be false
+        captured.rewind
+        expect(captured.read.bytesize).to be > 0
+      ensure
+        captured&.close!
       end
 
       it 'defaults the filename to a unique "download-<timestamp>-<hex>" when the URL has no path' do
@@ -62,6 +72,38 @@ RSpec.describe SafeFetch do
 
       it 'requires a block' do
         expect { described_class.fetch(url) }.to raise_error(ArgumentError, /block required/)
+      end
+
+      it 'forwards custom headers to the upstream request' do
+        described_class.fetch(url, headers: { 'x-user' => 'secret-token' }) { nil }
+
+        expect(WebMock).to(have_requested(:get, url)
+          .with { |request| request.headers['X-User'] == 'secret-token' })
+      end
+
+      it 'supports basic authentication' do
+        described_class.fetch(url, http_basic_authentication: %w[user password]) { nil }
+
+        expect(WebMock).to(have_requested(:get, url)
+          .with { |request| request.headers['Authorization']&.start_with?('Basic ') })
+      end
+
+      it 'supports POST requests with a request body' do
+        post_url = 'http://example.com/orders'
+        stub_request(:post, post_url)
+          .with(body: '{"order_id":"123"}', headers: { 'Content-Type' => 'application/json' })
+          .to_return(status: 200, body: '{"created":true}', headers: { 'Content-Type' => 'application/json' })
+
+        described_class.fetch(
+          post_url,
+          method: :post,
+          body: '{"order_id":"123"}',
+          headers: { 'Content-Type' => 'application/json' },
+          allowed_content_types: ['application/json']
+        ) { nil }
+
+        expect(WebMock).to have_requested(:post, post_url)
+          .with(body: '{"order_id":"123"}', headers: { 'Content-Type' => 'application/json' })
       end
     end
 
@@ -168,6 +210,51 @@ RSpec.describe SafeFetch do
 
         expect { described_class.fetch(url) { nil } }
           .to raise_error(SafeFetch::UnsupportedContentTypeError)
+      end
+
+      it 'allows exact content-type matches when prefixes are empty' do
+        pdf_url = 'http://example.com/file.pdf'
+        stub_request(:get, pdf_url).to_return(
+          status: 200,
+          body: 'pdf-data',
+          headers: { 'Content-Type' => 'application/pdf' }
+        )
+
+        expect do
+          described_class.fetch(
+            pdf_url,
+            allowed_content_type_prefixes: [],
+            allowed_content_types: ['application/pdf']
+          ) { nil }
+        end.not_to raise_error
+      end
+
+      it 'skips content-type validation when disabled' do
+        stub_request(:get, url).to_return(status: 200, body: 'archive-data', headers: {})
+
+        expect { described_class.fetch(url, validate_content_type: false) { nil } }.not_to raise_error
+      end
+    end
+
+    context 'with redirects and sensitive headers' do
+      it 'strips custom headers on cross-origin redirects' do
+        redirect_url = 'http://redirect.example.com/image.png'
+        final_url = 'http://cdn.example.com/image.png'
+
+        stub_request(:get, redirect_url)
+          .with { |request| request.headers['X-User'] == 'secret-token' }
+          .to_return(status: 302, headers: { 'Location' => final_url })
+
+        stub_request(:get, final_url)
+          .with { |request| request.headers['X-User'].blank? }
+          .to_return(status: 200, body: 'image-data', headers: { 'Content-Type' => 'image/png' })
+
+        expect do
+          described_class.fetch(redirect_url, headers: { 'x-user' => 'secret-token' }) { nil }
+        end.not_to raise_error
+
+        expect(WebMock).to(have_requested(:get, final_url)
+          .with { |request| request.headers['X-User'].blank? })
       end
     end
 

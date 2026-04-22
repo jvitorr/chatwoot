@@ -2,31 +2,33 @@ require 'rails_helper'
 
 describe Telegram::IncomingMessageService do
   before do
+    allow(Resolv).to receive(:getaddresses).and_call_original
+    allow(Resolv).to receive(:getaddresses).with('chatwoot-assets.local').and_return(['93.184.216.34'])
     stub_request(:any, /api.telegram.org/).to_return(headers: { content_type: 'application/json' }, body: {}.to_json, status: 200)
     stub_request(:get, 'https://chatwoot-assets.local/sample.png').to_return(
       status: 200,
       body: File.read('spec/assets/sample.png'),
-      headers: {}
+      headers: { 'Content-Type' => 'image/png' }
     )
     stub_request(:get, 'https://chatwoot-assets.local/sample.mov').to_return(
       status: 200,
       body: File.read('spec/assets/sample.mov'),
-      headers: {}
+      headers: { 'Content-Type' => 'video/quicktime' }
     )
     stub_request(:get, 'https://chatwoot-assets.local/sample.mp3').to_return(
       status: 200,
       body: File.read('spec/assets/sample.mp3'),
-      headers: {}
+      headers: { 'Content-Type' => 'audio/mpeg' }
     )
     stub_request(:get, 'https://chatwoot-assets.local/sample.ogg').to_return(
       status: 200,
       body: File.read('spec/assets/sample.ogg'),
-      headers: {}
+      headers: { 'Content-Type' => 'audio/ogg' }
     )
     stub_request(:get, 'https://chatwoot-assets.local/sample.pdf').to_return(
       status: 200,
       body: File.read('spec/assets/sample.pdf'),
-      headers: {}
+      headers: { 'Content-Type' => 'application/pdf' }
     )
   end
 
@@ -320,6 +322,29 @@ describe Telegram::IncomingMessageService do
 
         described_class.new(inbox: telegram_channel.inbox, params: params).perform
         expect(telegram_channel.inbox.messages.first.attachments.count).to eq(0)
+      end
+    end
+
+    context 'when the download path is an SSRF target' do
+      it 'skips the attachment' do
+        allow(telegram_channel.inbox.channel).to receive(:get_telegram_file_path).and_return('http://127.0.0.1/blocked.pdf')
+        params = {
+          'update_id' => 2_342_342_343_242,
+          'message' => {
+            'document' => {
+              'file_id' => 'AwADBAADbXXXXXXXXXXXGBdhD2l6_XX',
+              'file_name' => 'blocked.pdf',
+              'mime_type' => 'application/pdf',
+              'file_size' => 536_392
+            }
+          }.merge(message_params)
+        }.with_indifferent_access
+
+        expect do
+          described_class.new(inbox: telegram_channel.inbox, params: params).perform
+        end.not_to raise_error
+
+        expect(telegram_channel.inbox.messages.first.attachments).to be_empty
       end
     end
 

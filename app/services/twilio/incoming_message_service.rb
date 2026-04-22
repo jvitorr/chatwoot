@@ -143,27 +143,26 @@ class Twilio::IncomingMessageService
   end
 
   def attach_single_file(media_url)
-    attachment_file = download_attachment_file(media_url)
-    return if attachment_file.blank?
-
-    @message.attachments.new(
-      account_id: @message.account_id,
-      file_type: file_type(attachment_file.content_type),
-      file: {
-        io: attachment_file,
-        filename: attachment_file.original_filename,
-        content_type: attachment_file.content_type
-      }
-    )
+    download_attachment_file(media_url) do |attachment_file|
+      @message.attachments.new(
+        account_id: @message.account_id,
+        file_type: file_type(attachment_file.content_type),
+        file: {
+          io: attachment_file.tempfile,
+          filename: attachment_file.original_filename,
+          content_type: attachment_file.content_type
+        }
+      )
+    end
   end
 
-  def download_attachment_file(media_url)
-    download_with_auth(media_url)
-  rescue Down::Error, Down::ClientError => e
-    handle_download_attachment_error(e, media_url)
+  def download_attachment_file(media_url, &)
+    download_with_auth(media_url, &)
+  rescue SafeFetch::Error => e
+    handle_download_attachment_error(e, media_url, &)
   end
 
-  def download_with_auth(media_url)
+  def download_with_auth(media_url, &)
     auth_credentials = if twilio_channel.api_key_sid.present?
                          # When using api_key_sid, the auth token should be the api_secret_key
                          [twilio_channel.api_key_sid, twilio_channel.auth_token]
@@ -172,13 +171,22 @@ class Twilio::IncomingMessageService
                          [twilio_channel.account_sid, twilio_channel.auth_token]
                        end
 
-    Down.download(media_url, http_basic_authentication: auth_credentials)
+    SafeFetch.fetch(
+      media_url,
+      http_basic_authentication: auth_credentials,
+      allowed_content_types: Attachment::ACCEPTABLE_FILE_TYPES,
+      &
+    )
   end
 
-  def handle_download_attachment_error(error, media_url)
+  def handle_download_attachment_error(error, media_url, &)
     Rails.logger.info "Error downloading attachment from Twilio: #{error.message}: Retrying without auth"
-    Down.download(media_url)
-  rescue StandardError => e
+    SafeFetch.fetch(
+      media_url,
+      allowed_content_types: Attachment::ACCEPTABLE_FILE_TYPES,
+      &
+    )
+  rescue SafeFetch::Error => e
     Rails.logger.info "Error downloading attachment from Twilio: #{e.message}: Skipping"
     nil
   end

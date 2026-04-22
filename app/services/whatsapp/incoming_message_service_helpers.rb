@@ -1,6 +1,11 @@
 module Whatsapp::IncomingMessageServiceHelpers
-  def download_attachment_file(attachment_payload)
-    Down.download(inbox.channel.media_url(attachment_payload[:id]), headers: inbox.channel.api_headers)
+  def download_attachment_file(attachment_payload, &)
+    SafeFetch.fetch(
+      inbox.channel.media_url(attachment_payload[:id]),
+      headers: inbox.channel.api_headers,
+      allowed_content_types: Attachment::ACCEPTABLE_FILE_TYPES,
+      &
+    )
   end
 
   def conversation_params

@@ -10,6 +10,11 @@ describe Twilio::IncomingMessageService do
   let(:contact_inbox) { create(:contact_inbox, source_id: '+12345', contact: contact, inbox: twilio_channel.inbox) }
   let!(:conversation) { create(:conversation, contact: contact, inbox: twilio_channel.inbox, contact_inbox: contact_inbox) }
 
+  before do
+    allow(Resolv).to receive(:getaddresses).and_call_original
+    allow(Resolv).to receive(:getaddresses).with('chatwoot-assets.local').and_return(['93.184.216.34'])
+  end
+
   describe '#perform' do
     it 'creates a new message in existing conversation' do
       params = {
@@ -195,14 +200,23 @@ describe Twilio::IncomingMessageService do
         expect(conversation.reload.messages.last.attachments.count).to eq(1)
         expect(conversation.reload.messages.last.attachments.first.file_type).to eq('image')
       end
+
+      it 'downloads the attachment using basic auth' do
+        described_class.new(params: params_with_attachment).perform
+
+        expect(WebMock).to(have_requested(:get, 'https://chatwoot-assets.local/sample.png')
+          .with { |request| request.headers['Authorization']&.start_with?('Basic ') })
+      end
     end
 
     context 'when there is an error downloading the attachment' do
       before do
         stub_request(:get, 'https://chatwoot-assets.local/sample.png')
-          .to_raise(Down::Error.new('Download error'))
+          .with { |request| request.headers['Authorization']&.start_with?('Basic ') }
+          .to_raise(SocketError.new('Download error'))
 
         stub_request(:get, 'https://chatwoot-assets.local/sample.png')
+          .with { |request| request.headers['Authorization'].blank? }
           .to_return(status: 200, body: 'image data', headers: { 'Content-Type' => 'image/png' })
       end
 
@@ -227,6 +241,8 @@ describe Twilio::IncomingMessageService do
         expect(conversation.reload.messages.last.content).to eq('testing3')
         expect(conversation.reload.messages.last.attachments.count).to eq(1)
         expect(conversation.reload.messages.last.attachments.first.file_type).to eq('image')
+        expect(WebMock).to(have_requested(:get, 'https://chatwoot-assets.local/sample.png')
+          .with { |request| request.headers['Authorization'].blank? })
       end
     end
 
@@ -280,6 +296,31 @@ describe Twilio::IncomingMessageService do
         message = conversation.reload.messages.last
         expect(message.attachments.count).to eq(1)
         expect(message.attachments.first.file_type).to eq('location')
+      end
+    end
+
+    context 'when an attachment URL is an SSRF target' do
+      let(:params_with_blocked_attachment) do
+        {
+          SmsSid: 'SMxx',
+          From: '+12345',
+          AccountSid: 'ACxxx',
+          MessagingServiceSid: twilio_channel.messaging_service_sid,
+          Body: 'blocked media',
+          NumMedia: '1',
+          MediaContentType0: 'image/jpeg',
+          MediaUrl0: 'http://127.0.0.1/blocked.png'
+        }
+      end
+
+      it 'creates the message and skips the attachment' do
+        expect do
+          described_class.new(params: params_with_blocked_attachment).perform
+        end.not_to raise_error
+
+        message = conversation.reload.messages.last
+        expect(message.content).to eq('blocked media')
+        expect(message.attachments.count).to eq(0)
       end
     end
 

@@ -3,6 +3,8 @@ require 'rails_helper'
 describe Whatsapp::IncomingMessageService do
   describe '#perform' do
     before do
+      allow(Resolv).to receive(:getaddresses).and_call_original
+      allow(Resolv).to receive(:getaddresses).with('waba.360dialog.io').and_return(['93.184.216.34'])
       stub_request(:post, 'https://waba.360dialog.io/v1/configs/webhook')
     end
 
@@ -214,7 +216,7 @@ describe Whatsapp::IncomingMessageService do
         stub_request(:get, whatsapp_channel.media_url('b1c68f38-8734-4ad3-b4a1-ef0c10d683')).to_return(
           status: 200,
           body: File.read('spec/assets/sample.png'),
-          headers: {}
+          headers: { 'Content-Type' => 'image/png' }
         )
         params = {
           'contacts' => [{ 'profile' => { 'name' => 'Sojan Jose' }, 'wa_id' => '2423423243' }],
@@ -230,6 +232,26 @@ describe Whatsapp::IncomingMessageService do
         expect(Contact.all.first.name).to eq('Sojan Jose')
         expect(whatsapp_channel.inbox.messages.first.content).to eq('Check out my product!')
         expect(whatsapp_channel.inbox.messages.first.attachments.present?).to be true
+      end
+
+      it 'skips blocked attachment URLs' do
+        allow(whatsapp_channel).to receive(:media_url).and_return('http://127.0.0.1/blocked.png')
+        params = {
+          'contacts' => [{ 'profile' => { 'name' => 'Sojan Jose' }, 'wa_id' => '2423423243' }],
+          'messages' => [{ 'from' => '2423423243', 'id' => 'SDFADSf23sfasdafasdfa',
+                           'image' => { 'id' => 'b1c68f38-8734-4ad3-b4a1-ef0c10d683',
+                                        'mime_type' => 'image/jpeg',
+                                        'sha256' => '29ed500fa64eb55fc19dc4124acb300e5dcca0f822a301ae99944db',
+                                        'caption' => 'Check out my product!' },
+                           'timestamp' => '1633034394', 'type' => 'image' }]
+        }.with_indifferent_access
+
+        expect do
+          described_class.new(inbox: whatsapp_channel.inbox, params: params).perform
+        end.not_to raise_error
+
+        expect(whatsapp_channel.inbox.messages.first.content).to eq('Check out my product!')
+        expect(whatsapp_channel.inbox.messages.first.attachments).to be_empty
       end
     end
 

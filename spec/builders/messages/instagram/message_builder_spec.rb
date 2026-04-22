@@ -4,9 +4,12 @@ describe Messages::Instagram::MessageBuilder do
   subject(:instagram_direct_message_builder) { described_class }
 
   before do
+    allow(Resolv).to receive(:getaddresses).and_call_original
+    allow(Resolv).to receive(:getaddresses).with('www.example.com').and_return(['93.184.216.34'])
+    allow(Resolv).to receive(:getaddresses).with('chatwoot-assets.local').and_return(['93.184.216.35'])
     stub_request(:post, /graph\.instagram\.com/)
     stub_request(:get, 'https://www.example.com/test.jpeg')
-      .to_return(status: 200, body: '', headers: {})
+      .to_return(status: 200, body: 'image-data', headers: { 'Content-Type' => 'image/jpeg' })
   end
 
   let!(:account) { create(:account) }
@@ -118,6 +121,20 @@ describe Messages::Instagram::MessageBuilder do
       expect(message.content_attributes[:image_type]).to eq('ig_story_reply')
       expect(message.attachments.first.file_type).to eq('ig_story')
       expect(message.attachments.first.external_url).to eq(story_url)
+    end
+
+    it 'skips story reply attachments for blocked URLs' do
+      messaging = instagram_story_reply_event[:entry][0]['messaging'][0]
+      messaging['message']['reply_to']['story']['url'] = 'http://127.0.0.1/blocked.png'
+      create_instagram_contact_for_sender(messaging['sender']['id'], instagram_inbox)
+
+      expect do
+        described_class.new(messaging, instagram_inbox).perform
+      end.not_to raise_error
+
+      message = instagram_inbox.messages.first
+      expect(message.content).to eq('This is the story reply')
+      expect(message.attachments).to be_empty
     end
 
     it 'creates message with reply to mid' do

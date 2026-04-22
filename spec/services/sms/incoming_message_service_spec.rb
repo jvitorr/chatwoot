@@ -2,6 +2,11 @@ require 'rails_helper'
 
 describe Sms::IncomingMessageService do
   describe '#perform' do
+    before do
+      allow(Resolv).to receive(:getaddresses).and_call_original
+      allow(Resolv).to receive(:getaddresses).with('test.com').and_return(['93.184.216.34'])
+    end
+
     let!(:sms_channel) { create(:channel_sms) }
     let(:params) do
       {
@@ -77,8 +82,10 @@ describe Sms::IncomingMessageService do
       end
 
       it 'creates attachment messages and ignores .smil files' do
-        stub_request(:get, 'http://test.com/test.png').to_return(status: 200, body: File.read('spec/assets/sample.png'), headers: {})
-        stub_request(:get, 'http://test.com/test2.png').to_return(status: 200, body: File.read('spec/assets/sample.png'), headers: {})
+        stub_request(:get, 'http://test.com/test.png')
+          .to_return(status: 200, body: File.read('spec/assets/sample.png'), headers: { 'Content-Type' => 'image/png' })
+        stub_request(:get, 'http://test.com/test2.png')
+          .to_return(status: 200, body: File.read('spec/assets/sample.png'), headers: { 'Content-Type' => 'image/png' })
 
         media_params = { 'media': [
           'http://test.com/test.smil',
@@ -91,6 +98,17 @@ describe Sms::IncomingMessageService do
         expect(Contact.all.first.name).to eq('+1 423-423-4234')
         expect(sms_channel.inbox.messages.first.content).to eq('test message')
         expect(sms_channel.inbox.messages.first.attachments.present?).to be true
+      end
+
+      it 'skips blocked attachment URLs' do
+        media_params = { 'media': ['http://127.0.0.1/blocked.png'] }.with_indifferent_access
+
+        expect do
+          described_class.new(inbox: sms_channel.inbox, params: params.merge(media_params)).perform
+        end.not_to raise_error
+
+        expect(sms_channel.inbox.messages.first.content).to eq('test message')
+        expect(sms_channel.inbox.messages.first.attachments).to be_empty
       end
     end
   end

@@ -64,17 +64,17 @@ class Tiktok::MessageService
   def create_image_message_attachment(message)
     return unless image_message?
 
-    attachment_file = fetch_attachment(channel, tt_conversation_id, tt_message_id, tt_image_media_id)
-
-    message.attachments.new(
-      account_id: message.account_id,
-      file_type: :image,
-      file: {
-        io: attachment_file,
-        filename: attachment_file.original_filename,
-        content_type: attachment_file.content_type
-      }
-    )
+    fetch_attachment(channel, tt_conversation_id, tt_message_id, tt_image_media_id) do |attachment_file|
+      message.attachments.new(
+        account_id: message.account_id,
+        file_type: :image,
+        file: {
+          io: attachment_file.tempfile,
+          filename: attachment_file.original_filename,
+          content_type: attachment_file.content_type
+        }
+      )
+    end
   end
 
   def create_share_post_message_attachment(message)

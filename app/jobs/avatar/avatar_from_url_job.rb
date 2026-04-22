@@ -18,18 +18,27 @@ class Avatar::AvatarFromUrlJob < ApplicationJob
 
     return unless should_sync_avatar?(avatarable, avatar_url)
 
-    avatar_file = Down.download(avatar_url, max_size: MAX_DOWNLOAD_SIZE)
-    raise Down::Error, 'Invalid file' unless valid_file?(avatar_file)
+    SafeFetch.fetch(
+      avatar_url,
+      max_bytes: MAX_DOWNLOAD_SIZE,
+      allowed_content_type_prefixes: [],
+      allowed_content_types: %w[image/jpeg image/png image/gif]
+    ) do |avatar_file|
+      raise SafeFetch::FetchError, 'Invalid file' unless valid_file?(avatar_file)
 
-    avatarable.avatar.attach(
-      io: avatar_file,
-      filename: avatar_file.original_filename,
-      content_type: avatar_file.content_type
-    )
-
-  rescue Down::NotFound
-    Rails.logger.info "AvatarFromUrlJob: avatar not found at #{avatar_url}"
-  rescue Down::Error => e
+      avatarable.avatar.attach(
+        io: avatar_file.tempfile,
+        filename: avatar_file.original_filename,
+        content_type: avatar_file.content_type
+      )
+    end
+  rescue SafeFetch::HttpError => e
+    if e.message.start_with?('404')
+      Rails.logger.info "AvatarFromUrlJob: avatar not found at #{avatar_url}"
+    else
+      Rails.logger.error "AvatarFromUrlJob error for #{avatar_url}: #{e.class} - #{e.message}"
+    end
+  rescue SafeFetch::Error => e
     Rails.logger.error "AvatarFromUrlJob error for #{avatar_url}: #{e.class} - #{e.message}"
   ensure
     update_avatar_sync_attributes(avatarable, avatar_url)

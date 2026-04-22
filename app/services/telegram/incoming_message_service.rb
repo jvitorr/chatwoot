@@ -150,19 +150,23 @@ class Telegram::IncomingMessageService
       return
     end
 
-    attachment_file = Down.download(
-      inbox.channel.get_telegram_file_path(file[:file_id])
-    )
-
-    @message.attachments.new(
-      account_id: @message.account_id,
-      file_type: file_content_type,
-      file: {
-        io: attachment_file,
-        filename: attachment_file.original_filename,
-        content_type: attachment_file.content_type
-      }
-    )
+    SafeFetch.fetch(
+      file_download_path,
+      allowed_content_type_prefixes: %w[image/ video/ audio/],
+      allowed_content_types: Attachment::ACCEPTABLE_FILE_TYPES
+    ) do |attachment_file|
+      @message.attachments.new(
+        account_id: @message.account_id,
+        file_type: file_content_type,
+        file: {
+          io: attachment_file.tempfile,
+          filename: attachment_file.original_filename,
+          content_type: attachment_file.content_type
+        }
+      )
+    end
+  rescue SafeFetch::Error => e
+    Rails.logger.info "Error downloading Telegram attachment from #{file_download_path}: #{e.message}: Skipping"
   end
 
   def attach_location

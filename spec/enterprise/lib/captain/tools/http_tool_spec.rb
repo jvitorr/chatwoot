@@ -7,6 +7,12 @@ RSpec.describe Captain::Tools::HttpTool, type: :model do
   let(:tool) { described_class.new(assistant, custom_tool) }
   let(:tool_context) { Struct.new(:state).new({}) }
 
+  before do
+    allow(Resolv).to receive(:getaddresses).and_call_original
+    allow(Resolv).to receive(:getaddresses).with('example.com').and_return(['93.184.216.34'])
+    allow(Resolv).to receive(:getaddresses).with('internal.example.com').and_return(['10.0.0.1'])
+  end
+
   describe '#active?' do
     it 'returns true when custom tool is enabled' do
       custom_tool.update!(enabled: true)
@@ -165,6 +171,15 @@ RSpec.describe Captain::Tools::HttpTool, type: :model do
     end
 
     context 'when handling errors' do
+      it 'returns generic error message when hostname resolves to a private IP' do
+        custom_tool.update!(endpoint_url: 'https://internal.example.com/data')
+
+        result = tool.perform(tool_context)
+
+        expect(result).to eq('An error occurred while executing the request')
+        expect(WebMock).not_to have_requested(:any, 'https://internal.example.com/data')
+      end
+
       it 'returns generic error message on network failure' do
         custom_tool.update!(endpoint_url: 'https://example.com/data')
         stub_request(:get, 'https://example.com/data').to_raise(SocketError.new('Failed to connect'))

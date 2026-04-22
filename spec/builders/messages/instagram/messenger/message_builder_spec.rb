@@ -4,8 +4,12 @@ describe Messages::Instagram::Messenger::MessageBuilder do
   subject(:instagram_message_builder) { described_class }
 
   before do
+    allow(Resolv).to receive(:getaddresses).and_call_original
+    allow(Resolv).to receive(:getaddresses).with('www.example.com').and_return(['93.184.216.34'])
+    allow(Resolv).to receive(:getaddresses).with('chatwoot-assets.local').and_return(['93.184.216.35'])
     stub_request(:post, /graph\.facebook\.com/)
     stub_request(:get, 'https://www.example.com/test.jpeg')
+      .to_return(status: 200, body: 'image-data', headers: { 'Content-Type' => 'image/jpeg' })
   end
 
   let!(:account) { create(:account) }
@@ -130,6 +134,32 @@ describe Messages::Instagram::Messenger::MessageBuilder do
       expect(message.content_attributes[:image_type]).to eq('ig_story_reply')
       expect(message.attachments.first.file_type).to eq('ig_story')
       expect(message.attachments.first.external_url).to eq(story_url)
+    end
+
+    it 'skips story reply attachments for blocked URLs' do
+      messaging = instagram_story_reply_event[:entry][0]['messaging'][0]
+      sender_id = messaging['sender']['id']
+      messaging['message']['reply_to']['story']['url'] = 'http://127.0.0.1/blocked.png'
+
+      allow(Koala::Facebook::API).to receive(:new).and_return(fb_object)
+      allow(fb_object).to receive(:get_object).and_return(
+        {
+          name: 'Jane',
+          id: sender_id,
+          account_id: instagram_messenger_inbox.account_id,
+          profile_pic: 'https://chatwoot-assets.local/sample.png'
+        }.with_indifferent_access
+      )
+
+      create_instagram_contact_for_sender(sender_id, instagram_messenger_inbox)
+
+      expect do
+        described_class.new(messaging, instagram_messenger_inbox).perform
+      end.not_to raise_error
+
+      message = instagram_messenger_channel.inbox.messages.first
+      expect(message.content).to eq('This is the story reply')
+      expect(message.attachments).to be_empty
     end
 
     it 'creates message with for reply with mid' do

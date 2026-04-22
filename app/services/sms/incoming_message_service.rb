@@ -83,20 +83,28 @@ class Sms::IncomingMessageService
       # we don't need to process this files since chatwoot doesn't support it
       next if media_url.end_with?('.smil', '.xml')
 
-      attachment_file = Down.download(
-        media_url,
-        http_basic_authentication: [channel.provider_config['api_key'], channel.provider_config['api_secret']]
-      )
-
-      @message.attachments.new(
-        account_id: @message.account_id,
-        file_type: file_type(attachment_file.content_type),
-        file: {
-          io: attachment_file,
-          filename: attachment_file.original_filename,
-          content_type: attachment_file.content_type
-        }
-      )
+      download_attachment_file(media_url) do |attachment_file|
+        @message.attachments.new(
+          account_id: @message.account_id,
+          file_type: file_type(attachment_file.content_type),
+          file: {
+            io: attachment_file.tempfile,
+            filename: attachment_file.original_filename,
+            content_type: attachment_file.content_type
+          }
+        )
+      end
     end
+  end
+
+  def download_attachment_file(media_url, &)
+    SafeFetch.fetch(
+      media_url,
+      http_basic_authentication: [channel.provider_config['api_key'], channel.provider_config['api_secret']],
+      allowed_content_types: Attachment::ACCEPTABLE_FILE_TYPES,
+      &
+    )
+  rescue SafeFetch::Error => e
+    Rails.logger.info "Error downloading SMS attachment from #{media_url}: #{e.message}: Skipping"
   end
 end

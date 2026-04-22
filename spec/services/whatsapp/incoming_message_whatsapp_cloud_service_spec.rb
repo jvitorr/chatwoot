@@ -2,6 +2,11 @@ require 'rails_helper'
 
 describe Whatsapp::IncomingMessageWhatsappCloudService do
   describe '#perform' do
+    before do
+      allow(Resolv).to receive(:getaddresses).and_call_original
+      allow(Resolv).to receive(:getaddresses).with('chatwoot-assets.local').and_return(['93.184.216.34'])
+    end
+
     after do
       Redis::Alfred.scan_each(match: 'MESSAGE_SOURCE_KEY::*') { |key| Redis::Alfred.delete(key) }
     end
@@ -40,6 +45,28 @@ describe Whatsapp::IncomingMessageWhatsappCloudService do
         expect_contact_name
         expect_message_content
         expect_message_has_attachment
+      end
+
+      it 'sends the provider headers when downloading the resolved media URL' do
+        stub_media_url_request
+        stub_sample_png_request
+
+        described_class.new(inbox: whatsapp_channel.inbox, params: params).perform
+
+        expect(WebMock).to(have_requested(:get, 'https://chatwoot-assets.local/sample.png')
+          .with { |request| request.headers['Authorization']&.start_with?('Bearer ') })
+      end
+
+      it 'skips blocked resolved media URLs' do
+        stub_media_url_request(url: 'http://127.0.0.1/blocked.png')
+
+        expect do
+          described_class.new(inbox: whatsapp_channel.inbox, params: params).perform
+        end.not_to raise_error
+
+        expect_conversation_created
+        expect_message_content
+        expect(whatsapp_channel.inbox.messages.first.attachments).to be_empty
       end
 
       it 'increments reauthorization count if fetching attachment fails' do
@@ -169,7 +196,7 @@ describe Whatsapp::IncomingMessageWhatsappCloudService do
 
   # Métodos auxiliares para reduzir o tamanho do exemplo
 
-  def stub_media_url_request
+  def stub_media_url_request(url: 'https://chatwoot-assets.local/sample.png')
     stub_request(
       :get,
       whatsapp_channel.media_url('b1c68f38-8734-4ad3-b4a1-ef0c10d683')
@@ -177,7 +204,7 @@ describe Whatsapp::IncomingMessageWhatsappCloudService do
       status: 200,
       body: {
         messaging_product: 'whatsapp',
-        url: 'https://chatwoot-assets.local/sample.png',
+        url: url,
         mime_type: 'image/jpeg',
         sha256: 'sha256',
         file_size: 'SIZE',
@@ -190,7 +217,8 @@ describe Whatsapp::IncomingMessageWhatsappCloudService do
   def stub_sample_png_request
     stub_request(:get, 'https://chatwoot-assets.local/sample.png').to_return(
       status: 200,
-      body: File.read('spec/assets/sample.png')
+      body: File.read('spec/assets/sample.png'),
+      headers: { 'Content-Type' => 'image/png' }
     )
   end
 
