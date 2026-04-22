@@ -43,6 +43,25 @@ describe Webhooks::Trigger do
       trigger.execute(url, payload, webhook_type)
     end
 
+    context 'when webhook type is macro' do
+      let(:webhook_type) { :macro_webhook }
+
+      it 'uses ssrf-protected delivery for the request' do
+        payload = { hello: :hello }
+        response = Net::HTTPOK.new('1.1', '200', 'OK')
+
+        expect(SsrfFilter).to receive(:post).with(
+          url,
+          body: payload.to_json,
+          headers: { 'Content-Type' => 'application/json', 'Accept' => 'application/json' },
+          sensitive_headers: %w[Content-Type Accept],
+          http_options: { open_timeout: webhook_timeout, read_timeout: webhook_timeout }
+        ).and_return(response)
+
+        trigger.execute(url, payload, webhook_type)
+      end
+    end
+
     it 'updates message status if webhook fails for message-created event' do
       payload = { event: 'message_created', conversation: { id: conversation.id }, id: message.id }
 

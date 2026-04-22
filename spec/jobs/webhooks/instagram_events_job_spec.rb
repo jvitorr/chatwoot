@@ -4,13 +4,15 @@ describe Webhooks::InstagramEventsJob do
   subject(:instagram_webhook) { described_class }
 
   before do
+    image_body = File.binread(Rails.root.join('spec/assets/sample.png'))
+
     stub_request(:post, /graph\.facebook\.com/)
     stub_request(:get, 'https://www.example.com/test.jpeg')
-      .to_return(status: 200, body: '', headers: {})
+      .to_return(status: 200, body: image_body, headers: { 'Content-Type' => 'image/jpeg' })
     stub_request(:get, 'https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=17949487764033669&signature=test')
-      .to_return(status: 200, body: '', headers: {})
+      .to_return(status: 200, body: image_body, headers: { 'Content-Type' => 'image/png' })
     stub_request(:get, 'https://lookaside.fbsbx.com/ig_messaging_cdn/?asset_id=18091626484740369&signature=test')
-      .to_return(status: 200, body: '', headers: {})
+      .to_return(status: 200, body: image_body, headers: { 'Content-Type' => 'image/png' })
   end
 
   let!(:account) { create(:account) }

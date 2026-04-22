@@ -29,6 +29,7 @@ class Macro < ApplicationRecord
   enum visibility: { personal: 0, global: 1 }
 
   validate :json_actions_format
+  validate :validate_webhook_action_urls
 
   ACTIONS_ATTRS = %w[send_message add_label assign_team assign_agent mute_conversation change_status remove_label remove_assigned_agent
                      remove_assigned_team resolve_conversation snooze_conversation change_priority send_email_transcript
@@ -72,6 +73,20 @@ class Macro < ApplicationRecord
     actions = attributes - ACTIONS_ATTRS
 
     errors.add(:actions, "Macro execution actions #{actions.join(',')} not supported.") if actions.any?
+  end
+
+  def validate_webhook_action_urls
+    return if actions.blank?
+
+    actions.each do |action|
+      action = action.respond_to?(:with_indifferent_access) ? action.with_indifferent_access : {}
+      next unless action[:action_name] == 'send_webhook_event'
+
+      webhook_url = Array(action[:action_params]).first
+      SafeOutboundUrl.validate!(webhook_url)
+    rescue SafeOutboundUrl::Error
+      errors.add(:actions, 'Webhook URL for send_webhook_event must be a public http(s) URL.')
+    end
   end
 end
 

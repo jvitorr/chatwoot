@@ -171,8 +171,24 @@ RSpec.describe Macros::ExecutionService, type: :service do
 
   describe '#send_webhook_event' do
     it 'sends a webhook event' do
-      expect(WebhookJob).to receive(:perform_later)
+      allow(SafeOutboundUrl).to receive(:validate!).and_return(URI.parse('https://example.com/webhook'))
+
+      expect(WebhookJob).to receive(:perform_later).with(
+        'https://example.com/webhook',
+        hash_including(event: 'macro.executed'),
+        :macro_webhook
+      )
+
       service.send(:send_webhook_event, ['https://example.com/webhook'])
+    end
+
+    it 'raises when the webhook url is unsafe' do
+      allow(SafeOutboundUrl).to receive(:validate!).and_raise(SafeOutboundUrl::UnsafeUrlError, 'unsafe')
+
+      expect(WebhookJob).not_to receive(:perform_later)
+      expect do
+        service.send(:send_webhook_event, ['http://169.254.169.254/latest/meta-data'])
+      end.to raise_error(SafeOutboundUrl::UnsafeUrlError, 'unsafe')
     end
   end
 end

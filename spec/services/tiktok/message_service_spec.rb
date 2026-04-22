@@ -125,10 +125,12 @@ RSpec.describe Tiktok::MessageService do
       stub_request(:get, image_download_url)
         .with(headers: { 'X-User' => 'valid-access-token' })
         .to_return(status: 200, body: File.read('spec/assets/sample.png'), headers: { 'Content-Type' => 'image/png' })
-      allow_any_instance_of(Tiktok::Client).to receive(:file_download_url).and_return(image_download_url)
 
       service = described_class.new(channel: channel, content: content)
       allow(service).to receive(:create_contact_inbox).and_return(contact_inbox)
+      allow(service).to receive(:tiktok_client)
+        .with(channel)
+        .and_return(instance_double(Tiktok::Client, file_download_url: image_download_url))
 
       service.perform
 
@@ -153,10 +155,11 @@ RSpec.describe Tiktok::MessageService do
         to_user: { id: 'biz-123' }
       }.deep_symbolize_keys
 
-      allow_any_instance_of(Tiktok::Client).to receive(:file_download_url).and_return('http://127.0.0.1/blocked.png')
-
       service = described_class.new(channel: channel, content: content)
       allow(service).to receive(:create_contact_inbox).and_return(contact_inbox)
+      allow(service).to receive(:tiktok_client)
+        .with(channel)
+        .and_return(instance_double(Tiktok::Client, file_download_url: 'http://127.0.0.1/blocked.png'))
 
       expect { service.perform }.not_to raise_error
 

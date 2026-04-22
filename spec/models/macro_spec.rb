@@ -19,6 +19,21 @@ RSpec.describe Macro do
       expect(macro).not_to be_valid
       expect(macro.errors.full_messages).to eq(['Actions Macro execution actions update_last_seen not supported.'])
     end
+
+    it 'rejects unsafe webhook action urls' do
+      allow(SafeOutboundUrl).to receive(:validate!).and_raise(SafeOutboundUrl::UnsafeUrlError, 'unsafe')
+
+      macro = FactoryBot.build(
+        :macro,
+        account: account,
+        created_by: admin,
+        updated_by: admin,
+        actions: [{ action_name: 'send_webhook_event', action_params: ['http://169.254.169.254/latest/meta-data'] }]
+      )
+
+      expect(macro).not_to be_valid
+      expect(macro.errors.full_messages).to include('Actions Webhook URL for send_webhook_event must be a public http(s) URL.')
+    end
   end
 
   describe '#set_visibility' do

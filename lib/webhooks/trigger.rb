@@ -1,3 +1,5 @@
+require 'ssrf_filter'
+
 class Webhooks::Trigger
   SUPPORTED_ERROR_HANDLE_EVENTS = %w[message_created message_updated].freeze
 
@@ -32,6 +34,8 @@ class Webhooks::Trigger
 
   def perform_request
     body = @payload.to_json
+    return perform_macro_request(body) if @webhook_type == :macro_webhook
+
     RestClient::Request.execute(
       method: :post,
       url: @url,
@@ -41,8 +45,32 @@ class Webhooks::Trigger
     )
   end
 
+  def perform_macro_request(body)
+    headers = safe_request_headers(body)
+    response = SsrfFilter.post(
+      @url,
+      body: body,
+      headers: headers,
+      sensitive_headers: headers.keys,
+      http_options: { open_timeout: webhook_timeout, read_timeout: webhook_timeout }
+    )
+
+    raise StandardError, "Webhook request failed with status #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+  end
+
   def request_headers(body)
     headers = { content_type: :json, accept: :json }
+    headers['X-Chatwoot-Delivery'] = @delivery_id if @delivery_id.present?
+    if @secret.present?
+      ts = Time.now.to_i.to_s
+      headers['X-Chatwoot-Timestamp'] = ts
+      headers['X-Chatwoot-Signature'] = "sha256=#{OpenSSL::HMAC.hexdigest('SHA256', @secret, "#{ts}.#{body}")}"
+    end
+    headers
+  end
+
+  def safe_request_headers(body)
+    headers = { 'Content-Type' => 'application/json', 'Accept' => 'application/json' }
     headers['X-Chatwoot-Delivery'] = @delivery_id if @delivery_id.present?
     if @secret.present?
       ts = Time.now.to_i.to_s
