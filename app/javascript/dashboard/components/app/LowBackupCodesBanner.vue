@@ -1,24 +1,23 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import { parseBoolean } from '@chatwoot/utils';
 import Banner from 'dashboard/components/ui/Banner.vue';
 import mfaAPI from 'dashboard/api/mfa';
+import { useMapGetter } from 'dashboard/composables/store';
 import { emitter } from 'shared/helpers/mitt';
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 
 const LOW_BACKUP_CODES_THRESHOLD = 3;
 
 const { t } = useI18n();
-const store = useStore();
 const router = useRouter();
 
 const mfaEnabled = ref(false);
 const remainingBackupCodes = ref(null);
 
-const currentAccountId = computed(() => store.getters.getCurrentAccountId);
+const currentAccountId = useMapGetter('getCurrentAccountId');
 
 const shouldShowBanner = computed(() => {
   if (!mfaEnabled.value) return false;
@@ -34,11 +33,7 @@ const bannerMessage = computed(() => {
   if (remainingBackupCodes.value === 0) {
     return t('MFA_SETTINGS.LOW_BACKUP_CODES.NONE_LEFT');
   }
-  return t(
-    'MFA_SETTINGS.LOW_BACKUP_CODES.MESSAGE',
-    { count: remainingBackupCodes.value },
-    remainingBackupCodes.value
-  );
+  return t('MFA_SETTINGS.LOW_BACKUP_CODES.MESSAGE', remainingBackupCodes.value);
 });
 
 const fetchMfaStatus = async () => {
@@ -63,10 +58,6 @@ const goToMfaSettings = () => {
 onMounted(() => {
   fetchMfaStatus();
   emitter.on(BUS_EVENTS.MFA_STATE_CHANGED, fetchMfaStatus);
-});
-
-onBeforeUnmount(() => {
-  emitter.off(BUS_EVENTS.MFA_STATE_CHANGED, fetchMfaStatus);
 });
 </script>
 
