@@ -201,22 +201,18 @@ const actions = {
         });
         commit(types.SET_CHAT_DATA_FETCHED, data.id);
       }
-      // Embedded UI (react-components) has no ReconnectService, so messages
-      // that arrive while the ActionCable socket is disconnected — or between
-      // the initial `getConversation` fetch and component mount — never land
-      // in the store and silently fail to render. Stamp the current tail and
-      // pull anything newer from the API so the message list stays in sync
-      // without relying on the websocket. The dashboard skips this because
-      // ReconnectService already handles it on reconnect.
-      // eslint-disable-next-line no-underscore-dangle
-      if (window.__WOOT_ISOLATED_SHELL__) {
-        await dispatch('setConversationLastMessageId', {
-          conversationId: data.id,
-        });
-        await dispatch('syncActiveConversationMessages', {
-          conversationId: data.id,
-        });
-      }
+      // Stamp the checkpoint at the current tail before syncing, so sync
+      // only fetches messages newer than what is already in the store and
+      // fills in anything ActionCable missed (e.g. messages that landed
+      // while the socket was disconnected or before the component mounted).
+      // Order matters: setConversationLastMessageId must run first so
+      // syncActiveConversationMessages uses the up-to-date `after` id.
+      await dispatch('setConversationLastMessageId', {
+        conversationId: data.id,
+      });
+      await dispatch('syncActiveConversationMessages', {
+        conversationId: data.id,
+      });
     } catch (error) {
       // Ignore error
     }
