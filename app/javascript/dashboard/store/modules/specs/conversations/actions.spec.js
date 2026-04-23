@@ -736,16 +736,19 @@ describe('#addMentions', () => {
         [types.CLEAR_ALL_MESSAGES_LOADED, 42],
         [types.SET_CHAT_DATA_FETCHED, 42],
       ]);
-      expect(localDispatch).toHaveBeenCalledWith('fetchPreviousMessages', {
-        after: 99,
-        before: 100,
-        conversationId: 42,
-      });
+      expect(localDispatch.mock.calls).toEqual([
+        [
+          'fetchPreviousMessages',
+          { after: 99, before: 100, conversationId: 42 },
+        ],
+        ['setConversationLastMessageId', { conversationId: 42 }],
+        ['syncActiveConversationMessages', { conversationId: 42 }],
+      ]);
     });
 
-    it('should not dispatch fetchPreviousMessages if dataFetched is already set', async () => {
+    it('should skip fetchPreviousMessages but still sync if dataFetched is already set', async () => {
       const localCommit = vi.fn();
-      const localDispatch = vi.fn();
+      const localDispatch = vi.fn().mockResolvedValue();
       const data = { id: 42, messages: [{ id: 100 }], dataFetched: true };
 
       await actions.setActiveChat(
@@ -757,7 +760,10 @@ describe('#addMentions', () => {
         [types.SET_CURRENT_CHAT_WINDOW, data],
         [types.CLEAR_ALL_MESSAGES_LOADED, 42],
       ]);
-      expect(localDispatch).not.toHaveBeenCalled();
+      expect(localDispatch.mock.calls).toEqual([
+        ['setConversationLastMessageId', { conversationId: 42 }],
+        ['syncActiveConversationMessages', { conversationId: 42 }],
+      ]);
     });
 
     it('should commit SET_CHAT_DATA_FETCHED by ID, not mutate the data object directly (race condition fix)', async () => {
