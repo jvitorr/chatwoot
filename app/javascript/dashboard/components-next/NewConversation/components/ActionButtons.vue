@@ -18,6 +18,7 @@ const props = defineProps({
   isEmailOrWebWidgetInbox: { type: Boolean, default: false },
   isTwilioSmsInbox: { type: Boolean, default: false },
   isTwilioWhatsAppInbox: { type: Boolean, default: false },
+  // eslint-disable-next-line vue/no-unused-properties
   messageTemplates: { type: Array, default: () => [] },
   channelType: { type: String, default: '' },
   isLoading: { type: Boolean, default: false },
@@ -199,7 +200,6 @@ useEventListener(document, 'paste', onPaste);
       <WhatsAppOptions
         v-if="isWhatsappInbox"
         :inbox-id="inboxId"
-        :message-templates="messageTemplates"
         @send-message="emit('sendWhatsappMessage', $event)"
       />
       <ContentTemplateSelector
