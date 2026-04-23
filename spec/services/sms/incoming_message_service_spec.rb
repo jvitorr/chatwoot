@@ -100,6 +100,18 @@ describe Sms::IncomingMessageService do
         expect(sms_channel.inbox.messages.first.attachments.present?).to be true
       end
 
+      it 'creates audio attachment messages' do
+        stub_request(:get, 'http://test.com/test.mp3')
+          .to_return(status: 200, body: File.read('spec/assets/sample.mp3'), headers: { 'Content-Type' => 'audio/mpeg' })
+
+        media_params = { 'media': ['http://test.com/test.mp3'] }.with_indifferent_access
+
+        described_class.new(inbox: sms_channel.inbox, params: params.merge(media_params)).perform
+
+        attachment = sms_channel.inbox.messages.first.attachments.first
+        expect(attachment.file_type).to eq('audio')
+      end
+
       it 'skips blocked attachment URLs' do
         media_params = { 'media': ['http://127.0.0.1/blocked.png'] }.with_indifferent_access
 

@@ -234,6 +234,27 @@ describe Whatsapp::IncomingMessageService do
         expect(whatsapp_channel.inbox.messages.first.attachments.present?).to be true
       end
 
+      it 'creates audio attachments when the provider serves audio media' do
+        stub_request(:get, whatsapp_channel.media_url('b1c68f38-8734-4ad3-b4a1-ef0c10d683')).to_return(
+          status: 200,
+          body: File.read('spec/assets/sample.mp3'),
+          headers: { 'Content-Type' => 'audio/mpeg' }
+        )
+        params = {
+          'contacts' => [{ 'profile' => { 'name' => 'Sojan Jose' }, 'wa_id' => '2423423243' }],
+          'messages' => [{ 'from' => '2423423243', 'id' => 'SDFADSf23sfasdafasdfa',
+                           'audio' => { 'id' => 'b1c68f38-8734-4ad3-b4a1-ef0c10d683',
+                                        'mime_type' => 'audio/mpeg',
+                                        'sha256' => '29ed500fa64eb55fc19dc4124acb300e5dcca0f822a301ae99944db' },
+                           'timestamp' => '1633034394', 'type' => 'audio' }]
+        }.with_indifferent_access
+
+        described_class.new(inbox: whatsapp_channel.inbox, params: params).perform
+
+        attachment = whatsapp_channel.inbox.messages.first.attachments.first
+        expect(attachment.file_type).to eq('audio')
+      end
+
       it 'skips blocked attachment URLs' do
         allow(whatsapp_channel).to receive(:media_url).and_return('http://127.0.0.1/blocked.png')
         params = {

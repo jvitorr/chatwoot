@@ -47,6 +47,30 @@ describe Whatsapp::IncomingMessageWhatsappCloudService do
         expect_message_has_attachment
       end
 
+      it 'creates audio attachments when the provider serves audio media' do
+        params[:entry][0][:changes][0][:value][:messages][0] = {
+          from: '2423423243',
+          audio: {
+            id: 'b1c68f38-8734-4ad3-b4a1-ef0c10d683',
+            mime_type: 'audio/mpeg',
+            sha256: '29ed500fa64eb55fc19dc4124acb300e5dcca0f822a301ae99944db'
+          },
+          timestamp: '1664799904',
+          type: 'audio'
+        }
+        stub_media_url_request(url: 'https://chatwoot-assets.local/sample.mp3')
+        stub_request(:get, 'https://chatwoot-assets.local/sample.mp3').to_return(
+          status: 200,
+          body: File.read('spec/assets/sample.mp3'),
+          headers: { 'Content-Type' => 'audio/mpeg' }
+        )
+
+        described_class.new(inbox: whatsapp_channel.inbox, params: params).perform
+
+        attachment = whatsapp_channel.inbox.messages.first.attachments.first
+        expect(attachment.file_type).to eq('audio')
+      end
+
       it 'sends the provider headers when downloading the resolved media URL' do
         stub_media_url_request
         stub_sample_png_request

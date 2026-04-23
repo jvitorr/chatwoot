@@ -179,6 +179,8 @@ describe Twilio::IncomingMessageService do
       before do
         stub_request(:get, 'https://chatwoot-assets.local/sample.png')
           .to_return(status: 200, body: 'image data', headers: { 'Content-Type' => 'image/png' })
+        stub_request(:get, 'https://chatwoot-assets.local/sample.mp3')
+          .to_return(status: 200, body: File.read('spec/assets/sample.mp3'), headers: { 'Content-Type' => 'audio/mpeg' })
       end
 
       let(:params_with_attachment) do
@@ -206,6 +208,18 @@ describe Twilio::IncomingMessageService do
 
         expect(WebMock).to(have_requested(:get, 'https://chatwoot-assets.local/sample.png')
           .with { |request| request.headers['Authorization']&.start_with?('Basic ') })
+      end
+
+      it 'creates an audio attachment when the provider serves audio media' do
+        params_with_audio_attachment = params_with_attachment.merge(
+          MediaContentType0: 'audio/mpeg',
+          MediaUrl0: 'https://chatwoot-assets.local/sample.mp3'
+        )
+
+        described_class.new(params: params_with_audio_attachment).perform
+
+        attachment = conversation.reload.messages.last.attachments.first
+        expect(attachment.file_type).to eq('audio')
       end
     end
 
