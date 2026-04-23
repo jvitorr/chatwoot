@@ -2,6 +2,7 @@
 # https://docs.360dialog.com/whatsapp-api/whatsapp-api/media
 # https://developers.facebook.com/docs/whatsapp/api/media/
 class Whatsapp::IncomingMessageBaseService
+  include ::DownloadedFileTracking
   include ::Whatsapp::IncomingMessageServiceHelpers
 
   pattr_initialize [:inbox!, :params!, :outgoing_echo]
@@ -17,36 +18,32 @@ class Whatsapp::IncomingMessageBaseService
   end
 
   # Returns messages array for both regular messages and echo events
-  def messages_data
-    @processed_params&.dig(:messages) || @processed_params&.dig(:message_echoes)
-  end
+  def messages_data = @processed_params&.dig(:messages) || @processed_params&.dig(:message_echoes)
 
   private
 
   def process_messages
-    @downloaded_files = []
+    with_downloaded_files do
+      # We don't support reactions & ephemeral message now, we need to skip processing the message
+      # if the webhook event is a reaction or an ephermal message or an unsupported message.
+      return if unprocessable_message_type?(message_type)
 
-    # We don't support reactions & ephemeral message now, we need to skip processing the message
-    # if the webhook event is a reaction or an ephermal message or an unsupported message.
-    return if unprocessable_message_type?(message_type)
+      # Multiple webhook events can be received for the same message due to
+      # misconfigurations in the Meta business manager account.
+      # We use an atomic Redis SET NX to prevent concurrent workers from both
+      # processing the same message simultaneously.
+      return if find_message_by_source_id(messages_data.first[:id])
+      return unless lock_message_source_id!
 
-    # Multiple webhook events can be received for the same message due to
-    # misconfigurations in the Meta business manager account.
-    # We use an atomic Redis SET NX to prevent concurrent workers from both
-    # processing the same message simultaneously.
-    return if find_message_by_source_id(messages_data.first[:id])
-    return unless lock_message_source_id!
+      set_contact
+      return unless @contact
+      return if @contact.blocked? && !outgoing_echo
 
-    set_contact
-    return unless @contact
-    return if @contact.blocked? && !outgoing_echo
-
-    ActiveRecord::Base.transaction do
-      set_conversation
-      create_messages
+      ActiveRecord::Base.transaction do
+        set_conversation
+        create_messages
+      end
     end
-  ensure
-    close_downloaded_files
   end
 
   def process_statuses
@@ -233,13 +230,5 @@ class Whatsapp::IncomingMessageBaseService
     phone_number = "+#{messages_data.first[:from]}"
     formatted_phone_number = TelephoneNumber.parse(phone_number).international_number
     @contact.name == phone_number || @contact.name == formatted_phone_number
-  end
-
-  def track_downloaded_file(attachment_file)
-    @downloaded_files << attachment_file
-  end
-
-  def close_downloaded_files
-    Array(@downloaded_files).each(&:close!)
   end
 end

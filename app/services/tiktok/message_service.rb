@@ -1,4 +1,5 @@
 class Tiktok::MessageService
+  include DownloadedFileTracking
   include Tiktok::MessagingHelpers
 
   pattr_initialize [:channel!, :content!, :outgoing_echo]
@@ -32,25 +33,12 @@ class Tiktok::MessageService
   end
 
   def create_message
-    @downloaded_files = []
-    message = conversation.messages.build(
-      content: message_content,
-      account_id: channel.inbox.account_id,
-      inbox_id: channel.inbox.id,
-      message_type: incoming_message? ? :incoming : :outgoing,
-      content_attributes: message_content_attributes,
-      source_id: tt_message_id,
-      created_at: tt_message_time,
-      updated_at: tt_message_time
-    )
-
-    message.sender = contact_inbox.contact if incoming_message? && !outgoing_echo
-    message.status = :delivered if outgoing_message?
-
-    create_message_attachments(message)
-    message.save!
-  ensure
-    close_downloaded_files
+    with_downloaded_files do
+      message = build_message
+      apply_message_direction(message)
+      create_message_attachments(message)
+      message.save!
+    end
   end
 
   def message_content
@@ -101,6 +89,24 @@ class Tiktok::MessageService
     attributes[:is_unsupported] = true unless supported_message?
     attributes[:external_echo] = true if outgoing_echo
     attributes
+  end
+
+  def build_message
+    conversation.messages.build(
+      content: message_content,
+      account_id: channel.inbox.account_id,
+      inbox_id: channel.inbox.id,
+      message_type: incoming_message? ? :incoming : :outgoing,
+      content_attributes: message_content_attributes,
+      source_id: tt_message_id,
+      created_at: tt_message_time,
+      updated_at: tt_message_time
+    )
+  end
+
+  def apply_message_direction(message)
+    message.sender = contact_inbox.contact if incoming_message? && !outgoing_echo
+    message.status = :delivered if outgoing_message?
   end
 
   def text_message?
@@ -179,13 +185,5 @@ class Tiktok::MessageService
 
   def outgoing_message?
     !incoming_message?
-  end
-
-  def track_downloaded_file(attachment_file)
-    @downloaded_files << attachment_file
-  end
-
-  def close_downloaded_files
-    Array(@downloaded_files).each(&:close!)
   end
 end

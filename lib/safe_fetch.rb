@@ -1,6 +1,5 @@
 require 'ssrf_filter'
 
-# rubocop:disable Metrics/ModuleLength
 module SafeFetch
   DEFAULT_ALLOWED_CONTENT_TYPE_PREFIXES = %w[image/ video/ audio/].freeze
   DEFAULT_ALLOWED_CONTENT_TYPES = %w[
@@ -45,149 +44,21 @@ module SafeFetch
   class FileTooLargeError < Error; end
   class UnsupportedContentTypeError < Error; end
   class UnsupportedMethodError < Error; end
+end
 
-  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
-  def self.fetch(url,
-                 method: :get,
-                 body: nil,
-                 max_bytes: nil,
-                 open_timeout: DEFAULT_OPEN_TIMEOUT,
-                 read_timeout: DEFAULT_READ_TIMEOUT,
-                 headers: nil,
-                 http_basic_authentication: nil,
-                 allowed_content_type_prefixes: DEFAULT_ALLOWED_CONTENT_TYPE_PREFIXES,
-                 allowed_content_types: DEFAULT_ALLOWED_CONTENT_TYPES,
-                 validate_content_type: true)
+require_relative 'safe_fetch/request_options'
+require_relative 'safe_fetch/fetcher'
+
+module SafeFetch
+  def self.fetch(url, **, &)
     raise ArgumentError, 'block required' unless block_given?
 
-    effective_max_bytes = max_bytes || default_max_bytes
-    uri = parse_and_validate_url!(url)
-    filename = filename_for(uri)
-    tempfile = Tempfile.new('chatwoot-safe-fetch', binmode: true)
-
-    response = stream_to_tempfile(
-      url,
-      method,
-      body,
-      tempfile,
-      effective_max_bytes,
-      open_timeout,
-      read_timeout,
-      headers,
-      http_basic_authentication,
-      allowed_content_type_prefixes,
-      allowed_content_types,
-      validate_content_type
-    )
-    raise HttpError, "#{response.code} #{response.message}" unless response.is_a?(Net::HTTPSuccess)
-
-    tempfile.rewind
-    yield Result.new(
-      tempfile: duplicate_tempfile(tempfile),
-      filename: filename,
-      content_type: normalize_content_type(response['content-type'])
-    )
+    Fetcher.new(RequestOptions.new(url: url, **)).fetch(&)
   rescue SsrfFilter::InvalidUriScheme, URI::InvalidURIError => e
     raise InvalidUrlError, e.message
   rescue SsrfFilter::Error, Resolv::ResolvError => e
     raise UnsafeUrlError, e.message
   rescue Net::OpenTimeout, Net::ReadTimeout, SocketError, OpenSSL::SSL::SSLError => e
     raise FetchError, e.message
-  ensure
-    tempfile&.close!
-  end
-  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
-
-  class << self
-    private
-
-    # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
-    def stream_to_tempfile(url, method, body, tempfile, max_bytes, open_timeout, read_timeout, headers, http_basic_authentication,
-                           allowed_content_type_prefixes, allowed_content_types, validate_content_type)
-      response = nil
-      bytes_written = 0
-
-      http_method = normalize_method(method)
-
-      SsrfFilter.public_send(
-        http_method,
-        url,
-        headers: headers,
-        body: body,
-        request_proc: request_proc(http_basic_authentication),
-        sensitive_headers: sensitive_headers(headers),
-        http_options: { open_timeout: open_timeout, read_timeout: read_timeout }
-      ) do |res|
-        response = res
-        next unless res.is_a?(Net::HTTPSuccess)
-
-        if validate_content_type && !allowed_content_type?(res['content-type'], allowed_content_type_prefixes, allowed_content_types)
-          raise UnsupportedContentTypeError, "content-type not allowed: #{res['content-type']}"
-        end
-
-        res.read_body do |chunk|
-          bytes_written += chunk.bytesize
-          raise FileTooLargeError, "exceeded #{max_bytes} bytes" if bytes_written > max_bytes
-
-          tempfile.write(chunk)
-        end
-      end
-
-      response
-    end
-    # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
-
-    def filename_for(uri)
-      File.basename(uri.path).presence || "download-#{Time.current.to_i}-#{SecureRandom.hex(4)}"
-    end
-
-    def duplicate_tempfile(tempfile)
-      duplicated = tempfile.dup
-      duplicated.rewind
-      duplicated
-    end
-
-    def default_max_bytes
-      limit_mb = GlobalConfigService.load('MAXIMUM_FILE_UPLOAD_SIZE', DEFAULT_MAX_BYTES_FALLBACK_MB).to_i
-      limit_mb = DEFAULT_MAX_BYTES_FALLBACK_MB if limit_mb <= 0
-      limit_mb.megabytes
-    end
-
-    def request_proc(http_basic_authentication)
-      return if http_basic_authentication.blank?
-
-      proc { |request| request.basic_auth(*http_basic_authentication) }
-    end
-
-    def sensitive_headers(headers)
-      DEFAULT_SENSITIVE_HEADERS | Array(headers).map { |header, _| header.to_s }
-    end
-
-    def parse_and_validate_url!(url)
-      uri = URI.parse(url)
-      raise InvalidUrlError, 'scheme must be http or https' unless uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
-      raise InvalidUrlError, 'missing host' if uri.host.blank?
-
-      uri
-    end
-
-    def normalize_method(method)
-      http_method = method.to_s.downcase.to_sym
-      return http_method if SsrfFilter::VERB_MAP.key?(http_method)
-
-      raise UnsupportedMethodError, "unsupported method: #{method}"
-    end
-
-    def normalize_content_type(value)
-      value.to_s.split(';').first&.strip&.downcase
-    end
-
-    def allowed_content_type?(value, prefixes, content_types)
-      mime = normalize_content_type(value)
-      return false if mime.blank?
-
-      Array(prefixes).any? { |prefix| mime.start_with?(prefix) } || Array(content_types).include?(mime)
-    end
   end
 end
-# rubocop:enable Metrics/ModuleLength

@@ -1,28 +1,28 @@
-# rubocop:disable Metrics/ClassLength
 class Twilio::IncomingMessageService
   include ::FileTypeHelper
+  include ::DownloadedFileTracking
+  include ::Twilio::AttachmentHandling
 
   pattr_initialize [:params!]
 
   def perform
-    @downloaded_files = []
-    return if twilio_channel.blank?
+    with_downloaded_files do
+      return if twilio_channel.blank?
 
-    set_contact
-    set_conversation
-    @message = @conversation.messages.build(
-      content: message_body,
-      account_id: @inbox.account_id,
-      inbox_id: @inbox.id,
-      message_type: :incoming,
-      sender: @contact,
-      source_id: params[:SmsSid]
-    )
-    attach_files
-    attach_location if location_message?
-    @message.save!
-  ensure
-    close_downloaded_files
+      set_contact
+      set_conversation
+      @message = @conversation.messages.build(
+        content: message_body,
+        account_id: @inbox.account_id,
+        inbox_id: @inbox.id,
+        message_type: :incoming,
+        sender: @contact,
+        source_id: params[:SmsSid]
+      )
+      attach_files
+      attach_location if location_message?
+      @message.save!
+    end
   end
 
   private
@@ -136,79 +136,6 @@ class Twilio::IncomingMessageService
     end
   end
 
-  def attach_files
-    num_media = params[:NumMedia].to_i
-    return if num_media.zero?
-
-    num_media.times do |i|
-      media_url = params[:"MediaUrl#{i}"]
-      attach_single_file(media_url) if media_url.present?
-    end
-  end
-
-  def attach_single_file(media_url)
-    download_attachment_file(media_url) do |attachment_file|
-      track_downloaded_file(attachment_file)
-      @message.attachments.new(
-        account_id: @message.account_id,
-        file_type: file_type(attachment_file.content_type),
-        file: {
-          io: attachment_file.tempfile,
-          filename: attachment_file.original_filename,
-          content_type: attachment_file.content_type
-        }
-      )
-    end
-  end
-
-  def download_attachment_file(media_url, &)
-    download_with_auth(media_url, &)
-  rescue SafeFetch::Error => e
-    handle_download_attachment_error(e, media_url, &)
-  end
-
-  def download_with_auth(media_url, &)
-    auth_credentials = if twilio_channel.api_key_sid.present?
-                         # When using api_key_sid, the auth token should be the api_secret_key
-                         [twilio_channel.api_key_sid, twilio_channel.auth_token]
-                       else
-                         # When using account_sid, the auth token is the account's auth token
-                         [twilio_channel.account_sid, twilio_channel.auth_token]
-                       end
-
-    SafeFetch.fetch(
-      media_url,
-      http_basic_authentication: auth_credentials,
-      allowed_content_types: Attachment::ACCEPTABLE_FILE_TYPES,
-      &
-    )
-  end
-
-  def handle_download_attachment_error(error, media_url, &)
-    Rails.logger.info "Error downloading attachment from Twilio: #{error.message}: Retrying without auth"
-    SafeFetch.fetch(
-      media_url,
-      allowed_content_types: Attachment::ACCEPTABLE_FILE_TYPES,
-      &
-    )
-  rescue SafeFetch::Error => e
-    Rails.logger.info "Error downloading attachment from Twilio: #{e.message}: Skipping"
-    nil
-  end
-
-  def location_message?
-    params[:MessageType] == 'location' && params[:Latitude].present? && params[:Longitude].present?
-  end
-
-  def attach_location
-    @message.attachments.new(
-      account_id: @message.account_id,
-      file_type: :location,
-      coordinates_lat: params[:Latitude].to_f,
-      coordinates_long: params[:Longitude].to_f
-    )
-  end
-
   def update_contact_name_if_needed
     return if params[:ProfileName].blank?
     return if @contact.name == params[:ProfileName]
@@ -222,13 +149,4 @@ class Twilio::IncomingMessageService
   def contact_name_matches_phone_number?
     @contact.name == phone_number || @contact.name == formatted_phone_number
   end
-
-  def track_downloaded_file(attachment_file)
-    @downloaded_files << attachment_file
-  end
-
-  def close_downloaded_files
-    Array(@downloaded_files).each(&:close!)
-  end
 end
-# rubocop:enable Metrics/ClassLength

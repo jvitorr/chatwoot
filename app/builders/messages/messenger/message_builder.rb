@@ -1,33 +1,55 @@
 class Messages::Messenger::MessageBuilder
   include ::FileTypeHelper
 
-  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def process_attachment(attachment)
     # This check handles very rare case if there are multiple files to attach with only one unsupported file
     return if unsupported_file_type?(attachment['type'])
 
+    attachment_obj, downloaded_file = prepare_attachment(attachment)
+    return unless attachment_obj
+
+    finalize_attachment(attachment_obj)
+  ensure
+    downloaded_file&.close!
+  end
+
+  def prepare_attachment(attachment)
     params = attachment_params(attachment)
     attachment_obj = @message.attachments.new(params.except(:remote_file_url))
-    downloaded_file = nil
-    if facebook_reel?(attachment)
-      attachment_obj.save!
-      update_facebook_reel_content(attachment)
-    elsif params[:remote_file_url]
-      downloaded_file = attach_file(attachment_obj, params[:remote_file_url])
-      return unless downloaded_file
+    downloaded_file = persist_attachment(attachment, attachment_obj, params[:remote_file_url])
+    return [nil, downloaded_file] if params[:remote_file_url].present? && downloaded_file.blank?
 
-      attachment_obj.save!
-    else
-      attachment_obj.save!
-    end
+    [attachment_obj, downloaded_file]
+  end
+
+  def persist_attachment(attachment, attachment_obj, remote_file_url)
+    return save_facebook_reel_attachment(attachment, attachment_obj) if facebook_reel?(attachment)
+    return save_remote_file_attachment(attachment_obj, remote_file_url) if remote_file_url.present?
+
+    attachment_obj.save!
+    nil
+  end
+
+  def save_facebook_reel_attachment(attachment, attachment_obj)
+    attachment_obj.save!
+    update_facebook_reel_content(attachment)
+    nil
+  end
+
+  def save_remote_file_attachment(attachment_obj, remote_file_url)
+    downloaded_file = attach_file(attachment_obj, remote_file_url)
+    return if downloaded_file.blank?
+
+    attachment_obj.save!
+    downloaded_file
+  end
+
+  def finalize_attachment(attachment_obj)
     fetch_story_link(attachment_obj) if attachment_obj.file_type == 'story_mention'
     fetch_ig_story_link(attachment_obj) if attachment_obj.file_type == 'ig_story'
     fetch_ig_post_link(attachment_obj) if attachment_obj.file_type == 'ig_post'
     update_attachment_file_type(attachment_obj)
-  ensure
-    downloaded_file&.close!
   end
-  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def attach_file(attachment, file_url)
     downloaded_file = nil

@@ -1,24 +1,24 @@
 class Sms::IncomingMessageService
   include ::FileTypeHelper
+  include ::DownloadedFileTracking
 
   pattr_initialize [:inbox!, :params!]
 
   def perform
-    @downloaded_files = []
-    set_contact
-    set_conversation
-    @message = @conversation.messages.create!(
-      content: params[:text],
-      account_id: @inbox.account_id,
-      inbox_id: @inbox.id,
-      message_type: :incoming,
-      sender: @contact,
-      source_id: params[:id]
-    )
-    attach_files
-    @message.save!
-  ensure
-    close_downloaded_files
+    with_downloaded_files do
+      set_contact
+      set_conversation
+      @message = @conversation.messages.create!(
+        content: params[:text],
+        account_id: @inbox.account_id,
+        inbox_id: @inbox.id,
+        message_type: :incoming,
+        sender: @contact,
+        source_id: params[:id]
+      )
+      attach_files
+      @message.save!
+    end
   end
 
   private
@@ -110,13 +110,5 @@ class Sms::IncomingMessageService
     )
   rescue SafeFetch::Error => e
     Rails.logger.info "Error downloading SMS attachment from #{media_url}: #{e.message}: Skipping"
-  end
-
-  def track_downloaded_file(attachment_file)
-    @downloaded_files << attachment_file
-  end
-
-  def close_downloaded_files
-    Array(@downloaded_files).each(&:close!)
   end
 end
