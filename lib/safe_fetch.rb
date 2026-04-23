@@ -51,6 +51,8 @@ module SafeFetch
                  method: :get,
                  body: nil,
                  max_bytes: nil,
+                 open_timeout: DEFAULT_OPEN_TIMEOUT,
+                 read_timeout: DEFAULT_READ_TIMEOUT,
                  headers: nil,
                  http_basic_authentication: nil,
                  allowed_content_type_prefixes: DEFAULT_ALLOWED_CONTENT_TYPE_PREFIXES,
@@ -69,6 +71,8 @@ module SafeFetch
       body,
       tempfile,
       effective_max_bytes,
+      open_timeout,
+      read_timeout,
       headers,
       http_basic_authentication,
       allowed_content_type_prefixes,
@@ -98,7 +102,7 @@ module SafeFetch
     private
 
     # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
-    def stream_to_tempfile(url, method, body, tempfile, max_bytes, headers, http_basic_authentication,
+    def stream_to_tempfile(url, method, body, tempfile, max_bytes, open_timeout, read_timeout, headers, http_basic_authentication,
                            allowed_content_type_prefixes, allowed_content_types, validate_content_type)
       response = nil
       bytes_written = 0
@@ -112,7 +116,7 @@ module SafeFetch
         body: body,
         request_proc: request_proc(http_basic_authentication),
         sensitive_headers: sensitive_headers(headers),
-        http_options: { open_timeout: DEFAULT_OPEN_TIMEOUT, read_timeout: DEFAULT_READ_TIMEOUT }
+        http_options: { open_timeout: open_timeout, read_timeout: read_timeout }
       ) do |res|
         response = res
         next unless res.is_a?(Net::HTTPSuccess)

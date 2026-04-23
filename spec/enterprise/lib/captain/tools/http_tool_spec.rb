@@ -1,4 +1,5 @@
 require 'rails_helper'
+require 'stringio'
 
 RSpec.describe Captain::Tools::HttpTool, type: :model do
   let(:account) { create(:account) }
@@ -44,6 +45,19 @@ RSpec.describe Captain::Tools::HttpTool, type: :model do
 
         expect(result).to eq('{"status": "success"}')
         expect(WebMock).to have_requested(:get, 'https://example.com/orders/123')
+      end
+
+      it 'preserves the previous timeout budget when fetching' do
+        allow(SafeFetch).to receive(:fetch) do |fetched_url, **options, &block|
+          expect(fetched_url).to eq('https://example.com/orders/123')
+          expect(options[:open_timeout]).to eq(10)
+          expect(options[:read_timeout]).to eq(30)
+          block.call(OpenStruct.new(tempfile: StringIO.new('{"status": "success"}')))
+        end
+
+        result = tool.perform(tool_context)
+
+        expect(result).to eq('{"status": "success"}')
       end
     end
 
