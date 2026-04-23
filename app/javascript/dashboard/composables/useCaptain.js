@@ -7,25 +7,11 @@ import {
 import { useAccount } from 'dashboard/composables/useAccount';
 import { useConfig } from 'dashboard/composables/useConfig';
 import { useCamelCase } from 'dashboard/composables/useTransformKeys';
-import { useAlert, useTrack } from 'dashboard/composables';
+import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
-import { OPEN_AI_EVENTS } from 'dashboard/helper/AnalyticsHelper/events';
 import TasksAPI from 'dashboard/api/captain/tasks';
-
-/**
- * Cleans and normalizes a list of labels.
- * @param {string} labels - A comma-separated string of labels.
- * @returns {string[]} An array of cleaned and unique labels.
- */
-const cleanLabels = labels => {
-  return labels
-    .toLowerCase()
-    .split(',')
-    .filter(label => label.trim())
-    .map(label => label.trim())
-    .filter((label, index, self) => self.indexOf(label) === index);
-};
+import { CAPTAIN_ERROR_TYPES } from 'dashboard/composables/captain/constants';
 
 export function useCaptain() {
   const store = useStore();
@@ -84,7 +70,10 @@ export function useCaptain() {
    * @param {Error} error - The error object from the API call.
    */
   const handleAPIError = error => {
-    if (error.name === 'AbortError' || error.name === 'CanceledError') {
+    if (
+      error.name === CAPTAIN_ERROR_TYPES.ABORT_ERROR ||
+      error.name === CAPTAIN_ERROR_TYPES.CANCELED_ERROR
+    ) {
       return;
     }
     const errorMessage =
@@ -93,21 +82,22 @@ export function useCaptain() {
     useAlert(errorMessage);
   };
 
-  // === Analytics ===
   /**
-   * Records analytics for AI-related events.
-   * @param {string} type - The type of event.
-   * @param {Object} payload - Additional data for the event.
-   * @returns {Promise<void>}
+   * Classifies API error types for downstream analytics.
+   * @param {Error} error
+   * @returns {string}
    */
-  const recordAnalytics = async (type, payload) => {
-    const event = OPEN_AI_EVENTS[type.toUpperCase()];
-    if (event) {
-      useTrack(event, {
-        type,
-        ...payload,
-      });
+  const getErrorType = error => {
+    if (
+      error.name === CAPTAIN_ERROR_TYPES.ABORT_ERROR ||
+      error.name === CAPTAIN_ERROR_TYPES.CANCELED_ERROR
+    ) {
+      return CAPTAIN_ERROR_TYPES.ABORTED;
     }
+    if (error.response?.status) {
+      return `${CAPTAIN_ERROR_TYPES.HTTP_PREFIX}${error.response.status}`;
+    }
+    return CAPTAIN_ERROR_TYPES.API_ERROR;
   };
 
   // === Task Methods ===
@@ -135,7 +125,7 @@ export function useCaptain() {
       return { message: generatedMessage, followUpContext };
     } catch (error) {
       handleAPIError(error);
-      return { message: '' };
+      return { message: '', errorType: getErrorType(error) };
     }
   };
 
@@ -157,7 +147,7 @@ export function useCaptain() {
       return { message: generatedMessage, followUpContext };
     } catch (error) {
       handleAPIError(error);
-      return { message: '' };
+      return { message: '', errorType: getErrorType(error) };
     }
   };
 
@@ -179,25 +169,7 @@ export function useCaptain() {
       return { message: generatedMessage, followUpContext };
     } catch (error) {
       handleAPIError(error);
-      return { message: '' };
-    }
-  };
-
-  /**
-   * Gets label suggestions for the current conversation.
-   * @returns {Promise<string[]>} An array of suggested labels.
-   */
-  const getLabelSuggestions = async () => {
-    if (!conversationId.value) return [];
-
-    try {
-      const result = await TasksAPI.labelSuggestion(conversationId.value);
-      const {
-        data: { message: labels },
-      } = result;
-      return cleanLabels(labels);
-    } catch {
-      return [];
+      return { message: '', errorType: getErrorType(error) };
     }
   };
 
@@ -221,7 +193,11 @@ export function useCaptain() {
       return { message: generatedMessage, followUpContext: updatedContext };
     } catch (error) {
       handleAPIError(error);
-      return { message: '', followUpContext };
+      return {
+        message: '',
+        followUpContext,
+        errorType: getErrorType(error),
+      };
     }
   };
 
@@ -264,11 +240,7 @@ export function useCaptain() {
     rewriteContent,
     summarizeConversation,
     getReplySuggestion,
-    getLabelSuggestions,
     followUp,
     processEvent,
-
-    // Analytics
-    recordAnalytics,
   };
 }
