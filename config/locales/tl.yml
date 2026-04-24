@@ -474,6 +474,12 @@ tl:
   agent_capacity_policy:
     inbox_already_assigned: 'Na-assign na ang inbox sa patakarang ito'
   portals:
+    articles:
+      captain_not_available: 'Translation requires Captain to be enabled for this account'
+      locale_not_available: 'Locale not available in this portal'
+      category_not_found: 'Category not found in this portal'
+      no_articles_found: 'No articles found to process'
+      invalid_status: 'Invalid status value'
     send_instructions:
       email_required: 'Kinakailangan ang email'
       invalid_email_format: 'Hindi wastong format ng email'
