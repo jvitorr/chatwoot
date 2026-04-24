@@ -38,7 +38,7 @@ pt_BR:
       reporting_timezone:
         invalid: não é um fuso horário válido
       support_email:
-        invalid: endereço de e-mail inválido
+        invalid: is not a valid email address
     validations:
       presence: não pode ficar em branco
     webhook:
