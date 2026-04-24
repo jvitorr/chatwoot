@@ -136,7 +136,7 @@ RSpec.describe Avatar::AvatarFromUrlJob do
         valid_url,
         max_bytes: Avatar::AvatarFromUrlJob::MAX_DOWNLOAD_SIZE,
         allowed_content_type_prefixes: [],
-        allowed_content_types: %w[image/jpeg image/png image/gif]
+        allowed_content_types: Avatar::AvatarFromUrlJob::ALLOWED_CONTENT_TYPES
       ).and_yield(
         SafeFetch::Result.new(
           tempfile: invalid_file,
