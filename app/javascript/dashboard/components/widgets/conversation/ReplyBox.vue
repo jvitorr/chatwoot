@@ -49,6 +49,7 @@ import {
   appendSignature,
   removeSignature,
   getEffectiveChannelType,
+  hasContentBeforeSignature,
 } from 'dashboard/helper/editorHelper';
 import { useCopilotReply } from 'dashboard/composables/useCopilotReply';
 import { useKbd } from 'dashboard/composables/utils/useKbd';
@@ -181,6 +182,9 @@ export default {
         return this.isOnPrivateNote;
       }
       return true;
+    },
+    hasMeaningfulEditorContent() {
+      return hasContentBeforeSignature(this.message);
     },
     isReplyRestricted() {
       return (
@@ -1238,6 +1242,7 @@ export default {
       :is-message-length-reaching-threshold="isMessageLengthReachingThreshold"
       :characters-remaining="charactersRemaining"
       :editor-content="message"
+      :has-content="hasMeaningfulEditorContent"
       @set-reply-mode="setReplyMode"
       @toggle-editor-size="toggleEditorSize"
       @toggle-copilot="copilot.toggleEditor"

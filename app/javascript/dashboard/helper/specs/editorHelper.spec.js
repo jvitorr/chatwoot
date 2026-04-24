@@ -1,26 +1,26 @@
+import { EditorState, EditorView } from '@chatwoot/prosemirror-schema';
+import { FORMATTING } from 'dashboard/constants/editor';
+import { Schema } from 'prosemirror-model';
 import {
-  findSignatureInBody,
   appendSignature,
-  removeSignature,
-  replaceSignature,
+  calculateMenuPosition,
   cleanSignature,
   extractTextFromMarkdown,
-  stripUnsupportedMarkdown,
-  insertAtCursor,
   findNodeToInsertImage,
-  setURLWithQueryAndSize,
+  findSignatureInBody,
   getContentNode,
   getFormattingForEditor,
-  getSelectionCoords,
   getMenuAnchor,
-  calculateMenuPosition,
-  stripUnsupportedFormatting,
+  getSelectionCoords,
+  hasContentBeforeSignature,
+  insertAtCursor,
+  removeSignature,
+  replaceSignature,
+  setURLWithQueryAndSize,
   stripInlineBase64Images,
+  stripUnsupportedFormatting,
+  stripUnsupportedMarkdown,
 } from '../editorHelper';
-import { FORMATTING } from 'dashboard/constants/editor';
-import { EditorState } from '@chatwoot/prosemirror-schema';
-import { EditorView } from '@chatwoot/prosemirror-schema';
-import { Schema } from 'prosemirror-model';
 
 // Define a basic ProseMirror schema
 const schema = new Schema({
@@ -365,6 +365,51 @@ describe('removeSignature with stripped signature', () => {
     const body = 'Hello\n\n--\n\nBest regards';
     const result = removeSignature(body, simpleSignature);
     expect(result).toBe('Hello\n\n');
+  });
+});
+
+describe('hasContentBeforeSignature', () => {
+  it('returns false for empty or falsy body', () => {
+    expect(hasContentBeforeSignature('')).toBe(false);
+    expect(hasContentBeforeSignature(null)).toBe(false);
+    expect(hasContentBeforeSignature(undefined)).toBe(false);
+  });
+
+  it('returns false for whitespace-only body', () => {
+    expect(hasContentBeforeSignature('   ')).toBe(false);
+    expect(hasContentBeforeSignature('\n\n')).toBe(false);
+    expect(hasContentBeforeSignature('\t\n \t')).toBe(false);
+  });
+
+  it('returns false when only signature follows the delimiter', () => {
+    expect(hasContentBeforeSignature('\n\n--\n\nBest,\nJohn')).toBe(false);
+    expect(hasContentBeforeSignature('--\n\nSincerely')).toBe(false);
+    expect(hasContentBeforeSignature('   \n--\n\nThanks')).toBe(false);
+  });
+
+  it('returns true when real content exists before the delimiter', () => {
+    expect(hasContentBeforeSignature('Hello\n\n--\n\nBest,\nJohn')).toBe(true);
+    expect(hasContentBeforeSignature('Hi')).toBe(true);
+    expect(hasContentBeforeSignature('Reply text\n--\nSig')).toBe(true);
+  });
+
+  it('returns true for content without any delimiter', () => {
+    expect(hasContentBeforeSignature('Just a plain reply')).toBe(true);
+    expect(hasContentBeforeSignature('Line 1\nLine 2')).toBe(true);
+  });
+
+  it('ignores extra delimiters inside the signature region', () => {
+    // Multiple "--" only the first acts as the split point
+    expect(hasContentBeforeSignature('Hello\n\n--\n\nBest\n--\nDept')).toBe(
+      true
+    );
+    expect(hasContentBeforeSignature('\n\n--\n\nBest\n--\nDept')).toBe(false);
+  });
+
+  it('does not mutate the input', () => {
+    const body = '  \n\nHello\n\n--\n\nBest  ';
+    hasContentBeforeSignature(body);
+    expect(body).toBe('  \n\nHello\n\n--\n\nBest  ');
   });
 });
 

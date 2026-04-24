@@ -98,6 +98,21 @@ export function stripUnsupportedMarkdown(
 export const SIGNATURE_DELIMITER = '--';
 
 /**
+ * Returns true if there is meaningful (non-whitespace) content before the
+ * signature delimiter. Anything after the first `--` is treated as signature
+ * and ignored, so stray newlines/spaces left behind by a signature toggle
+ * don't count as content.
+ *
+ * @param {string} body
+ * @returns {boolean}
+ */
+export function hasContentBeforeSignature(body) {
+  if (!body) return false;
+  const [beforeDelimiter] = body.split(SIGNATURE_DELIMITER);
+  return !!beforeDelimiter.trim();
+}
+
+/**
  * Parse and Serialize the markdown text to remove any extra spaces or new lines
  */
 export function cleanSignature(signature) {

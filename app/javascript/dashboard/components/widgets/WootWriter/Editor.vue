@@ -62,6 +62,7 @@ import {
   calculateMenuPosition,
   getEffectiveChannelType,
   stripUnsupportedFormatting,
+  hasContentBeforeSignature,
 } from 'dashboard/helper/editorHelper';
 import {
   hasPressedEnterAndNotCmdOrShift,
@@ -472,17 +473,6 @@ function removeSignature() {
   reloadState(content);
 }
 
-function toggleSignatureInEditor(signatureEnabled) {
-  // The toggleSignatureInEditor gets the new value from the
-  // watcher, this means that if the value is true, the signature
-  // is supposed to be added, else we remove it.
-  if (signatureEnabled) {
-    addSignature();
-  } else {
-    removeSignature();
-  }
-}
-
 function setToolbarPosition() {
   const editorRect = editorRoot.value.getBoundingClientRect();
   const rect = selectedImageNode.value.getBoundingClientRect();
@@ -553,6 +543,20 @@ function isEditorMouseFocusedOnAnImage() {
 function emitOnChange() {
   emit('input', contentFromEditor());
   emit('update:modelValue', contentFromEditor());
+}
+
+function toggleSignatureInEditor(signatureEnabled) {
+  // The toggleSignatureInEditor gets the new value from the
+  // watcher, this means that if the value is true, the signature
+  // is supposed to be added, else we remove it.
+  if (signatureEnabled) {
+    addSignature();
+  } else {
+    removeSignature();
+  }
+  // reloadState replaces editor state directly and bypasses dispatchTransaction,
+  // so v-model never hears about the signature change — sync it back explicitly.
+  emitOnChange();
 }
 
 function updateImgToolbarOnDelete() {
@@ -882,7 +886,7 @@ useEmitter(BUS_EVENTS.INSERT_INTO_RICH_EDITOR, insertContentIntoEditor);
       v-on-click-outside="handleClickOutside"
       :has-selection="isTextSelected"
       :is-editor-menu-popover="isEditorMenuPopover"
-      :editor-content="modelValue"
+      :has-content="hasContentBeforeSignature(modelValue)"
       :conversation-id="conversationId"
       :show-selection-menu="showSelectionMenu"
       :show-general-menu="false"
