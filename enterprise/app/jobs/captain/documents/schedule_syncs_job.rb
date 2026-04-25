@@ -3,6 +3,8 @@ class Captain::Documents::ScheduleSyncsJob < ApplicationJob
 
   def perform
     Account.joins(:captain_documents).distinct.find_each do |account|
+      next unless account.feature_enabled?('captain_document_auto_sync')
+
       interval = account.captain_document_sync_interval
       next unless interval && account.captain_document_auto_sync_enabled?
 
@@ -20,7 +22,7 @@ class Captain::Documents::ScheduleSyncsJob < ApplicationJob
       'last_sync_attempted_at IS NULL OR last_sync_attempted_at < ? OR (sync_status = ? AND last_sync_attempted_at < ?)',
       interval.ago, syncing, stale_cutoff
     ).find_each do |document|
-      next if document.pdf_document?
+      next unless document.syncable?
 
       Captain::Documents::PerformSyncJob.perform_later(document)
     end

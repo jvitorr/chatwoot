@@ -1,10 +1,19 @@
 class Captain::Tools::SimplePageCrawlService
-  attr_reader :external_link
+  attr_reader :external_link, :response
 
   def initialize(external_link)
     @external_link = external_link
-    @parser = Captain::Tools::HtmlPageParser.new(HTTParty.get(external_link).body)
+    @response = HTTParty.get(external_link)
+    @parser = Captain::Tools::HtmlPageParser.new(response.body)
     @doc = @parser.doc
+  end
+
+  def success?
+    response.success?
+  end
+
+  def status_code
+    response.code
   end
 
   def page_links
