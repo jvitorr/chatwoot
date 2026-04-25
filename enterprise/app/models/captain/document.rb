@@ -62,6 +62,7 @@ class Captain::Document < ApplicationRecord
 
   def pdf_document?
     return true if pdf_file.attached? && pdf_file.blob.content_type == 'application/pdf'
+    return true if external_link&.start_with?('PDF:')
 
     external_link&.ends_with?('.pdf')
   end
@@ -114,6 +115,10 @@ class Captain::Document < ApplicationRecord
     else
       external_link
     end
+  end
+
+  def to_llm_metadata
+    { document_id: id, assistant_id: assistant_id, external_link: external_link }
   end
 
   private

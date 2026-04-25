@@ -14,7 +14,7 @@ class Captain::Documents::ScheduleSyncsJob < ApplicationJob
 
   def enqueue_due_documents(account, interval)
     syncing = Captain::Document.sync_statuses[:syncing]
-    stale_cutoff = Captain::Documents::PerformSyncJob::STALE_LOCK_THRESHOLD.ago
+    stale_cutoff = Captain::Documents::PerformSyncJob::LOCK_TIMEOUT.ago
 
     account.captain_documents.where(status: :available).where(
       'last_sync_attempted_at IS NULL OR last_sync_attempted_at < ? OR (sync_status = ? AND last_sync_attempted_at < ?)',
