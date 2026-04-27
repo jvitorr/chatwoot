@@ -13,6 +13,9 @@ import {
   triggerCharacters,
 } from '@chatwoot/prosemirror-schema/src/mentions/plugin';
 import imagePastePlugin from '@chatwoot/prosemirror-schema/src/plugins/image';
+import embedPreviewPlugin from '@chatwoot/prosemirror-schema/src/plugins/embedPreview';
+import trailingParagraphPlugin from '@chatwoot/prosemirror-schema/src/plugins/trailingParagraph';
+import { embeds as markdownEmbeds } from 'dashboard/helper/markdownEmbeds';
 import { toggleMark } from 'prosemirror-commands';
 import { wrapInList } from 'prosemirror-schema-list';
 import { toggleBlockType } from '@chatwoot/prosemirror-schema/src/menu/common';
@@ -75,6 +78,8 @@ export default {
       plugins: [
         imagePastePlugin(this.handleImageUpload),
         this.createSlashPlugin(),
+        embedPreviewPlugin(markdownEmbeds),
+        trailingParagraphPlugin(),
       ],
       isTextSelected: false, // Tracks text selection and prevents unnecessary re-renders on mouse selection
       showSlashMenu: false,
@@ -471,5 +476,10 @@ export default {
   min-height: 5rem;
   max-height: 7.5rem;
   overflow: auto;
+}
+
+.ProseMirror .cw-embed-preview {
+  max-width: 36rem;
+  margin: 0.5rem 0 1rem;
 }
 </style>
