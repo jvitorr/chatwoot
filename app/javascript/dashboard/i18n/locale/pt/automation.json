@@ -182,6 +182,7 @@
       "BROWSER_LANGUAGE": "Idioma do navegador",
       "MAIL_SUBJECT": "Assunto do e-mail",
       "COUNTRY_NAME": "País",
+      "COMPANY_NAME": "Empresa",
       "REFERER_LINK": "Link de referência",
       "ASSIGNEE_NAME": "Atribuído",
       "TEAM_NAME": "Equipa",
