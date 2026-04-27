@@ -7,7 +7,7 @@ import { usePolicy } from 'dashboard/composables/usePolicy';
 import {
   isPdfDocument,
   formatDocumentLink,
-  getDocumentHost,
+  getDocumentDisplayPath,
 } from 'shared/helpers/documentHelper';
 
 import CardLayout from 'dashboard/components-next/CardLayout.vue';
@@ -123,7 +123,7 @@ const createdAtLabel = computed(() => dynamicTime(props.createdAt));
 const displayLink = computed(() =>
   isPdf.value
     ? formatDocumentLink(props.externalLink)
-    : getDocumentHost(props.externalLink)
+    : getDocumentDisplayPath(props.externalLink)
 );
 const linkIcon = computed(() =>
   isPdf.value ? 'i-ph-file-pdf' : 'i-ph-link-simple'

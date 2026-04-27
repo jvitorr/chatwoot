@@ -39,14 +39,29 @@ export const formatDocumentLink = externalLink => {
 };
 
 /**
- * Returns the bare hostname for display (no protocol, no www).
- * Falls back to formatDocumentLink output for malformed URLs and PDFs.
+ * Returns the last meaningful slug of a URL for compact display in document
+ * lists. Strips repeated path prefixes (e.g. "/hc/user-guide/articles/") and
+ * numeric ID prefixes that help-center systems prepend to slugs
+ * (e.g. "1677498364-understanding-contacts" → "understanding-contacts").
+ * Falls back to the bare hostname for root URLs and formatDocumentLink for
+ * malformed URLs and PDFs.
  */
-export const getDocumentHost = externalLink => {
+export const getDocumentDisplayPath = externalLink => {
   if (!externalLink) return '';
   if (isPdfDocument(externalLink)) return formatDocumentLink(externalLink);
   try {
-    return new URL(externalLink).hostname.replace(/^www\./i, '');
+    const { pathname, hostname } = new URL(externalLink);
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments.length === 0) return hostname.replace(/^www\./i, '');
+    const rawSegment = segments[segments.length - 1];
+    let lastSegment = rawSegment;
+    try {
+      lastSegment = decodeURIComponent(rawSegment);
+    } catch (e) {
+      // malformed percent-encoding — keep the raw form
+    }
+    const cleaned = lastSegment.replace(/^\d+[-_]/, '');
+    return cleaned || lastSegment;
   } catch (e) {
     return formatDocumentLink(externalLink);
   }
