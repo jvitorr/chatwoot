@@ -30,6 +30,8 @@ class RenameCompanyConditionKeyInAutomationRules < ActiveRecord::Migration[7.1]
   end
 
   def rename_company_attribute_key(conditions)
+    return conditions unless conditions.is_a?(Array)
+
     conditions.map do |condition|
       next condition unless standard_company_condition?(condition)
 
