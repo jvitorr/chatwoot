@@ -61,11 +61,7 @@ class DataImport::ContactManager
   def update_contact_attributes(params, contact)
     contact.name = params[:name] if params[:name].present?
     contact.additional_attributes ||= {}
-    # The rest of the app (contact model scope, serializer, dashboard UI) reads
-    # `additional_attributes[:company_name]`. Accept either `company` or
-    # `company_name` from the CSV so older import templates keep working.
-    company_name = params[:company_name].presence || params[:company].presence
-    contact.additional_attributes[:company_name] = company_name if company_name.present?
+    contact.additional_attributes[:company_name] = params[:company_name] if params[:company_name].present?
     contact.additional_attributes[:city] = params[:city] if params[:city].present?
     contact.assign_attributes(custom_attributes: contact.custom_attributes.merge(params.except(:identifier, :email, :name, :phone_number)))
   end
