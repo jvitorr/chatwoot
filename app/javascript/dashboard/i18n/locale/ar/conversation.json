@@ -72,7 +72,7 @@
     "CARD": {
       "SHOW_LABELS": "إظهار السمات",
       "HIDE_LABELS": "إخفاء السمات",
-      "LABELS_COUNT": "{count} labels"
+      "LABELS_COUNT": "{count} علامة"
     },
     "VOICE_CALL": {
       "INCOMING_CALL": "Incoming call",
