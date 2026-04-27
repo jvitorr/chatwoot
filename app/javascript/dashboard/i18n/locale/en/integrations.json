@@ -763,7 +763,14 @@
         "STALE": "Stale",
         "SYNCING": "Syncing",
         "SYNCED_RECENTLY": "Synced this week",
-        "CAPTION": "Web sources only. PDFs don't sync — they're processed once at upload."
+        "PLACEHOLDER": "-",
+        "CAPTION_AUTO": "Your web documents sync {frequency}. PDFs don't sync; they're processed once at upload.",
+        "CAPTION_MANUAL": "Auto-sync is not included on your plan. You can still sync web documents manually. PDFs don't sync; they're processed once at upload.",
+        "FREQUENCY": {
+          "WEEKLY": "weekly",
+          "DAILY": "daily",
+          "EVERY_6_HOURS": "every 6 hours"
+        }
       },
       "SYNC_STATUS": {
         "SYNCED": "Synced {time}",

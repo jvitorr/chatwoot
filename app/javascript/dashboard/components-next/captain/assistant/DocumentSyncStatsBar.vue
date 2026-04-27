@@ -15,6 +15,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  syncFrequencyLabel: {
+    type: String,
+    default: '',
+  },
 });
 
 const emit = defineEmits(['select']);
@@ -57,6 +61,20 @@ const items = computed(() => [
 ]);
 
 const showPlaceholder = computed(() => props.isLoading || !props.stats);
+
+const caption = computed(() => {
+  if (props.syncFrequencyLabel) {
+    return t('CAPTAIN.DOCUMENTS.STATS.CAPTION_AUTO', {
+      frequency: props.syncFrequencyLabel,
+    });
+  }
+
+  return t('CAPTAIN.DOCUMENTS.STATS.CAPTION_MANUAL');
+});
+
+const placeholderLabel = computed(() =>
+  t('CAPTAIN.DOCUMENTS.STATS.PLACEHOLDER')
+);
 
 const isActive = item =>
   (props.activeFilter ?? null) === (item.filterKey ?? null);
@@ -111,12 +129,12 @@ const handleSelect = item => {
         <span
           class="text-2xl font-medium leading-none tabular-nums text-n-slate-12"
         >
-          {{ showPlaceholder ? '—' : item.value }}
+          {{ showPlaceholder ? placeholderLabel : item.value }}
         </span>
       </button>
     </div>
     <p class="text-xs text-n-slate-10">
-      {{ $t('CAPTAIN.DOCUMENTS.STATS.CAPTION') }}
+      {{ caption }}
     </p>
   </div>
 </template>

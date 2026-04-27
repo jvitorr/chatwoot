@@ -11,6 +11,7 @@ import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useRoute } from 'vue-router';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import { useAccount } from 'dashboard/composables/useAccount';
+import { useConfig } from 'dashboard/composables/useConfig';
 import { useAlert } from 'dashboard/composables';
 import { usePolicy } from 'dashboard/composables/usePolicy';
 
@@ -40,7 +41,8 @@ const { checkPermissions } = usePolicy();
 const SYNC_POLL_INTERVAL_MS = 5000;
 const SYNC_POLL_MAX_ATTEMPTS = 24;
 
-const { isOnChatwootCloud } = useAccount();
+const { isOnChatwootCloud, currentAccount } = useAccount();
+const { isEnterprise, enterprisePlanName } = useConfig();
 const uiFlags = useMapGetter('captainDocuments/getUIFlags');
 const documents = useMapGetter('captainDocuments/getRecords');
 const isFetching = computed(() => uiFlags.value.fetchingList);
@@ -262,6 +264,35 @@ const hasNonPdfSelection = computed(() => {
   );
 });
 
+const planSyncFrequencyKey = computed(() => {
+  const planName =
+    currentAccount.value?.custom_attributes?.plan_name?.toLowerCase();
+
+  if (planName === 'startups') return 'WEEKLY';
+  if (planName === 'business') return 'DAILY';
+  if (planName === 'enterprise') return 'EVERY_6_HOURS';
+  if (!planName && isEnterprise && enterprisePlanName !== 'community') {
+    return 'EVERY_6_HOURS';
+  }
+
+  return null;
+});
+
+const syncFrequencyLabel = computed(() => {
+  const autoSyncEnabled =
+    currentAccount.value?.features?.[FEATURE_FLAGS.CAPTAIN_DOCUMENT_AUTO_SYNC];
+
+  if (!autoSyncEnabled || !planSyncFrequencyKey.value) return '';
+
+  if (planSyncFrequencyKey.value === 'WEEKLY') {
+    return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.WEEKLY');
+  }
+  if (planSyncFrequencyKey.value === 'DAILY') {
+    return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.DAILY');
+  }
+  return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.EVERY_6_HOURS');
+});
+
 watch(selectedAssistantId, () => {
   activeFilter.value = null;
   bulkSelectedIds.value = new Set();
@@ -325,6 +356,7 @@ onBeforeUnmount(() => {
       <DocumentSyncStatsBar
         :stats="stats"
         :active-filter="activeFilter"
+        :sync-frequency-label="syncFrequencyLabel"
         class="mb-5"
         @select="handleFilterSelect"
       />
