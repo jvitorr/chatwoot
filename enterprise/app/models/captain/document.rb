@@ -26,6 +26,7 @@
 #
 class Captain::Document < ApplicationRecord
   class LimitExceededError < StandardError; end
+  SYNC_STALE_TIMEOUT = 2.hours
   self.table_name = 'captain_documents'
 
   belongs_to :assistant, class_name: 'Captain::Assistant'
@@ -99,12 +100,12 @@ class Captain::Document < ApplicationRecord
     !pdf_document?
   end
 
-  def effective_sync_status
-    sync_status || (available? && syncable? ? 'synced' : nil)
+  def sync_stale?
+    sync_syncing? && (last_sync_attempted_at.blank? || last_sync_attempted_at < SYNC_STALE_TIMEOUT.ago)
   end
 
-  def effective_last_synced_at
-    last_synced_at || (available? && syncable? ? updated_at : nil)
+  def sync_in_progress?
+    sync_syncing? && !sync_stale?
   end
 
   private
