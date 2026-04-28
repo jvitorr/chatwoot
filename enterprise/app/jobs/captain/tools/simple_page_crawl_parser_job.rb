@@ -11,23 +11,40 @@ class Captain::Tools::SimplePageCrawlParserJob < ApplicationJob
     end
 
     crawler = Captain::Tools::SimplePageCrawlService.new(page_link)
-    raise "Failed to fetch page: #{page_link}" unless crawler.success?
-
-    page_title = crawler.page_title || ''
-    content = crawler.body_markdown || ''
-
     normalized_link = normalize_link(page_link)
     document = assistant.documents.find_or_initialize_by(external_link: normalized_link)
 
+    unless crawler.success?
+      mark_failed!(document, crawler.status_code) if document.persisted?
+      raise "Failed to fetch page: #{page_link}"
+    end
+
     document.update!(
       external_link: normalized_link,
-      name: page_title[0..254], content: content[0..14_999], status: :available
+      name: (crawler.page_title || '')[0..254], content: (crawler.body_markdown || '')[0..14_999], status: :available
     )
   rescue StandardError => e
     raise "Failed to parse data: #{page_link} #{e.message}"
   end
 
   private
+
+  def mark_failed!(document, status_code)
+    document.update!(
+      sync_status: :failed,
+      last_sync_error_code: http_error_code(status_code),
+      last_sync_attempted_at: Time.current
+    )
+  end
+
+  def http_error_code(status_code)
+    case status_code
+    when 404 then 'not_found'
+    when 401, 403 then 'access_denied'
+    when 408, 504 then 'timeout'
+    else 'fetch_failed'
+    end
+  end
 
   def normalize_link(raw_link)
     raw_link.to_s.delete_suffix('/')
