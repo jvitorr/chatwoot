@@ -31,20 +31,30 @@ RSpec.describe Captain::Documents::ScheduleSyncsJob, type: :job do
     end
   end
 
-  context 'when an available document has never been synced' do
-    it 'queues a sync for that document' do
+  context 'when an available document has legacy sync metadata' do
+    it 'leaves it alone when updated within the plan cadence' do
+      create(:captain_document, assistant: assistant, account: account, status: :available)
+      clear_enqueued_jobs
+
+      expect { described_class.new.perform }.not_to have_enqueued_job(Captain::Documents::PerformSyncJob)
+    end
+
+    it 'queues a sync when updated before the plan cadence' do
       document = create(:captain_document, assistant: assistant, account: account, status: :available)
+      document.update!(updated_at: 2.days.ago)
       clear_enqueued_jobs
 
       expect { described_class.new.perform }
         .to have_enqueued_job(Captain::Documents::PerformSyncJob).with(document)
     end
 
-    it 'marks the document as syncing before queueing' do
+    it 'marks the due document as syncing before queueing' do
       document = create(:captain_document, assistant: assistant, account: account, status: :available)
       clear_enqueued_jobs
 
       travel_to Time.zone.local(2026, 4, 27, 10, 0, 0) do
+        document.update!(updated_at: 2.days.ago)
+
         described_class.new.perform
 
         expect(document.reload).to have_attributes(
@@ -56,6 +66,7 @@ RSpec.describe Captain::Documents::ScheduleSyncsJob, type: :job do
 
     it 'does not queue the same document again while the reserved sync is fresh' do
       document = create(:captain_document, assistant: assistant, account: account, status: :available)
+      document.update!(updated_at: 2.days.ago)
       clear_enqueued_jobs
 
       expect { described_class.new.perform }
@@ -100,6 +111,7 @@ RSpec.describe Captain::Documents::ScheduleSyncsJob, type: :job do
 
       newest_document.update!(sync_status: :synced, last_sync_attempted_at: 2.days.ago)
       oldest_document.update!(sync_status: :synced, last_sync_attempted_at: 3.days.ago)
+      never_attempted_document.update!(updated_at: 4.days.ago)
       clear_enqueued_jobs
 
       expect { described_class.new.perform }

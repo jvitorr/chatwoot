@@ -141,6 +141,11 @@ RSpec.describe 'Api::V1::Accounts::Captain::Documents', type: :request do
         expect(json_response[:name]).to eq(document.name)
         expect(json_response[:external_link]).to eq(document.external_link)
       end
+
+      it 'returns updated_at as the sync baseline for legacy documents' do
+        expect(json_response[:sync_status]).to eq('synced')
+        expect(json_response[:last_synced_at]).to eq(document.updated_at.to_i)
+      end
     end
   end
 
