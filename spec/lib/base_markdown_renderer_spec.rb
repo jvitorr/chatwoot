@@ -12,26 +12,42 @@ describe BaseMarkdownRenderer do
     context 'when image has a numeric height' do
       it 'normalises bare integers to px' do
         markdown = '![Sample Title](https://example.com/image.jpg?cw_image_height=100)'
-        expect(render_markdown(markdown)).to include('<img src="https://example.com/image.jpg?cw_image_height=100" style="height: 100px;" />')
+        expect(render_markdown(markdown)).to include(
+          '<img src="https://example.com/image.jpg?cw_image_height=100" alt="Sample Title" style="height: 100px;" />'
+        )
       end
 
       it 'preserves explicit px values' do
         markdown = '![Sample Title](https://example.com/image.jpg?cw_image_height=24px)'
-        expect(render_markdown(markdown)).to include('<img src="https://example.com/image.jpg?cw_image_height=24px" style="height: 24px;" />')
+        expect(render_markdown(markdown)).to include(
+          '<img src="https://example.com/image.jpg?cw_image_height=24px" alt="Sample Title" style="height: 24px;" />'
+        )
       end
     end
 
     context 'when image has height=auto' do
       it 'renders the auto keyword' do
         markdown = '![Sample Title](https://example.com/image.jpg?cw_image_height=auto)'
-        expect(render_markdown(markdown)).to include('style="height: auto;"')
+        expect(render_markdown(markdown)).to include('alt="Sample Title" style="height: auto;"')
       end
     end
 
     context 'when image does not have a height' do
       it 'renders the img tag without the height attribute' do
         markdown = '![Sample Title](https://example.com/image.jpg)'
-        expect(render_markdown(markdown)).to include('<img src="https://example.com/image.jpg" />')
+        expect(render_markdown(markdown)).to include('<img src="https://example.com/image.jpg" alt="Sample Title" />')
+      end
+    end
+
+    context 'when image has alt text' do
+      it 'preserves the alt text in the rendered tag' do
+        markdown = '![A descriptive label](https://example.com/image.jpg)'
+        expect(render_markdown(markdown)).to include('alt="A descriptive label"')
+      end
+
+      it 'emits an empty alt when none is provided' do
+        markdown = '![](https://example.com/image.jpg)'
+        expect(render_markdown(markdown)).to include('<img src="https://example.com/image.jpg" alt="" />')
       end
     end
 
