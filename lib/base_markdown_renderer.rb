@@ -16,8 +16,12 @@ class BaseMarkdownRenderer < CommonMarker::HtmlRenderer
   end
 
   def extract_image_height(src)
-    query_params = parse_query_params(src)
-    query_params['cw_image_height']&.first
+    raw = parse_query_params(src)['cw_image_height']&.first
+
+    case raw
+    when 'auto' then 'auto'
+    when /\A(\d+)(?:px)?\z/ then "#{Regexp.last_match(1)}px"
+    end
   end
 
   def parse_query_params(url)
