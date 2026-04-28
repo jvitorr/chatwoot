@@ -15,6 +15,7 @@ RSpec.describe Captain::Tools::SimplePageCrawlParserJob, type: :job do
 
       allow(crawler).to receive(:page_title).and_return(page_title)
       allow(crawler).to receive(:body_markdown).and_return(content)
+      allow(crawler).to receive(:success?).and_return(true)
     end
 
     context 'when the page is successfully crawled' do
@@ -75,6 +76,19 @@ RSpec.describe Captain::Tools::SimplePageCrawlParserJob, type: :job do
         expect do
           described_class.perform_now(assistant_id: assistant.id, page_link: page_link)
         end.to raise_error("Failed to parse data: #{page_link} Failed to fetch")
+      end
+    end
+
+    context 'when the page fetch fails' do
+      before do
+        allow(crawler).to receive(:success?).and_return(false)
+      end
+
+      it 'raises an error without creating an available document' do
+        expect do
+          described_class.perform_now(assistant_id: assistant.id, page_link: page_link)
+        end.to raise_error("Failed to parse data: #{page_link} Failed to fetch page: #{page_link}")
+          .and not_change(assistant.documents, :count)
       end
     end
 

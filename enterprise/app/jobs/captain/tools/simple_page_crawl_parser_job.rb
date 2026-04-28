@@ -11,6 +11,7 @@ class Captain::Tools::SimplePageCrawlParserJob < ApplicationJob
     end
 
     crawler = Captain::Tools::SimplePageCrawlService.new(page_link)
+    raise "Failed to fetch page: #{page_link}" unless crawler.success?
 
     page_title = crawler.page_title || ''
     content = crawler.body_markdown || ''
