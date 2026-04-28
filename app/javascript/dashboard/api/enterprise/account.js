@@ -1,6 +1,5 @@
 /* global axios */
 import ApiClient from '../ApiClient';
-import { getBillingAttribution } from '../../helper/billingAttribution';
 
 class EnterpriseAccountAPI extends ApiClient {
   constructor() {
@@ -12,9 +11,7 @@ class EnterpriseAccountAPI extends ApiClient {
   }
 
   subscription() {
-    return axios.post(`${this.url}subscription`, {
-      billing_attribution: getBillingAttribution(),
-    });
+    return axios.post(`${this.url}subscription`);
   }
 
   getLimits() {

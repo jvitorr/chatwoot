@@ -9,7 +9,6 @@ describe Enterprise::Billing::CreateStripeCustomerService do
   let(:subscriptions_list) { double }
   let(:current_period_end) { 1_686_567_520 }
   let(:subscription_ends_on) { Time.zone.at(current_period_end).as_json }
-  let(:stripe_metadata) { { chatwoot_account_id: account.id } }
   let(:created_subscription) do
     {
       plan: { id: 'price_random_number', product: 'prod_random_number' },
@@ -21,10 +20,11 @@ describe Enterprise::Billing::CreateStripeCustomerService do
 
   describe '#perform' do
     before do
-      InstallationConfig.where(name: 'CHATWOOT_CLOUD_PLANS').first_or_initialize.update!(
-        value: [
+      create(
+        :installation_config,
+        { name: 'CHATWOOT_CLOUD_PLANS', value: [
           { 'name' => 'A Plan Name', 'product_id' => ['prod_hacker_random'], 'price_ids' => ['price_hacker_random'] }
-        ]
+        ] }
       )
     end
 
@@ -60,7 +60,7 @@ describe Enterprise::Billing::CreateStripeCustomerService do
       expect(account).not_to be_feature_enabled('help_center')
     end
 
-    it 'does not create a customer if customer id is present' do
+    it 'does not call stripe methods if customer id is present' do
       account.update!(custom_attributes: { stripe_customer_id: 'cus_random_number' })
       allow(subscriptions_list).to receive(:data).and_return([])
       allow(Stripe::Customer).to receive(:create)
@@ -72,7 +72,7 @@ describe Enterprise::Billing::CreateStripeCustomerService do
       expect(Stripe::Customer).not_to have_received(:create)
       expect(Stripe::Subscription)
         .to have_received(:create)
-        .with({ customer: 'cus_random_number', items: [{ price: 'price_hacker_random', quantity: 2 }], metadata: stripe_metadata })
+        .with({ customer: 'cus_random_number', items: [{ price: 'price_hacker_random', quantity: 2 }] })
 
       expect(account.reload.custom_attributes).to eq(
         {
@@ -95,10 +95,10 @@ describe Enterprise::Billing::CreateStripeCustomerService do
 
       create_stripe_customer_service.new(account: account).perform
 
-      expect(Stripe::Customer).to have_received(:create).with({ name: account.name, email: admin1.email, metadata: stripe_metadata })
+      expect(Stripe::Customer).to have_received(:create).with({ name: account.name, email: admin1.email })
       expect(Stripe::Subscription)
         .to have_received(:create)
-        .with({ customer: customer.id, items: [{ price: 'price_hacker_random', quantity: 2 }], metadata: stripe_metadata })
+        .with({ customer: customer.id, items: [{ price: 'price_hacker_random', quantity: 2 }] })
 
       expect(account.reload.custom_attributes).to eq(
         {
@@ -112,35 +112,15 @@ describe Enterprise::Billing::CreateStripeCustomerService do
         }.with_indifferent_access
       )
     end
-
-    it 'adds billing attribution to Stripe customer and subscription metadata' do
-      customer = double
-      billing_attribution = { 'visitor_id' => 'visitor-123', 'session_id' => 'session-123' }
-      expected_metadata = {
-        chatwoot_account_id: account.id,
-        datafast_visitor_id: 'visitor-123',
-        datafast_session_id: 'session-123'
-      }
-
-      allow(Stripe::Customer).to receive(:create).and_return(customer)
-      allow(customer).to receive(:id).and_return('cus_random_number')
-      allow(Stripe::Subscription).to receive(:create).and_return(created_subscription)
-
-      create_stripe_customer_service.new(account: account, billing_attribution: billing_attribution).perform
-
-      expect(Stripe::Customer).to have_received(:create).with({ name: account.name, email: admin1.email, metadata: expected_metadata })
-      expect(Stripe::Subscription)
-        .to have_received(:create)
-        .with({ customer: customer.id, items: [{ price: 'price_hacker_random', quantity: 2 }], metadata: expected_metadata })
-    end
   end
 
   describe 'when checking for existing subscriptions' do
     before do
-      InstallationConfig.where(name: 'CHATWOOT_CLOUD_PLANS').first_or_initialize.update!(
-        value: [
+      create(
+        :installation_config,
+        { name: 'CHATWOOT_CLOUD_PLANS', value: [
           { 'name' => 'A Plan Name', 'product_id' => ['prod_hacker_random'], 'price_ids' => ['price_hacker_random'] }
-        ]
+        ] }
       )
     end
 

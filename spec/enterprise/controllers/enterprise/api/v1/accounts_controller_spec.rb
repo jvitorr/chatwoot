@@ -35,19 +35,22 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
             post "/enterprise/api/v1/accounts/#{account.id}/subscription",
                  headers: admin.create_new_auth_token,
                  as: :json
-          end.to have_enqueued_job(Enterprise::CreateStripeCustomerJob).with(account, {})
+          end.to have_enqueued_job(Enterprise::CreateStripeCustomerJob).with(account)
           expect(account.reload.custom_attributes).to eq({ 'is_creating_customer': true }.with_indifferent_access)
         end
 
-        it 'passes billing attribution to the stripe customer job' do
-          expect do
-            post "/enterprise/api/v1/accounts/#{account.id}/subscription",
-                 headers: admin.create_new_auth_token,
-                 params: { billing_attribution: { visitor_id: 'visitor-123', session_id: 'session-123' } },
-                 as: :json
-          end.to have_enqueued_job(Enterprise::CreateStripeCustomerJob).with(
-            account,
-            { 'visitor_id' => 'visitor-123', 'session_id' => 'session-123' }
+        it 'stores billing attribution from request cookies' do
+          post "/enterprise/api/v1/accounts/#{account.id}/subscription",
+               headers: admin.create_new_auth_token.merge(
+                 'Cookie' => 'datafast_visitor_id=visitor-123; datafast_session_id=session-123'
+               ),
+               as: :json
+
+          expect(account.reload.custom_attributes['billing_attribution']).to eq(
+            {
+              'datafast_visitor_id' => 'visitor-123',
+              'datafast_session_id' => 'session-123'
+            }
           )
         end
 

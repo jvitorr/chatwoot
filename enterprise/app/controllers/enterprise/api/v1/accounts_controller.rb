@@ -6,8 +6,8 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
 
   def subscription
     if stripe_customer_id.blank? && @account.custom_attributes['is_creating_customer'].blank?
-      @account.update(custom_attributes: { is_creating_customer: true })
-      Enterprise::CreateStripeCustomerJob.perform_later(@account, billing_attribution)
+      @account.update(custom_attributes: subscription_custom_attributes)
+      Enterprise::CreateStripeCustomerJob.perform_later(@account)
     end
     head :no_content
   end
@@ -98,10 +98,17 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
     @account.custom_attributes['stripe_customer_id']
   end
 
-  def billing_attribution
-    return {} unless params[:billing_attribution].respond_to?(:permit)
+  def subscription_custom_attributes
+    attributes = @account.custom_attributes.merge('is_creating_customer' => true)
+    attributes['billing_attribution'] = billing_attribution if billing_attribution.present?
+    attributes
+  end
 
-    params[:billing_attribution].permit(:visitor_id, :session_id).to_h
+  def billing_attribution
+    {
+      'datafast_visitor_id' => cookies[:datafast_visitor_id],
+      'datafast_session_id' => cookies[:datafast_session_id]
+    }.compact
   end
 
   def mark_for_deletion

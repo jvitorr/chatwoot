@@ -1,5 +1,5 @@
 class Enterprise::Billing::CreateStripeCustomerService
-  pattr_initialize [:account!, { billing_attribution: {} }]
+  pattr_initialize [:account!]
 
   DEFAULT_QUANTITY = 2
 
@@ -7,11 +7,7 @@ class Enterprise::Billing::CreateStripeCustomerService
     return if existing_subscription?
 
     customer_id = prepare_customer_id
-    subscription = Stripe::Subscription.create(
-      customer: customer_id,
-      items: [{ price: price_id, quantity: default_quantity }],
-      metadata: stripe_metadata
-    )
+    subscription = Stripe::Subscription.create(customer: customer_id, items: [{ price: price_id, quantity: default_quantity }])
     custom_attributes = build_custom_attributes(customer_id, subscription)
     custom_attributes.except!('is_creating_customer')
 
@@ -24,23 +20,10 @@ class Enterprise::Billing::CreateStripeCustomerService
   def prepare_customer_id
     customer_id = account.custom_attributes['stripe_customer_id']
     if customer_id.blank?
-      customer = Stripe::Customer.create({ name: account.name, email: billing_email, metadata: stripe_metadata })
+      customer = Stripe::Customer.create({ name: account.name, email: billing_email })
       customer_id = customer.id
     end
     customer_id
-  end
-
-  def stripe_metadata
-    {
-      chatwoot_account_id: account.id
-    }.merge(provider_attribution_metadata)
-  end
-
-  def provider_attribution_metadata
-    {
-      datafast_visitor_id: billing_attribution[:visitor_id].presence || billing_attribution['visitor_id'].presence,
-      datafast_session_id: billing_attribution[:session_id].presence || billing_attribution['session_id'].presence
-    }.compact
   end
 
   def default_quantity
