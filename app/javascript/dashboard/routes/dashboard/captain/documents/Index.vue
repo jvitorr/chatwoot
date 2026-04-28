@@ -258,10 +258,25 @@ const handleBulkSync = async () => {
   if (!ids.length) return;
 
   try {
-    await store.dispatch('captainBulkActions/handleBulkSync', { ids });
-    useAlert(t('CAPTAIN.DOCUMENTS.BULK_SYNC.SUCCESS_MESSAGE'));
+    const response = await store.dispatch('captainBulkActions/handleBulkSync', {
+      ids,
+    });
+    const queuedCount = response?.count ?? response?.ids?.length ?? 0;
+    let message = t('CAPTAIN.DOCUMENTS.BULK_SYNC.ZERO_MESSAGE');
+
+    if (queuedCount === 1) {
+      message = t('CAPTAIN.DOCUMENTS.BULK_SYNC.SUCCESS_MESSAGE_ONE');
+    } else if (queuedCount > 1) {
+      message = t('CAPTAIN.DOCUMENTS.BULK_SYNC.SUCCESS_MESSAGE', {
+        count: queuedCount,
+      });
+    }
+
+    useAlert(message);
     bulkSelectedIds.value = new Set();
-    scheduleSyncPoll();
+    if (queuedCount > 0) {
+      scheduleSyncPoll();
+    }
   } catch (error) {
     useAlert(t('CAPTAIN.DOCUMENTS.BULK_SYNC.ERROR_MESSAGE'));
   }

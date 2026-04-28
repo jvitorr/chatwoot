@@ -751,7 +751,9 @@
         "ERROR_MESSAGE": "There was an error deleting the documents, please try again."
       },
       "BULK_SYNC": {
-        "SUCCESS_MESSAGE": "Sync queued for the selected documents",
+        "SUCCESS_MESSAGE_ONE": "Sync queued for 1 document",
+        "SUCCESS_MESSAGE": "Sync queued for {count} documents",
+        "ZERO_MESSAGE": "No documents marked for sync.",
         "ERROR_MESSAGE": "There was an error queuing the sync, please try again."
       },
       "SYNC": {

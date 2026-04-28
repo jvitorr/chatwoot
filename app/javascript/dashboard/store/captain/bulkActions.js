@@ -69,7 +69,9 @@ export default createStore({
         ids,
       });
 
-      await dispatch('captainDocuments/markSyncing', ids, { root: true });
+      await dispatch('captainDocuments/markSyncing', response.ids || [], {
+        root: true,
+      });
       return response;
     },
   }),
