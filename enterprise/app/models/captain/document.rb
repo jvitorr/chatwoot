@@ -99,6 +99,14 @@ class Captain::Document < ApplicationRecord
     !pdf_document?
   end
 
+  def effective_sync_status
+    sync_status || (available? && syncable? ? 'synced' : nil)
+  end
+
+  def effective_last_synced_at
+    last_synced_at || (available? && syncable? ? updated_at : nil)
+  end
+
   private
 
   def enqueue_crawl_job

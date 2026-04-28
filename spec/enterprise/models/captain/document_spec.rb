@@ -99,6 +99,22 @@ RSpec.describe Captain::Document, type: :model do
     end
   end
 
+  describe 'legacy sync metadata fallback' do
+    it 'treats available web documents without sync metadata as synced at updated_at' do
+      document = create(:captain_document, assistant: assistant, account: account, status: :available)
+
+      expect(document.effective_sync_status).to eq('synced')
+      expect(document.effective_last_synced_at.to_i).to eq(document.updated_at.to_i)
+    end
+
+    it 'does not apply the fallback to unavailable documents' do
+      document = create(:captain_document, assistant: assistant, account: account, status: :in_progress)
+
+      expect(document.effective_sync_status).to be_nil
+      expect(document.effective_last_synced_at).to be_nil
+    end
+  end
+
   describe 'response builder job callback' do
     before { clear_enqueued_jobs }
 
