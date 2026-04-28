@@ -26,13 +26,29 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
       end
 
       context 'when it is an admin' do
+        before do
+          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
+        end
+
         it 'enqueues a job' do
           expect do
             post "/enterprise/api/v1/accounts/#{account.id}/subscription",
                  headers: admin.create_new_auth_token,
                  as: :json
-          end.to have_enqueued_job(Enterprise::CreateStripeCustomerJob).with(account)
+          end.to have_enqueued_job(Enterprise::CreateStripeCustomerJob).with(account, {})
           expect(account.reload.custom_attributes).to eq({ 'is_creating_customer': true }.with_indifferent_access)
+        end
+
+        it 'passes billing attribution to the stripe customer job' do
+          expect do
+            post "/enterprise/api/v1/accounts/#{account.id}/subscription",
+                 headers: admin.create_new_auth_token,
+                 params: { billing_attribution: { visitor_id: 'visitor-123', session_id: 'session-123' } },
+                 as: :json
+          end.to have_enqueued_job(Enterprise::CreateStripeCustomerJob).with(
+            account,
+            { 'visitor_id' => 'visitor-123', 'session_id' => 'session-123' }
+          )
         end
 
         it 'does not enqueue a job if a job is already enqueued' do
@@ -79,6 +95,10 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
       end
 
       context 'when it is an admin and the stripe customer id is not present' do
+        before do
+          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
+        end
+
         it 'returns error' do
           post "/enterprise/api/v1/accounts/#{account.id}/checkout",
                headers: admin.create_new_auth_token,
@@ -91,6 +111,10 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
       end
 
       context 'when it is an admin and the stripe customer is present' do
+        before do
+          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
+        end
+
         it 'calls create session' do
           account.update!(custom_attributes: { 'stripe_customer_id': 'cus_random_string' })
 
@@ -122,8 +146,8 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
 
     context 'when it is an authenticated user' do
       before do
-        InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_create(value: 'cloud')
-        InstallationConfig.where(name: 'CHATWOOT_CLOUD_PLANS').first_or_create(value: [{ 'name': 'Hacker' }])
+        InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
+        InstallationConfig.where(name: 'CHATWOOT_CLOUD_PLANS').first_or_initialize.update!(value: [{ 'name' => 'Hacker' }])
       end
 
       context 'when it is an agent' do
@@ -158,8 +182,8 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
         before do
           create(:conversation, account: account)
           create(:channel_api, account: account)
-          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_create(value: 'cloud')
-          InstallationConfig.where(name: 'CHATWOOT_CLOUD_PLANS').first_or_create(value: [{ 'name': 'Hacker' }])
+          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
+          InstallationConfig.where(name: 'CHATWOOT_CLOUD_PLANS').first_or_initialize.update!(value: [{ 'name' => 'Hacker' }])
         end
 
         it 'returns the limits if the plan is default' do
@@ -252,10 +276,12 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
     let(:stripe_invoice) { Struct.new(:id).new('inv_test123') }
 
     before do
-      create(:installation_config, name: 'CHATWOOT_CLOUD_PLANS', value: [
-               { 'name' => 'Hacker', 'product_id' => ['prod_hacker'], 'price_ids' => ['price_hacker'] },
-               { 'name' => 'Business', 'product_id' => ['prod_business'], 'price_ids' => ['price_business'] }
-             ])
+      InstallationConfig.where(name: 'CHATWOOT_CLOUD_PLANS').first_or_initialize.update!(
+        value: [
+          { 'name' => 'Hacker', 'product_id' => ['prod_hacker'], 'price_ids' => ['price_hacker'] },
+          { 'name' => 'Business', 'product_id' => ['prod_business'], 'price_ids' => ['price_business'] }
+        ]
+      )
     end
 
     it 'returns unauthorized for unauthenticated user' do
@@ -273,6 +299,7 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
 
     context 'when it is an admin' do
       before do
+        InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
         account.update!(
           custom_attributes: { plan_name: 'Business', stripe_customer_id: stripe_customer_id },
           limits: { 'captain_responses' => 1000 }
@@ -341,7 +368,7 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
       context 'when deployment environment is not cloud' do
         before do
           # Set deployment environment to something other than cloud
-          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_create(value: 'self_hosted')
+          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'self_hosted')
         end
 
         it 'returns not found' do

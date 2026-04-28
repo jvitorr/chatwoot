@@ -42,7 +42,10 @@ describe('#enterpriseAccountAPI', () => {
     it('#subscription', () => {
       accountAPI.subscription();
       expect(axiosMock.post).toHaveBeenCalledWith(
-        '/enterprise/api/v1/subscription'
+        '/enterprise/api/v1/subscription',
+        {
+          billing_attribution: { visitor_id: undefined, session_id: undefined },
+        }
       );
     });
 

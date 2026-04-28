@@ -1,8 +1,8 @@
 class Enterprise::CreateStripeCustomerJob < ApplicationJob
   queue_as :default
 
-  def perform(account)
-    Enterprise::Billing::CreateStripeCustomerService.new(account: account).perform
+  def perform(account, billing_attribution = {})
+    Enterprise::Billing::CreateStripeCustomerService.new(account: account, billing_attribution: billing_attribution).perform
   ensure
     # Always clear the is_creating_customer flag, even if the job fails
     # This prevents users from getting stuck on the billing page
