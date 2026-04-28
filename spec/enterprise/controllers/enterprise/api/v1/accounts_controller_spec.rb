@@ -5,6 +5,10 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
   let!(:admin) { create(:user, account: account, role: :administrator) }
   let!(:agent) { create(:user, account: account, role: :agent) }
 
+  before do
+    allow(GlobalConfig).to receive(:get_value).and_call_original
+  end
+
   describe 'POST /enterprise/api/v1/accounts/{account.id}/subscription' do
     context 'when it is an unauthenticated user' do
       it 'returns unauthorized' do
@@ -26,10 +30,6 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
       end
 
       context 'when it is an admin' do
-        before do
-          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
-        end
-
         it 'enqueues a job' do
           expect do
             post "/enterprise/api/v1/accounts/#{account.id}/subscription",
@@ -96,7 +96,7 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
 
       context 'when it is an admin and the stripe customer id is not present' do
         before do
-          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
+          allow(GlobalConfig).to receive(:get_value).with('DEPLOYMENT_ENV').and_return('cloud')
         end
 
         it 'returns error' do
@@ -112,7 +112,7 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
 
       context 'when it is an admin and the stripe customer is present' do
         before do
-          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
+          allow(GlobalConfig).to receive(:get_value).with('DEPLOYMENT_ENV').and_return('cloud')
         end
 
         it 'calls create session' do
@@ -146,7 +146,7 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
 
     context 'when it is an authenticated user' do
       before do
-        InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
+        allow(GlobalConfig).to receive(:get_value).with('DEPLOYMENT_ENV').and_return('cloud')
         InstallationConfig.where(name: 'CHATWOOT_CLOUD_PLANS').first_or_initialize.update!(value: [{ 'name' => 'Hacker' }])
       end
 
@@ -182,7 +182,7 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
         before do
           create(:conversation, account: account)
           create(:channel_api, account: account)
-          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
+          allow(GlobalConfig).to receive(:get_value).with('DEPLOYMENT_ENV').and_return('cloud')
           InstallationConfig.where(name: 'CHATWOOT_CLOUD_PLANS').first_or_initialize.update!(value: [{ 'name' => 'Hacker' }])
         end
 
@@ -299,7 +299,6 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
 
     context 'when it is an admin' do
       before do
-        InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
         account.update!(
           custom_attributes: { plan_name: 'Business', stripe_customer_id: stripe_customer_id },
           limits: { 'captain_responses' => 1000 }
@@ -368,7 +367,7 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
       context 'when deployment environment is not cloud' do
         before do
           # Set deployment environment to something other than cloud
-          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'self_hosted')
+          allow(GlobalConfig).to receive(:get_value).with('DEPLOYMENT_ENV').and_return('self_hosted')
         end
 
         it 'returns not found' do
@@ -385,7 +384,7 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
       context 'when it is an admin' do
         before do
           # Create the installation config for cloud environment
-          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
+          allow(GlobalConfig).to receive(:get_value).with('DEPLOYMENT_ENV').and_return('cloud')
         end
 
         it 'marks the account for deletion when action is delete' do

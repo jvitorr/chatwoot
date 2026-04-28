@@ -33,7 +33,7 @@ class Enterprise::Billing::CreateStripeCustomerService
   def stripe_metadata
     {
       chatwoot_account_id: account.id
-    }.merge(provider_attribution_metadata.presence || existing_provider_attribution_metadata)
+    }.merge(provider_attribution_metadata)
   end
 
   def provider_attribution_metadata
@@ -41,17 +41,6 @@ class Enterprise::Billing::CreateStripeCustomerService
       datafast_visitor_id: billing_attribution[:visitor_id].presence || billing_attribution['visitor_id'].presence,
       datafast_session_id: billing_attribution[:session_id].presence || billing_attribution['session_id'].presence
     }.compact
-  end
-
-  def existing_provider_attribution_metadata
-    customer_id = account.custom_attributes['stripe_customer_id']
-    return {} if customer_id.blank?
-
-    customer = Stripe::Customer.retrieve(customer_id)
-    (customer.metadata || {}).to_h.symbolize_keys.slice(:datafast_visitor_id, :datafast_session_id)
-  rescue Stripe::StripeError => e
-    Rails.logger.warn("Failed to retrieve Stripe customer metadata for account #{account.id}: #{e.class} - #{e.message}")
-    {}
   end
 
   def default_quantity

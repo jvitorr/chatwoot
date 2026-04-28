@@ -64,7 +64,6 @@ describe Enterprise::Billing::CreateStripeCustomerService do
       account.update!(custom_attributes: { stripe_customer_id: 'cus_random_number' })
       allow(subscriptions_list).to receive(:data).and_return([])
       allow(Stripe::Customer).to receive(:create)
-      allow(Stripe::Customer).to receive(:retrieve).with('cus_random_number').and_return(instance_double(Stripe::Customer, metadata: {}))
       allow(Stripe::Subscription).to receive(:list).and_return(subscriptions_list)
       allow(Stripe::Subscription).to receive(:create).and_return(created_subscription)
 
@@ -133,34 +132,6 @@ describe Enterprise::Billing::CreateStripeCustomerService do
       expect(Stripe::Subscription)
         .to have_received(:create)
         .with({ customer: customer.id, items: [{ price: 'price_hacker_random', quantity: 2 }], metadata: expected_metadata })
-    end
-
-    it 'reuses provider attribution metadata from an existing Stripe customer when attribution is not provided' do
-      account.update!(custom_attributes: { stripe_customer_id: 'cus_random_number' })
-      expected_metadata = {
-        chatwoot_account_id: account.id,
-        datafast_visitor_id: 'visitor-123',
-        datafast_session_id: 'session-123'
-      }
-      stripe_customer = instance_double(
-        Stripe::Customer,
-        metadata: {
-          'datafast_visitor_id' => 'visitor-123',
-          'datafast_session_id' => 'session-123',
-          'ignored' => 'value'
-        }
-      )
-
-      allow(subscriptions_list).to receive(:data).and_return([])
-      allow(Stripe::Subscription).to receive(:list).and_return(subscriptions_list)
-      allow(Stripe::Customer).to receive(:retrieve).with('cus_random_number').and_return(stripe_customer)
-      allow(Stripe::Subscription).to receive(:create).and_return(created_subscription)
-
-      create_stripe_customer_service.new(account: account).perform
-
-      expect(Stripe::Subscription)
-        .to have_received(:create)
-        .with({ customer: 'cus_random_number', items: [{ price: 'price_hacker_random', quantity: 2 }], metadata: expected_metadata })
     end
   end
 
