@@ -2,6 +2,10 @@ class Messages::AudioTranscriptionService< Llm::LegacyBaseOpenAiService
   include Integrations::LlmInstrumentation
 
   WHISPER_MODEL = 'whisper-1'.freeze
+  # Whisper API rejects files larger than 25 MB. At Opus 48 kbps that is ~70
+  # minutes of audio — longer recordings keep the audio attachment but skip
+  # transcription rather than failing with an OpenAI 413.
+  WHISPER_BYTE_LIMIT = 25.megabytes
 
   attr_reader :attachment, :message, :account
 
@@ -15,6 +19,7 @@ class Messages::AudioTranscriptionService< Llm::LegacyBaseOpenAiService
   def perform
     return { error: 'Transcription limit exceeded' } unless can_transcribe?
     return { error: 'Message not found' } if message.blank?
+    return { error: 'Audio too large for Whisper' } if audio_too_large?
 
     transcriptions = transcribe_audio
     Rails.logger.info "Audio transcription successful: #{transcriptions}"
@@ -31,6 +36,13 @@ class Messages::AudioTranscriptionService< Llm::LegacyBaseOpenAiService
     return false if account.audio_transcriptions.blank?
 
     account.usage_limits[:captain][:responses][:current_available].positive?
+  end
+
+  def audio_too_large?
+    blob = attachment.file&.blob
+    return false unless blob
+
+    blob.byte_size > WHISPER_BYTE_LIMIT
   end
 
   def fetch_audio_file
@@ -63,11 +75,17 @@ class Messages::AudioTranscriptionService< Llm::LegacyBaseOpenAiService
     transcribed_text = nil
 
     File.open(temp_file_path, 'rb') do |file|
+      # temperature: 0.0 minimises Whisper's hallucinations on ambiguous or
+      # low-amplitude segments. The previous value (0.4) triggered spiraling
+      # repetitions like "Oh, dear. Oh, dear. Oh, dear." on silences and
+      # "No. No. No." / "Hello. Hello. Hello." on near-silent audio —
+      # well-documented Whisper behaviour at non-zero temperatures. 0.0
+      # matches OpenAI's own default recommendation.
       response = @client.audio.transcribe(
         parameters: {
           model: WHISPER_MODEL,
           file: file,
-          temperature: 0.4
+          temperature: 0.0
         }
       )
       transcribed_text = response['text']

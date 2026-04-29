@@ -1,4 +1,6 @@
 class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseService
+  prepend Whatsapp::Providers::WhatsappCloudCallMethods if defined?(Whatsapp::Providers::WhatsappCloudCallMethods)
+
   def send_message(phone_number, message)
     @message = message
 

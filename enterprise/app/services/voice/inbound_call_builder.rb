@@ -1,16 +1,24 @@
 class Voice::InboundCallBuilder
-  attr_reader :account, :inbox, :from_number, :call_sid
+  attr_reader :account, :inbox, :from_number, :call_sid, :provider, :extra_meta
 
-  def self.perform!(account:, inbox:, from_number:, call_sid:)
-    new(account: account, inbox: inbox, from_number: from_number, call_sid: call_sid).perform!
+  # `provider` defaults to :twilio for backward compatibility with the original
+  # Twilio-only call sites; WhatsApp pass :whatsapp + extra_meta carrying the
+  # SDP offer + ICE servers.
+  # rubocop:disable Metrics/ParameterLists
+  def self.perform!(account:, inbox:, from_number:, call_sid:, provider: :twilio, extra_meta: {})
+    new(account: account, inbox: inbox, from_number: from_number, call_sid: call_sid,
+        provider: provider, extra_meta: extra_meta).perform!
   end
 
-  def initialize(account:, inbox:, from_number:, call_sid:)
+  def initialize(account:, inbox:, from_number:, call_sid:, provider: :twilio, extra_meta: {})
     @account = account
     @inbox = inbox
     @from_number = from_number
     @call_sid = call_sid
+    @provider = provider.to_sym
+    @extra_meta = extra_meta || {}
   end
+  # rubocop:enable Metrics/ParameterLists
 
   def perform!
     existing = find_existing_call
@@ -26,7 +34,7 @@ class Voice::InboundCallBuilder
       call
     end
   rescue ActiveRecord::RecordNotUnique
-    # A concurrent Twilio retry won the create race; return what now exists.
+    # A concurrent provider retry won the create race; return what now exists.
     find_existing_call || raise
   end
 
@@ -34,7 +42,7 @@ class Voice::InboundCallBuilder
 
   def find_existing_call
     Call.where(account_id: account.id, inbox_id: inbox.id)
-        .find_by(provider: :twilio, provider_call_id: call_sid)
+        .find_by(provider: provider, provider_call_id: call_sid)
   end
 
   def ensure_contact!
@@ -76,13 +84,14 @@ class Voice::InboundCallBuilder
       inbox: inbox,
       conversation: conversation,
       contact: contact,
-      provider: :twilio,
+      provider: provider,
       direction: :incoming,
       status: 'ringing',
       provider_call_id: call_sid,
-      meta: { 'initiated_at' => Time.zone.now.to_i }
+      meta: { 'initiated_at' => Time.zone.now.to_i }.merge(extra_meta.stringify_keys)
     )
-    call.update!(conference_sid: Voice::Conference::Name.for(call))
+    # `conference_sid` is a Twilio bridging concept; WhatsApp goes browser↔Meta.
+    call.update!(conference_sid: Voice::Conference::Name.for(call)) if call.twilio?
     call
   end
 end

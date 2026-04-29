@@ -20,11 +20,17 @@ const FloatingCallWidget = defineAsyncComponent(
   () => import('dashboard/components/widgets/FloatingCallWidget.vue')
 );
 
+const WhatsappCallWidget = defineAsyncComponent(
+  () => import('dashboard/components/widgets/WhatsappCallWidget.vue')
+);
+
 import CopilotLauncher from 'dashboard/components-next/copilot/CopilotLauncher.vue';
 import CopilotContainer from 'dashboard/components/copilot/CopilotContainer.vue';
 
 import MobileSidebarLauncher from 'dashboard/components-next/sidebar/MobileSidebarLauncher.vue';
 import { useCallsStore } from 'dashboard/stores/calls';
+import { useVoiceCallsStore } from 'dashboard/stores/voiceCalls';
+import { useCallReconnection } from 'dashboard/composables/useCallReconnection';
 
 export default {
   components: {
@@ -36,6 +42,7 @@ export default {
     CopilotLauncher,
     CopilotContainer,
     FloatingCallWidget,
+    WhatsappCallWidget,
     MobileSidebarLauncher,
   },
   setup() {
@@ -44,6 +51,13 @@ export default {
     const { accountId } = useAccount();
     const { width: windowWidth } = useWindowSize();
     const callsStore = useCallsStore();
+    const voiceCallsStore = useVoiceCallsStore();
+
+    // Detect a stale active WhatsApp call left over from a previous tab /
+    // refresh and terminate it. Direct browser↔Meta WebRTC has no rejoin
+    // path because Meta caches our DTLS fingerprint; the only safe action
+    // is to clean up server-side state and tell the agent the call dropped.
+    useCallReconnection();
 
     return {
       uiSettings,
@@ -51,8 +65,15 @@ export default {
       accountId,
       upgradePageRef,
       windowWidth,
+      // Twilio voice still flows through useCallSession + the calls store.
       hasActiveCall: computed(() => callsStore.hasActiveCall),
       hasIncomingCall: computed(() => callsStore.hasIncomingCall),
+      // WhatsApp direct-browser calls flow through useVoiceCallSession + the
+      // voiceCalls store. Both widgets can mount simultaneously; only one
+      // ever has state at a time because they listen to disjoint cable
+      // events.
+      hasActiveVoiceCall: computed(() => voiceCallsStore.hasActiveCall),
+      hasIncomingVoiceCall: computed(() => voiceCallsStore.hasIncomingCall),
     };
   },
   data() {
@@ -163,6 +184,7 @@ export default {
         />
         <CopilotContainer />
         <FloatingCallWidget v-if="hasActiveCall || hasIncomingCall" />
+        <WhatsappCallWidget v-if="hasActiveVoiceCall || hasIncomingVoiceCall" />
       </template>
       <AddAccountModal
         :show="showCreateAccountModal"

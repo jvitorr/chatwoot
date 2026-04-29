@@ -3,10 +3,10 @@ import { computed, ref, useAttrs } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
-import { isVoiceCallEnabled } from 'dashboard/helper/inbox';
+import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import { useAlert } from 'dashboard/composables';
 import { frontendURL, conversationUrl } from 'dashboard/helper/URLHelper';
-import { useCallsStore } from 'dashboard/stores/calls';
+import { useVoiceCallsStore } from 'dashboard/stores/voiceCalls';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
@@ -34,11 +34,12 @@ const inboxesList = useMapGetter('inboxes/getInboxes');
 const contactsUiFlags = useMapGetter('contacts/getUIFlags');
 
 const voiceInboxes = computed(() =>
-  (inboxesList.value || []).filter(isVoiceCallEnabled)
+  (inboxesList.value || []).filter(
+    inbox => inbox.channel_type === INBOX_TYPES.VOICE
+  )
 );
 const hasVoiceInboxes = computed(() => voiceInboxes.value.length > 0);
 
-// Unified behavior: hide when no phone
 const shouldRender = computed(() => hasVoiceInboxes.value && !!props.phone);
 
 const isInitiatingCall = computed(() => {
@@ -66,15 +67,16 @@ const startCall = async inboxId => {
       contactId: props.contactId,
       inboxId,
     });
-    const { call_sid: callSid, conversation_id: conversationId } = response;
 
-    // Add call to store immediately so widget shows
-    const callsStore = useCallsStore();
-    callsStore.addCall({
-      callSid,
-      conversationId,
-      inboxId,
-      callDirection: 'outbound',
+    const voiceCallsStore = useVoiceCallsStore();
+    voiceCallsStore.setActiveCall({
+      id: response.call_id,
+      callId: response.call_sid,
+      provider: response.provider || 'twilio',
+      direction: 'outbound',
+      status: 'ringing',
+      conversationId: response.conversation_id,
+      caller: null,
     });
 
     useAlert(t('CONTACT_PANEL.CALL_INITIATED'));

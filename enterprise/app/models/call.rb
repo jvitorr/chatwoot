@@ -18,15 +18,18 @@
 #  contact_id           :bigint           not null
 #  conversation_id      :bigint           not null
 #  inbox_id             :bigint           not null
+#  media_session_id     :string
 #  message_id           :bigint
 #  provider_call_id     :string           not null
 #
 # Indexes
 #
-#  index_calls_on_account_id_and_contact_id       (account_id,contact_id)
-#  index_calls_on_account_id_and_conversation_id  (account_id,conversation_id)
-#  index_calls_on_message_id                      (message_id)
-#  index_calls_on_provider_and_provider_call_id   (provider,provider_call_id) UNIQUE
+#  index_calls_on_accepted_by_agent_id_and_status  (accepted_by_agent_id,status)
+#  index_calls_on_account_id_and_contact_id        (account_id,contact_id)
+#  index_calls_on_account_id_and_conversation_id   (account_id,conversation_id)
+#  index_calls_on_media_session_id                 (media_session_id) UNIQUE
+#  index_calls_on_message_id                       (message_id)
+#  index_calls_on_provider_and_provider_call_id    (provider,provider_call_id) UNIQUE
 #
 class Call < ApplicationRecord
   # All valid call statuses
@@ -56,6 +59,7 @@ class Call < ApplicationRecord
   validates :status, presence: true, inclusion: { in: STATUSES }
 
   scope :active, -> { where.not(status: TERMINAL_STATUSES) }
+  scope :active_for_agent, ->(agent_id) { active.where(accepted_by_agent_id: agent_id) }
   scope :by_conference_sid, ->(sid) { where("meta->>'conference_sid' = ?", sid) }
 
   META_ACCESSORS.each do |key|
@@ -67,8 +71,31 @@ class Call < ApplicationRecord
     find_by(provider: provider, provider_call_id: sid)
   end
 
+  # Browser ↔ Meta WebRTC needs at least one STUN server to discover its
+  # public srflx candidate. Configurable via VOICE_CALL_STUN_URLS (comma-
+  # separated). TURN can be added by appending turn:user@host?credential=...
+  # entries to the same env var.
+  def self.default_ice_servers
+    urls = ENV.fetch('VOICE_CALL_STUN_URLS', 'stun:stun.l.google.com:19302').split(',').map(&:strip).reject(&:blank?)
+    [{ urls: urls }]
+  end
+
   def display_direction
     DISPLAY_DIRECTION[direction]
+  end
+
+  alias direction_label display_direction
+
+  def ringing?
+    status == 'ringing'
+  end
+
+  def in_progress?
+    status == 'in_progress'
+  end
+
+  def terminal?
+    TERMINAL_STATUSES.include?(status)
   end
 
   def display_status

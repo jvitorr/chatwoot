@@ -303,6 +303,19 @@ Rails.application.routes.draw do
             resource :authorization, only: [:create]
           end
 
+          resources :voice_calls, only: [:show] do
+            collection do
+              get :active
+              post :initiate
+            end
+            member do
+              post :accept
+              post :reject
+              post :terminate
+              post :upload_recording
+            end
+          end
+
           resources :webhooks, only: [:index, :create, :update, :destroy]
           namespace :integrations do
             resources :apps, only: [:index, :show]

@@ -4,6 +4,8 @@ import DashboardAudioNotificationHelper from './AudioAlerts/DashboardAudioNotifi
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 import { emitter } from 'shared/helpers/mitt';
 import { useImpersonation } from 'dashboard/composables/useImpersonation';
+import { useVoiceCallsStore } from 'dashboard/stores/voiceCalls';
+import { applyOutboundAnswer } from 'dashboard/composables/useVoiceCallSession';
 
 const { isImpersonating } = useImpersonation();
 
@@ -33,8 +35,12 @@ class ActionCableConnector extends BaseActionCableConnector {
       'conversation.read': this.onConversationRead,
       'conversation.updated': this.onConversationUpdated,
       'account.cache_invalidated': this.onCacheInvalidate,
-      'account.enrichment_completed': this.onEnrichmentCompleted,
       'copilot.message.created': this.onCopilotMessageCreated,
+      'voice_call.incoming': this.onVoiceCallIncoming,
+      'voice_call.accepted': this.onVoiceCallAccepted,
+      'voice_call.ended': this.onVoiceCallEnded,
+      'voice_call.outbound_connected': this.onVoiceCallOutboundConnected,
+      'voice_call.permission_granted': this.onVoiceCallPermissionGranted,
     };
   }
 
@@ -195,15 +201,74 @@ class ActionCableConnector extends BaseActionCableConnector {
     this.app.$store.dispatch('copilotMessages/upsert', data);
   };
 
-  onEnrichmentCompleted = () => {
-    this.app.$store.dispatch('accounts/get', { silent: true });
-  };
-
   onCacheInvalidate = data => {
     const keys = data.cache_keys;
     this.app.$store.dispatch('labels/revalidate', { newKey: keys.label });
     this.app.$store.dispatch('inboxes/revalidate', { newKey: keys.inbox });
     this.app.$store.dispatch('teams/revalidate', { newKey: keys.team });
+  };
+
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallIncoming = data => {
+    const voiceCallsStore = useVoiceCallsStore();
+    voiceCallsStore.addIncomingCall({
+      id: data.id,
+      callId: data.call_id,
+      provider: data.provider,
+      direction: data.direction,
+      inboxId: data.inbox_id,
+      conversationId: data.conversation_id,
+      caller: data.caller,
+      // Stash Meta's SDP offer + ICE servers on the incoming-call entry so
+      // the bubble's Accept button can build the WebRTC answer locally
+      // without re-fetching from /show.
+      sdpOffer: data.sdp_offer,
+      iceServers: data.ice_servers,
+    });
+  };
+
+  onVoiceCallAccepted = data => {
+    const voiceCallsStore = useVoiceCallsStore();
+    const currentUserId = this.app.$store.getters.getCurrentUserID;
+    if (data.accepted_by_agent_id !== currentUserId) {
+      voiceCallsStore.handleCallAcceptedByOther(data.call_id);
+    }
+  };
+
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallEnded = data => {
+    const voiceCallsStore = useVoiceCallsStore();
+    voiceCallsStore.handleCallEnded(data.call_id);
+  };
+
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallOutboundConnected = data => {
+    // Outbound WhatsApp direct mode: Meta delivers its SDP answer when the
+    // contact picks up. Apply it to the existing local RTCPeerConnection so
+    // DTLS can complete browser ↔ Meta directly. The PC was created earlier
+    // by prepareOutboundOffer when the agent clicked the call button.
+    const voiceCallsStore = useVoiceCallsStore();
+    const activeCall = voiceCallsStore.activeCall;
+    if (!activeCall || activeCall.callId !== data.call_id) return;
+
+    if (!data.sdp_answer) return;
+
+    applyOutboundAnswer(data.sdp_answer)
+      .then(() => {
+        voiceCallsStore.markActiveCallConnected();
+        emitter.emit('voice_call:agent_webrtc_connected');
+      })
+      .catch(err => {
+        // eslint-disable-next-line no-console
+        console.error('[Voice Call] Failed to apply outbound SDP answer:', err);
+      });
+  };
+
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallPermissionGranted = data => {
+    emitter.emit('voice_call:permission_granted', {
+      contactName: data.contact_name,
+    });
   };
 }
 

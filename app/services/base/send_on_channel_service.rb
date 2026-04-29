@@ -46,7 +46,10 @@ class Base::SendOnChannelService
   def invalid_message?
     # private notes aren't send to the channels
     # we should also avoid the case of message loops, when outgoing messages are created from channel
-    message.private? || outgoing_message_originated_from_channel?
+    # voice_call bubbles are in-app system events for the call lifecycle —
+    # dispatching them to the channel would deliver "WhatsApp Call" as a
+    # text message to the contact every time the agent placed a call.
+    message.private? || outgoing_message_originated_from_channel? || message.content_type == 'voice_call'
   end
 
   def validate_target_channel
