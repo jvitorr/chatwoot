@@ -7,6 +7,11 @@ class WidgetCreationService
   end
 
   def perform
+    if website_url.blank?
+      Rails.logger.info "[WidgetCreation] Skipping for account #{@account.id}: no website_url available"
+      return nil
+    end
+
     ActiveRecord::Base.transaction do
       channel = build_channel
       inbox = @account.inboxes.create!(name: @account.name, channel: channel)
@@ -34,7 +39,7 @@ class WidgetCreationService
   end
 
   def website_url
-    @account.domain.presence || brand_info[:domain].to_s
+    @account.domain.presence || brand_info[:domain].presence
   end
 
   def widget_color
