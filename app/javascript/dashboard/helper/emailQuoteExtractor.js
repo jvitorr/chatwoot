@@ -91,6 +91,17 @@ const cutBlockAtMarker = (block, marker) => {
   if (!block.childNodes.length) block.remove();
 };
 
+// Walk up to the nearest enclosing `<blockquote>` (including `block` itself).
+// Returns null when there is none below `root`.
+const findEnclosingBlockquote = (block, root) => {
+  let cur = block;
+  while (cur && cur !== root) {
+    if (cur.tagName === 'BLOCKQUOTE') return cur;
+    cur = cur.parentElement;
+  }
+  return null;
+};
+
 // Walk up while `block` is the first substantive child of its parent.
 // Promotes the cut to the wrapper, so a divider `<div>` plus the body
 // siblings AFTER it strip together.
@@ -151,13 +162,28 @@ const apply = root => {
   // 3. Trailing <blockquote> as the last top-level child.
   if (root.lastElementChild?.matches?.('blockquote'))
     root.lastElementChild.remove();
-  // 4. Soft headers — same hard-cut, but walk up to the wrapper first.
-  findBlocks(root, isSoftHeader).forEach(b =>
-    cutBlockAtMarker(
-      expandToWrapper(b, root),
-      t => HEADER_LINE.test(t) || ATTRIBUTION.test(t)
-    )
-  );
+  // 4. Soft headers. Three sub-cases:
+  //   (a) match sits inside a <blockquote> — remove the whole blockquote
+  //       (it wraps the entire quote: attribution + body). Apple Mail.
+  //   (b) match has >= 2 header lines (real Outlook attribution shape) —
+  //       hard-cut at the wrapper level so the body siblings go too.
+  //   (c) just an "On … wrote:" attribution → develop-style remove the
+  //       block, so a user reply sitting at root level isn't eaten.
+  findBlocks(root, isSoftHeader).forEach(block => {
+    const enclosingBq = findEnclosingBlockquote(block, root);
+    if (enclosingBq) {
+      enclosingBq.remove();
+      return;
+    }
+    if (countHeaderLines(blockText(block)) >= 2) {
+      cutBlockAtMarker(
+        expandToWrapper(block, root),
+        t => HEADER_LINE.test(t) || ATTRIBUTION.test(t)
+      );
+      return;
+    }
+    block.remove();
+  });
   // 5. Top-level RFC `>` / header tail.
   const start = findTopLevelTailStart(root);
   if (start !== -1) [...root.childNodes].slice(start).forEach(n => n.remove());

@@ -310,6 +310,54 @@ describe('EmailQuoteExtractor', () => {
       expect(cleaned).not.toContain('From: Sam');
     });
 
+    it('strips Apple-Mail blockquote (attribution + body inside one <blockquote type="cite">)', () => {
+      const html =
+        '<div>Sounds good, see you Friday.</div>' +
+        '<div><br><blockquote type="cite">' +
+        '<div>On Apr 6, 2026, at 11:26 AM, Sam &lt;sam@example.test&gt; wrote:</div>' +
+        '<br><div><div>Hi Pat,</div><div>Locking the Friday slot.</div><div>Sam</div></div>' +
+        '</blockquote></div>';
+      const c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
+      expect(c.textContent).toContain('Sounds good');
+      expect(c.textContent).not.toContain('On Apr 6, 2026');
+      expect(c.textContent).not.toContain('Hi Pat');
+      expect(c.textContent).not.toContain('Locking the Friday slot');
+    });
+
+    it('strips flat Outlook attribution + body (multi-line From/Sent/To/Subject)', () => {
+      const html =
+        '<p>Confirming I received this — will review tomorrow.</p>' +
+        '<p>Thanks,<br>Pat</p>' +
+        '<p>From: Sam &lt;sam@example.test&gt;<br>Sent: Wednesday, December 4, 2024 5:15 PM<br>To: Pat &lt;pat@example.test&gt;<br>Subject: Quotation</p>' +
+        '<p>Hi Pat,<br>Quotation attached. Let me know if you need changes.<br>Sam</p>';
+      const c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
+      expect(c.textContent).toContain('Confirming I received this');
+      expect(c.textContent).toContain('Thanks,');
+      expect(c.textContent).not.toContain('From: Sam');
+      expect(c.textContent).not.toContain('Quotation attached');
+    });
+
+    // Inline reply where a soft-header `<blockquote>` is followed by the
+    // user's actual reply at the SAME level. The hard-cut for soft headers
+    // would otherwise eat the reply.
+    it('preserves user reply that follows a soft-header <blockquote>', () => {
+      const html =
+        '<blockquote>On Mon, Sep 22, Sam wrote:<br>Original quoted line.</blockquote><p>My actual reply.</p>';
+      const c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
+      expect(c.textContent).toContain('My actual reply');
+    });
+
+    it('preserves user reply that follows a wrapper div containing the soft-header block', () => {
+      const html =
+        '<div><blockquote>On Mon, Sam wrote:</blockquote></div><p>My reply outside the wrapper.</p>';
+      const c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
+      expect(c.textContent).toContain('My reply outside the wrapper');
+    });
+
     it('preserves reply when the From-header sits inside a deep wrapper (Outlook WordSection1)', () => {
       const html = `
         <div class="WordSection1">
