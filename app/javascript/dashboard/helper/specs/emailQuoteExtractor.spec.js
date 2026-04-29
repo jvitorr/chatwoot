@@ -310,6 +310,19 @@ describe('EmailQuoteExtractor', () => {
       expect(cleaned).not.toContain('From: Sam');
     });
 
+    it('preserves a bottom-posted reply that follows a header block at root', () => {
+      const html =
+        '<p>From: Sam &lt;sam@example.test&gt;<br>Sent: Wednesday, December 4, 2024<br>To: Pat<br>Subject: foo</p>' +
+        '<p>Hi Pat, original message body.</p>' +
+        '<p>--- My reply below ---</p>' +
+        '<p>Got it, thanks!</p>';
+      const c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
+      expect(c.textContent).toContain('Got it, thanks');
+      expect(c.textContent).toContain('My reply below');
+      expect(c.textContent).not.toContain('From: Sam');
+    });
+
     it('strips Apple-Mail blockquote (attribution + body inside one <blockquote type="cite">)', () => {
       const html =
         '<div>Sounds good, see you Friday.</div>' +
@@ -325,18 +338,20 @@ describe('EmailQuoteExtractor', () => {
       expect(c.textContent).not.toContain('Locking the Friday slot');
     });
 
-    it('strips flat Outlook attribution + body (multi-line From/Sent/To/Subject)', () => {
+    // Flat Outlook header at root — strip the header block, keep the body
+    // visible. We can't tell the body apart from a bottom-posted reply at
+    // root level, so be safe (matches develop behaviour).
+    it('strips a flat Outlook header block but keeps body visible', () => {
       const html =
         '<p>Confirming I received this — will review tomorrow.</p>' +
         '<p>Thanks,<br>Pat</p>' +
         '<p>From: Sam &lt;sam@example.test&gt;<br>Sent: Wednesday, December 4, 2024 5:15 PM<br>To: Pat &lt;pat@example.test&gt;<br>Subject: Quotation</p>' +
-        '<p>Hi Pat,<br>Quotation attached. Let me know if you need changes.<br>Sam</p>';
+        '<p>Hi Pat,<br>Quotation attached.<br>Sam</p>';
       const c = document.createElement('div');
       c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
       expect(c.textContent).toContain('Confirming I received this');
       expect(c.textContent).toContain('Thanks,');
       expect(c.textContent).not.toContain('From: Sam');
-      expect(c.textContent).not.toContain('Quotation attached');
     });
 
     // Inline reply where a soft-header `<blockquote>` is followed by the

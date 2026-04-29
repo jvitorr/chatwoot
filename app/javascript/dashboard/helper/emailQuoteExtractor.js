@@ -1,8 +1,8 @@
 import DOMPurify from 'dompurify';
 
-// Wrapper classes mail clients put around the quoted reply.
-// Removing these depth-agnostically covers Gmail, Outlook, Yahoo,
-// Thunderbird, ProtonMail, Apple Mail signatures, etc.
+// Wrapper classes mail clients use around the quoted reply.
+// Removing them depth-agnostically covers Gmail, Outlook, Yahoo, Thunderbird,
+// ProtonMail, Apple Mail signatures, etc.
 const QUOTE_INDICATORS = [
   '.gmail_quote_container',
   '.gmail_quote',
@@ -17,22 +17,18 @@ const QUOTE_INDICATORS = [
   '#divRplyFwdMsg',
 ];
 
-// Full-line forwarded-section markers. Anchored so prose containing the
-// phrase mid-sentence can't false-trigger a strip.
+// Full-line forwarded markers — anchored so prose can't false-trigger.
 const HARD_HEADERS = [
   /^\s*-+\s*Original Message\s*-+\s*$/im,
   /^\s*-+\s*Forwarded message\s*-+\s*$/im,
   /^\s*Begin forwarded message:\s*$/im,
 ];
-
 const ATTRIBUTION = /^On .* wrote:/im;
-
-// One Outlook header field. A block needs >= 2 such lines to count, so a
-// single prose line like "From: now on, please …" can't false-trigger.
+// One Outlook header field. Block needs >= 2 such lines to count, so prose
+// like "From: now on, please …" can't false-trigger.
 const HEADER_LINE = /^(?:From|Sent|To|Cc|Bcc|Date|Subject):\s/im;
 
 const BLOCK_SELECTOR = 'div, p, blockquote, section';
-
 const TEXT = 3; // Node.TEXT_NODE
 const ELEM = 1; // Node.ELEMENT_NODE
 
@@ -41,8 +37,8 @@ const isNeutral = n =>
   (n.nodeType === TEXT && !n.textContent.trim()) ||
   (n.nodeType === ELEM && n.tagName === 'BR');
 
-// Read element text with `<br>` rendered as `\n`, so line-anchored regexes
-// match shapes like `<p>From: Sam<br>Sent: Wed</p>`.
+// Element text with `<br>` rendered as `\n`, so line-anchored regexes match
+// shapes like `<p>From: Sam<br>Sent: Wed</p>`.
 const blockText = el => {
   const tmp = document.createElement('div');
   tmp.innerHTML = el.innerHTML.replaceAll(/<br\s*\/?>/gi, '\n');
@@ -55,8 +51,7 @@ const nodeText = n => {
   return '';
 };
 
-// Walk back over leading neutrals so the cut sits at the boundary, not in
-// the middle of a `<br>` separator.
+// Walk back over leading neutrals so the cut sits at the boundary.
 const walkBack = (kids, idx) => {
   let i = idx;
   while (i > 0 && isNeutral(kids[i - 1])) i -= 1;
@@ -65,7 +60,6 @@ const walkBack = (kids, idx) => {
 
 const countHeaderLines = t =>
   t.split('\n').filter(l => HEADER_LINE.test(l)).length;
-
 const isSoftHeader = t => ATTRIBUTION.test(t) || countHeaderLines(t) >= 2;
 const isHardHeader = t => HARD_HEADERS.some(re => re.test(t));
 
@@ -80,8 +74,8 @@ const findBlocks = (root, predicate) => {
 };
 
 // Strip from the first child whose text matches `marker` (skipping leading
-// neutrals), then remove every sibling after `block` — the original-message
-// body lives there on forwarded layouts. Drop `block` if it ends empty.
+// neutrals), then remove every sibling after `block` — that's where the
+// original-message body lives on forwarded layouts. Drop block if empty.
 const cutBlockAtMarker = (block, marker) => {
   const kids = [...block.childNodes];
   const idx = kids.findIndex(c => marker(nodeText(c)));
@@ -91,8 +85,7 @@ const cutBlockAtMarker = (block, marker) => {
   if (!block.childNodes.length) block.remove();
 };
 
-// Walk up to the nearest enclosing `<blockquote>` (including `block` itself).
-// Returns null when there is none below `root`.
+// Nearest enclosing `<blockquote>` (including `block` itself), or null.
 const findEnclosingBlockquote = (block, root) => {
   let cur = block;
   while (cur && cur !== root) {
@@ -103,8 +96,8 @@ const findEnclosingBlockquote = (block, root) => {
 };
 
 // Walk up while `block` is the first substantive child of its parent.
-// Promotes the cut to the wrapper, so a divider `<div>` plus the body
-// siblings AFTER it strip together.
+// Promotes the cut to the wrapper, so a divider `<div>` plus body siblings
+// AFTER it strip together.
 const expandToWrapper = (block, root) => {
   let cur = block;
   while (cur.parentElement && cur.parentElement !== root) {
@@ -125,10 +118,9 @@ const isRfcQuoted = n =>
     .filter(l => l.trim())
     .every(l => l.trim().startsWith('>'));
 
-// Top-level (text + <br>, no block wrapper) tail-start index.
-// RFC `>` only fires when every following node is `>`-quoted or neutral
-// (preserves bottom/inline posting). A header-line text node needs the
-// joined tail to carry >= 2 header lines.
+// Top-level (text + <br>, no block wrapper) tail-start index. RFC `>` only
+// fires when every following node is `>`-quoted or neutral. A header-line
+// text node needs the joined tail to carry >= 2 header lines.
 const findTopLevelTailStart = root => {
   const kids = [...root.childNodes];
   const tailText = i =>
@@ -151,38 +143,33 @@ const findTopLevelTailStart = root => {
   return idx === -1 ? -1 : walkBack(kids, idx);
 };
 
-// Five strategies, each independent. Run in order.
+// Five additive strategies, each independent. Run in order.
 const apply = root => {
   // 1. Strip every known quote-wrapper class.
   root.querySelectorAll(QUOTE_INDICATORS.join(',')).forEach(el => el.remove());
-  // 2. Hard markers cut block + every following sibling.
+  // 2. Hard markers — cut block + every following sibling.
   findBlocks(root, isHardHeader).forEach(b =>
     cutBlockAtMarker(b, isHardHeader)
   );
   // 3. Trailing <blockquote> as the last top-level child.
   if (root.lastElementChild?.matches?.('blockquote'))
     root.lastElementChild.remove();
-  // 4. Soft headers. Three sub-cases:
-  //   (a) match sits inside a <blockquote> — remove the whole blockquote
-  //       (it wraps the entire quote: attribution + body). Apple Mail.
-  //   (b) match has >= 2 header lines (real Outlook attribution shape) —
-  //       hard-cut at the wrapper level so the body siblings go too.
-  //   (c) just an "On … wrote:" attribution → develop-style remove the
-  //       block, so a user reply sitting at root level isn't eaten.
+  // 4. Soft headers. Match inside a <blockquote> → remove that blockquote
+  // (Apple Mail wraps attribution + body together). Match inside an outer
+  // wrapper (WordSection1 shape) → hard-cut at the wrapper. Flat layout at
+  // root → just block.remove(); body and bottom-posted reply look identical
+  // so leave following siblings alone.
   findBlocks(root, isSoftHeader).forEach(block => {
-    const enclosingBq = findEnclosingBlockquote(block, root);
-    if (enclosingBq) {
-      enclosingBq.remove();
-      return;
-    }
-    if (countHeaderLines(blockText(block)) >= 2) {
-      cutBlockAtMarker(
-        expandToWrapper(block, root),
+    const bq = findEnclosingBlockquote(block, root);
+    if (bq) return bq.remove();
+    const cutPoint = expandToWrapper(block, root);
+    if (cutPoint !== block) {
+      return cutBlockAtMarker(
+        cutPoint,
         t => HEADER_LINE.test(t) || ATTRIBUTION.test(t)
       );
-      return;
     }
-    block.remove();
+    return block.remove();
   });
   // 5. Top-level RFC `>` / header tail.
   const start = findTopLevelTailStart(root);
@@ -196,7 +183,7 @@ const parse = html => {
 };
 
 export class EmailQuoteExtractor {
-  /** Strip the quoted-reply tail and return the cleaned HTML. */
+  /** Strip the quoted-reply tail and return cleaned HTML. */
   static extractQuotes(html) {
     const root = parse(html);
     apply(root);
