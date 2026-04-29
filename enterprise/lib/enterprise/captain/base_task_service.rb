@@ -9,7 +9,7 @@ module Enterprise::Captain::BaseTaskService
     end
 
     result = super
-    increment_usage if successful_result?(result)
+    increment_usage if counts_toward_usage? && successful_result?(result)
     result
   end
 

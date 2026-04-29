@@ -56,6 +56,12 @@ class Captain::Llm::WidgetTaglineService < Captain::BaseTaskService
     true
   end
 
+  # Tagline generation runs on the operator's OpenAI key during onboarding;
+  # the customer should not have captain_responses quota deducted for it.
+  def counts_toward_usage?
+    false
+  end
+
   def tagline_model
     @tagline_model ||= InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || GPT_MODEL
   end
