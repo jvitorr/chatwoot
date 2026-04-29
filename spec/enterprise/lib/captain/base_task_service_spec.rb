@@ -165,5 +165,23 @@ RSpec.describe Captain::BaseTaskService, type: :model do
         service.perform
       end
     end
+
+    context 'when subclass opts out via counts_toward_usage?' do
+      let(:test_service_class) do
+        result = perform_result
+        klass = Class.new(described_class) do
+          define_method(:perform) { result }
+          define_method(:event_name) { 'test_event' }
+          define_method(:counts_toward_usage?) { false }
+        end
+        klass.prepend(Enterprise::Captain::BaseTaskService)
+        klass
+      end
+
+      it 'does not increment usage even on a successful result' do
+        expect(account).not_to receive(:increment_response_usage)
+        service.perform
+      end
+    end
   end
 end
