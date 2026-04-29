@@ -19,6 +19,14 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  isAutoSyncEligible: {
+    type: Boolean,
+    default: false,
+  },
+  isAutoSyncEnabled: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['select']);
@@ -69,7 +77,11 @@ const caption = computed(() => {
     });
   }
 
-  return t('CAPTAIN.DOCUMENTS.STATS.CAPTION_MANUAL');
+  if (props.isAutoSyncEligible && !props.isAutoSyncEnabled) {
+    return t('CAPTAIN.DOCUMENTS.STATS.CAPTION_DISABLED');
+  }
+
+  return t('CAPTAIN.DOCUMENTS.STATS.CAPTION_PLAN_UNAVAILABLE');
 });
 
 const placeholderLabel = computed(() =>

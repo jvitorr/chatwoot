@@ -767,7 +767,8 @@
         "SYNCED_RECENTLY": "Synced this week",
         "PLACEHOLDER": "-",
         "CAPTION_AUTO": "Your web documents sync {frequency}. PDFs don't sync; they're processed once at upload.",
-        "CAPTION_MANUAL": "Auto-sync is not included on your plan. You can still sync web documents manually. PDFs don't sync; they're processed once at upload.",
+        "CAPTION_DISABLED": "Auto-sync is not enabled for this account yet. You can still sync web documents manually. PDFs don't sync; they're processed once at upload.",
+        "CAPTION_PLAN_UNAVAILABLE": "Auto-sync is available on paid plans. You can still sync web documents manually. PDFs don't sync; they're processed once at upload.",
         "FREQUENCY": {
           "WEEKLY": "weekly",
           "DAILY": "daily",

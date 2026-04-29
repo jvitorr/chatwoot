@@ -304,11 +304,16 @@ const planSyncFrequencyKey = computed(() => {
   return null;
 });
 
-const syncFrequencyLabel = computed(() => {
-  const autoSyncEnabled =
-    currentAccount.value?.features?.[FEATURE_FLAGS.CAPTAIN_DOCUMENT_AUTO_SYNC];
+const isAutoSyncEligible = computed(() => Boolean(planSyncFrequencyKey.value));
 
-  if (!autoSyncEnabled || !planSyncFrequencyKey.value) return '';
+const isAutoSyncEnabled = computed(() =>
+  Boolean(
+    currentAccount.value?.features?.[FEATURE_FLAGS.CAPTAIN_DOCUMENT_AUTO_SYNC]
+  )
+);
+
+const syncFrequencyLabel = computed(() => {
+  if (!isAutoSyncEnabled.value || !planSyncFrequencyKey.value) return '';
 
   if (planSyncFrequencyKey.value === 'WEEKLY') {
     return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.WEEKLY');
@@ -386,6 +391,8 @@ onBeforeUnmount(() => {
         :stats="stats"
         :active-filter="activeFilter"
         :sync-frequency-label="syncFrequencyLabel"
+        :is-auto-sync-eligible="isAutoSyncEligible"
+        :is-auto-sync-enabled="isAutoSyncEnabled"
         class="mb-5"
         @select="handleFilterSelect"
       />
