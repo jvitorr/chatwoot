@@ -182,6 +182,20 @@ RSpec.describe Captain::BaseTaskService, type: :model do
         expect(account).not_to receive(:increment_response_usage)
         service.perform
       end
+
+      context 'when the captain_responses quota is exhausted on Cloud' do
+        before do
+          allow(ChatwootApp).to receive(:chatwoot_cloud?).and_return(true)
+          allow(account).to receive(:usage_limits).and_return({
+                                                                captain: { responses: { current_available: 0 } }
+                                                              })
+        end
+
+        it 'bypasses the 429 gate and returns the underlying result' do
+          result = service.perform
+          expect(result).to eq(perform_result)
+        end
+      end
     end
   end
 end
