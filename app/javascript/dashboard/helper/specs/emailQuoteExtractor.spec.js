@@ -231,7 +231,7 @@ describe('EmailQuoteExtractor', () => {
 
     it('detects "From:/Sent:" header even when followed by un-prefixed old lines', () => {
       const html =
-        '<p>Reply text.</p><p>From: Sam<br>Sent: Wednesday</p><p>Old line 1</p>';
+        '<p>Reply text.</p><p>From: Sam &lt;sam@example.test&gt;<br>Sent: Wednesday, December 4, 2024</p><p>Old line 1</p>';
       expect(EmailQuoteExtractor.hasQuotes(html)).toBe(true);
       const cleaned = EmailQuoteExtractor.extractQuotes(html);
       expect(cleaned).toContain('Reply text');
@@ -253,7 +253,7 @@ describe('EmailQuoteExtractor', () => {
 
     it('detects top-level "From:/Sent:" header (no wrapper)', () => {
       const html =
-        'Reply text<br>From: Sam<br>Sent: Wednesday<br>Original body';
+        'Reply text<br>From: Sam &lt;sam@example.test&gt;<br>Sent: Wednesday, December 4, 2024<br>Original body';
       expect(EmailQuoteExtractor.hasQuotes(html)).toBe(true);
       const c = document.createElement('div');
       c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
@@ -268,6 +268,79 @@ describe('EmailQuoteExtractor', () => {
       c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
       expect(c.textContent).toContain('Reply');
       expect(c.textContent).not.toContain('Original Message');
+    });
+
+    // Trailing-only rule: only strip the `>`-block when nothing substantive
+    // follows it. Otherwise the user's own bottom-posted / inline reply is
+    // silently dropped.
+    it('preserves user reply that is bottom-posted below `>`-quoted lines', () => {
+      const html =
+        '&gt; On Tue, Pat wrote:<br>&gt; Attached is the doc.<br>&gt; Pat<br><br>Got it, looks good.';
+      const c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
+      expect(c.textContent).toContain('Got it, looks good');
+    });
+
+    it('preserves user answers inline-posted between `>`-quoted lines', () => {
+      const html =
+        '&gt; Q1: pricing?<br>A1: USD 100<br>&gt; Q2: timeline?<br>A2: 2 weeks<br><br>Thanks!';
+      const c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
+      expect(c.textContent).toContain('A1: USD 100');
+      expect(c.textContent).toContain('A2: 2 weeks');
+      expect(c.textContent).toContain('Thanks!');
+    });
+
+    // Anchored hard-header patterns: don't strip when the marker phrase shows
+    // up inside a sentence (false trigger).
+    it('does not strip when "Original Message" appears inside a sentence', () => {
+      const html =
+        '<p>The bug ticket says the markdown for `-----Original Message-----` should render correctly.</p><p>Here is my fix.</p>';
+      const c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
+      expect(c.textContent).toContain('Here is my fix');
+    });
+
+    it('does not strip prose paragraphs that start with "From: " or "Sent: "', () => {
+      const fromHtml =
+        '<p>From: now on, please follow this checklist.</p><p>This is regular content.</p>';
+      let c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(fromHtml);
+      expect(c.textContent).toContain('From: now on');
+      expect(c.textContent).toContain('regular content');
+
+      const sentHtml =
+        '<p>Sent: yesterday by the courier.</p><p>Tracking number to follow.</p>';
+      c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(sentHtml);
+      expect(c.textContent).toContain('Sent: yesterday');
+      expect(c.textContent).toContain('Tracking number');
+    });
+
+    it('preserves reply text that sits before a hard marker in the SAME block', () => {
+      const html =
+        '<div>My reply<br><br>-----Original Message-----<br>From: Sam<br>Old body</div>';
+      const c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
+      expect(c.textContent).toContain('My reply');
+      expect(c.textContent).not.toContain('Original Message');
+      expect(c.textContent).not.toContain('Old body');
+    });
+
+    it('does not strip when "Original Message" sits inside <code> mid-paragraph', () => {
+      const html = `
+        <p>Hey Sam,</p>
+        <p>The bug ticket says the markdown for <code>-----Original Message-----</code> should render correctly.</p>
+        <pre><code>// strip on its own line only</code></pre>
+        <p>Tested locally — passing all cases.</p>
+        <p>Pat</p>
+      `;
+      const c = document.createElement('div');
+      c.innerHTML = EmailQuoteExtractor.extractQuotes(html);
+      expect(c.textContent).toContain('Hey Sam');
+      expect(c.textContent).toContain('Tested locally');
+      expect(c.textContent).toContain('Pat');
+      expect(EmailQuoteExtractor.hasQuotes(html)).toBe(false);
     });
   });
 

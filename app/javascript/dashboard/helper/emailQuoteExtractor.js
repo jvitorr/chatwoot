@@ -1,8 +1,7 @@
 import DOMPurify from 'dompurify';
 
 // Wrapper classes mainstream mail clients emit around the quoted reply.
-// Removed depth-agnostically (Gmail, Outlook, Yahoo, Thunderbird, Apple…).
-// Purely additive over develop — nothing here can match a non-quoted body.
+
 const QUOTE_INDICATORS = [
   '.gmail_quote_container',
   '.gmail_quote',
@@ -17,48 +16,48 @@ const QUOTE_INDICATORS = [
   '#divRplyFwdMsg', // Outlook web/desktop reply/forward header
 ];
 
-// Inline header / attribution patterns. A text node containing one of these
-// causes its block-ancestor to be removed (matches develop behaviour exactly).
-const HEADER_PATTERNS = [
-  /On .* wrote:/i,
-  /-----Original Message-----/i,
-  /Sent: /i,
-  /From: /i,
+// Soft attribution markers — match removes the containing block only.
+// Anchored to a line start AND tightened so prose lines that legitimately
+// begin with "From: " / "Sent: " don't false-trigger:
+//   - From:  must be followed by email-shape content with `@` on the line
+//            (real headers are "From: name <addr@host>" or "From: addr@host").
+//   - Sent:  must be followed by a 4-digit year (real timestamps include one,
+//            "Sent: yesterday by …" doesn't).
+const SOFT_HEADERS = [/^On .* wrote:/im, /^From: .*@/im, /^Sent: .*\d{4}/im];
+
+// Hard markers — match removes the containing block AND every following
+// sibling within its parent, so the quoted body itself (not just the
+// attribution) gets stripped on forwarded / reply-with-original messages.
+// Anchored to a full line so a sentence containing the phrase ("the markdown
+// for `-----Original Message-----` should render correctly") can't trigger.
+const HARD_HEADERS = [
+  /^\s*-+\s*Original Message\s*-+\s*$/im,
+  /^\s*-+\s*Forwarded message\s*-+\s*$/im,
+  /^\s*Begin forwarded message:\s*$/im,
 ];
 
-// "Hard" markers: the marker line plus every following sibling of its
-// block-ancestor are removed, so the quoted body itself (not just the
-// attribution line) gets stripped on forwarded / reply-with-original messages.
-const HARD_HEADER_PATTERNS = [
-  /-----Original Message-----/i,
-  /-{2,}\s*Forwarded message\s*-{2,}/i,
-  /Begin forwarded message:/i,
-];
-
-const BLOCK_TAGS = new Set(['DIV', 'P', 'BLOCKQUOTE', 'SECTION']);
+const BLOCK_SELECTOR = 'div, p, blockquote, section';
 
 export class EmailQuoteExtractor {
   // ---------- public API ----------
 
-  /** Strip the quoted-reply tail from `html` and return the cleaned HTML. */
   static extractQuotes(html) {
     const root = this.parse(html);
     this.removeIndicatorElements(root);
     this.removeHardHeaderTails(root);
     this.removeTrailingBlockquote(root);
-    this.removeHeaderBlocks(root);
+    this.removeSoftHeaderBlocks(root);
     this.removePlainTextTail(root);
     return root.innerHTML;
   }
 
-  /** True iff any quote-detection strategy finds material to strip. */
   static hasQuotes(html) {
     const root = this.parse(html);
     return (
       this.hasIndicatorElement(root) ||
+      this.findBlocksMatching(root, HARD_HEADERS).length > 0 ||
       this.hasTrailingBlockquote(root) ||
-      this.findHardHeaderBlocks(root).length > 0 ||
-      this.findHeaderBlocks(root).length > 0 ||
+      this.findBlocksMatching(root, SOFT_HEADERS).length > 0 ||
       this.findPlainTextTailStart(root) !== -1
     );
   }
@@ -71,7 +70,7 @@ export class EmailQuoteExtractor {
     return root;
   }
 
-  // ---------- 1. Indicator classes (depth-agnostic) ----------
+  // ---------- 1. Wrapper-class strip ----------
 
   static removeIndicatorElements(root) {
     QUOTE_INDICATORS.forEach(selector => {
@@ -84,26 +83,44 @@ export class EmailQuoteExtractor {
   }
 
   // ---------- 2. Hard header tails ----------
-  // For every block containing a hard-header text, remove the block AND every
-  // following sibling within its parent. This strips the quoted body, not just
-  // the attribution line.
+  // For each block that matches a hard header, trim from the marker child
+  // forward (preserving any reply text that sits before the marker in the
+  // same block) and then strip every following sibling at the parent level.
 
   static removeHardHeaderTails(root) {
-    this.findHardHeaderBlocks(root).forEach(block => {
-      let cursor = block;
-      while (cursor) {
-        const next = cursor.nextSibling;
-        cursor.remove();
-        cursor = next;
-      }
+    this.findBlocksMatching(root, HARD_HEADERS).forEach(block => {
+      this.stripFromHardMarkerWithin(block);
+      this.removeFollowingSiblings(block);
+      if (block.childNodes.length === 0) block.remove();
     });
   }
 
-  static findHardHeaderBlocks(root) {
-    return this.findBlocksContainingText(root, HARD_HEADER_PATTERNS);
+  static stripFromHardMarkerWithin(block) {
+    const children = Array.from(block.childNodes);
+    const markerIdx = children.findIndex(child =>
+      HARD_HEADERS.some(p => p.test(this.nodeText(child)))
+    );
+    if (markerIdx === -1) return;
+    const start = this.walkBackOverNeutrals(children, markerIdx);
+    for (let i = start; i < children.length; i += 1) children[i].remove();
   }
 
-  // ---------- 3. Trailing <blockquote> ----------
+  static nodeText(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    return this.blockText(node);
+  }
+
+  static removeFollowingSiblings(node) {
+    let cursor = node.nextSibling;
+    while (cursor) {
+      const next = cursor.nextSibling;
+      cursor.remove();
+      cursor = next;
+    }
+  }
+
+  // ---------- 3. Trailing blockquote ----------
 
   static removeTrailingBlockquote(root) {
     const last = root.lastElementChild;
@@ -114,24 +131,36 @@ export class EmailQuoteExtractor {
     return root.lastElementChild?.matches?.('blockquote') ?? false;
   }
 
-  // ---------- 4. Header blocks (deep, develop-compatible) ----------
-  // For every text node matching a header pattern, remove its block-ancestor.
-  // This is the develop-branch behaviour preserved verbatim.
+  // ---------- 4. Soft header blocks ----------
 
-  static removeHeaderBlocks(root) {
-    this.findHeaderBlocks(root).forEach(el => el.remove());
+  static removeSoftHeaderBlocks(root) {
+    this.findBlocksMatching(root, SOFT_HEADERS).forEach(el => el.remove());
   }
 
-  static findHeaderBlocks(root) {
-    return this.findBlocksContainingText(root, HEADER_PATTERNS);
+  // ---------- shared block matcher ----------
+  // Iterate DIV/P/BLOCKQUOTE/SECTION descendants. For each, read its text
+  // treating <br> as a real newline so the line-anchored patterns work even
+  // for `<p>From: Sam<br>Sent: …</p>` shapes.
+
+  static findBlocksMatching(root, patterns) {
+    const blocks = [];
+    root.querySelectorAll(BLOCK_SELECTOR).forEach(el => {
+      const text = this.blockText(el);
+      if (patterns.some(p => p.test(text))) blocks.push(el);
+    });
+    return blocks;
   }
 
-  // ---------- 5. Top-level quote tail ----------
-  // For replies that arrive as text + <br> with no block wrapper (text/plain
-  // bodies after sanitizeTextForRender). Find the earliest top-level text
-  // node that begins a quote tail — either every visible line starts with `>`
-  // (RFC quote prefix) or the text contains a header marker — and strip from
-  // there, collapsing leading <br>/whitespace separators into the tail.
+  static blockText(el) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = el.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+    return tmp.textContent;
+  }
+
+  // ---------- 5. Top-level RFC `>` / header tail ----------
+  // Replies that arrive as text + <br> with no block wrapper. RFC `>`-prefixed
+  // text only counts when nothing substantive follows it (preserves bottom /
+  // inline posting). A header marker as a top-level text node is a hard cut.
 
   static removePlainTextTail(root) {
     const start = this.findPlainTextTailStart(root);
@@ -142,29 +171,53 @@ export class EmailQuoteExtractor {
 
   static findPlainTextTailStart(root) {
     const children = Array.from(root.childNodes);
-    const tailIdx = children.findIndex(node =>
-      this.isQuoteTailStartTextNode(node)
-    );
-    if (tailIdx === -1) return -1;
-    let start = tailIdx;
-    while (start > 0 && this.isNeutralNode(children[start - 1])) {
-      start -= 1;
+    for (let i = 0; i < children.length; i += 1) {
+      const idx = this.tailStartAt(children, i);
+      if (idx !== -1) return idx;
     }
-    return start;
+    return -1;
   }
 
-  static isQuoteTailStartTextNode(node) {
+  static tailStartAt(children, i) {
+    const node = children[i];
+    if (this.isRfcQuotedTextNode(node)) {
+      return this.isPureRfcTailFrom(children, i)
+        ? this.walkBackOverNeutrals(children, i)
+        : -1;
+    }
+    if (this.isHeaderMarkerTextNode(node)) {
+      return this.walkBackOverNeutrals(children, i);
+    }
+    return -1;
+  }
+
+  static isRfcQuotedTextNode(node) {
     if (node.nodeType !== Node.TEXT_NODE) return false;
     const text = node.textContent;
     if (!text.trim()) return false;
     const lines = text.split('\n').filter(line => line.trim() !== '');
-    if (lines.length > 0 && lines.every(l => l.trim().startsWith('>'))) {
-      return true;
+    return lines.length > 0 && lines.every(l => l.trim().startsWith('>'));
+  }
+
+  static isHeaderMarkerTextNode(node) {
+    if (node.nodeType !== Node.TEXT_NODE) return false;
+    const text = node.textContent;
+    if (!text.trim()) return false;
+    return [...SOFT_HEADERS, ...HARD_HEADERS].some(p => p.test(text));
+  }
+
+  static isPureRfcTailFrom(children, startIdx) {
+    return children
+      .slice(startIdx)
+      .every(n => this.isRfcQuotedTextNode(n) || this.isNeutralNode(n));
+  }
+
+  static walkBackOverNeutrals(children, idx) {
+    let start = idx;
+    while (start > 0 && this.isNeutralNode(children[start - 1])) {
+      start -= 1;
     }
-    return (
-      HEADER_PATTERNS.some(p => p.test(text)) ||
-      HARD_HEADER_PATTERNS.some(p => p.test(text))
-    );
+    return start;
   }
 
   static isNeutralNode(node) {
@@ -175,42 +228,5 @@ export class EmailQuoteExtractor {
       return node.tagName === 'BR';
     }
     return false;
-  }
-
-  // ---------- shared text-walker primitive ----------
-
-  static findBlocksContainingText(root, patterns) {
-    const matchingBlocks = this.collectTextNodes(root)
-      .filter(node => patterns.some(p => p.test(node.textContent)))
-      .map(node => this.findBlockAncestor(node))
-      .filter(block => block && block !== root);
-    return Array.from(new Set(matchingBlocks));
-  }
-
-  static collectTextNodes(root) {
-    const walker = document.createTreeWalker(
-      root,
-      NodeFilter.SHOW_TEXT,
-      null,
-      false
-    );
-    const nodes = [];
-    for (
-      let node = walker.nextNode();
-      node !== null;
-      node = walker.nextNode()
-    ) {
-      nodes.push(node);
-    }
-    return nodes;
-  }
-
-  static findBlockAncestor(node) {
-    let current = node.parentElement;
-    while (current) {
-      if (BLOCK_TAGS.has(current.tagName)) return current;
-      current = current.parentElement;
-    }
-    return null;
   }
 }
