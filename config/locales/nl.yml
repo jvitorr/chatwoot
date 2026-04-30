@@ -50,6 +50,8 @@ nl:
       email_already_exists: 'Je hebt je al aangemeld voor een account bij %{email}'
       invalid_params: 'Ongeldig zijn, controleer de aanmeldingsparameters en probeer het opnieuw'
       failed: Aanmelden mislukt
+    voice:
+      call_already_accepted: '%{agent_name} is already handling the call.'
     assignment_policy:
       not_found: Assignment policy not found
     attachments:
