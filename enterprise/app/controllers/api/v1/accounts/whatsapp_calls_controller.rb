@@ -113,14 +113,28 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
   end
 
   # 138006 = no call permission yet; send opt-in template (throttled) and surface state to FE.
+  # Lock the conversation so concurrent initiate requests can't both pass the throttle gate
+  # and double-send the opt-in template.
   def render_permission_request
-    return render json: { status: 'permission_pending' } if permission_request_throttled?
+    status = nil
+    @conversation.with_lock do
+      if permission_request_throttled?
+        status = 'permission_pending'
+        next
+      end
 
-    sent = provider_service.send_call_permission_request(@conversation.contact.phone_number.delete('+'))
-    return render_could_not_create_error(I18n.t('errors.whatsapp.calls.permission_request_failed')) unless sent
+      sent = provider_service.send_call_permission_request(@conversation.contact.phone_number.delete('+'))
+      if sent
+        record_permission_request_wamid(sent)
+        status = 'permission_requested'
+      else
+        status = 'failed'
+      end
+    end
 
-    record_permission_request_wamid(sent)
-    render json: { status: 'permission_requested' }
+    return render_could_not_create_error(I18n.t('errors.whatsapp.calls.permission_request_failed')) if status == 'failed'
+
+    render json: { status: status }
   end
 
   def permission_request_throttled?

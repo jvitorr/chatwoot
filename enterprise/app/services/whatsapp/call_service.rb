@@ -4,10 +4,14 @@ class Whatsapp::CallService
   def accept
     raise Voice::CallErrors::CallFailed, 'sdp_answer is required' if sdp_answer.blank?
 
-    call.with_lock { transition_to_in_progress! }
-    update_message_status('in_progress')
-    update_conversation_call_status(call.display_status)
-    broadcast(:accepted, accepted_by_agent_id: agent.id)
+    # All side effects under the lock so a concurrent terminate cannot finalize
+    # the call between status update and the message/conversation/broadcast writes.
+    call.with_lock do
+      transition_to_in_progress!
+      update_message_status('in_progress')
+      update_conversation_call_status(call.display_status)
+      broadcast(:accepted, accepted_by_agent_id: agent.id)
+    end
     call
   end
 
