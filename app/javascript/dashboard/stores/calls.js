@@ -1,6 +1,15 @@
 import { defineStore } from 'pinia';
 import TwilioVoiceClient from 'dashboard/api/channel/voice/twilioVoiceClient';
+import { cleanupWhatsappSession } from 'dashboard/composables/useWhatsappCallSession';
 import { TERMINAL_STATUSES } from 'dashboard/helper/voice';
+
+const teardownByProvider = call => {
+  if (call?.provider === 'whatsapp') {
+    cleanupWhatsappSession();
+  } else {
+    TwilioVoiceClient.endClientCall();
+  }
+};
 
 export const useCallsStore = defineStore('calls', {
   state: () => ({
@@ -35,7 +44,7 @@ export const useCallsStore = defineStore('calls', {
     removeCall(callSid) {
       const callToRemove = this.calls.find(c => c.callSid === callSid);
       if (callToRemove?.isActive) {
-        TwilioVoiceClient.endClientCall();
+        teardownByProvider(callToRemove);
       }
       this.calls = this.calls.filter(c => c.callSid !== callSid);
     },
@@ -48,7 +57,8 @@ export const useCallsStore = defineStore('calls', {
     },
 
     clearActiveCall() {
-      TwilioVoiceClient.endClientCall();
+      const active = this.calls.find(c => c.isActive);
+      teardownByProvider(active);
       this.calls = this.calls.filter(call => !call.isActive);
     },
 

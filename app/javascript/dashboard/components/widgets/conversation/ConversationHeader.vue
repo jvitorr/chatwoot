@@ -12,6 +12,13 @@ import wootConstants from 'dashboard/constants/globals';
 import { conversationListPageURL } from 'dashboard/helper/URLHelper';
 import { snoozedReopenTime } from 'dashboard/helper/snoozeHelpers';
 import { useInbox } from 'dashboard/composables/useInbox';
+import {
+  getVoiceCallProvider,
+  VOICE_CALL_PROVIDERS,
+} from 'dashboard/helper/inbox';
+import { useWhatsappCallSession } from 'dashboard/composables/useWhatsappCallSession';
+import { useCallsStore } from 'dashboard/stores/calls';
+import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
@@ -91,6 +98,45 @@ const hasMultipleInboxes = computed(
 );
 
 const hasSlaPolicyId = computed(() => props.chat?.sla_policy_id);
+
+const callsStore = useCallsStore();
+const whatsappCallSession = useWhatsappCallSession();
+
+const isWhatsappVoiceInbox = computed(
+  () => getVoiceCallProvider(inbox.value) === VOICE_CALL_PROVIDERS.WHATSAPP
+);
+
+const startWhatsappCall = async () => {
+  if (whatsappCallSession.isInitiating.value) return;
+  try {
+    const response = await whatsappCallSession.initiateOutboundCall(
+      currentChat.value.id
+    );
+
+    // Permission template path returns no call id — show banner, no widget yet.
+    if (!response?.id) {
+      const status = response?.status;
+      const messageKey =
+        status === 'permission_pending'
+          ? 'CONVERSATION.HEADER.WHATSAPP_CALL_PERMISSION_PENDING'
+          : 'CONVERSATION.HEADER.WHATSAPP_CALL_PERMISSION_REQUESTED';
+      useAlert(t(messageKey));
+      return;
+    }
+
+    callsStore.addCall({
+      callSid: response.call_id,
+      callId: response.id,
+      conversationId: currentChat.value.id,
+      inboxId: inbox.value?.id,
+      callDirection: 'outbound',
+      provider: 'whatsapp',
+    });
+    callsStore.setCallActive(response.call_id);
+  } catch (error) {
+    useAlert(error?.message || t('CONVERSATION.HEADER.WHATSAPP_CALL_FAILED'));
+  }
+};
 </script>
 
 <template>
@@ -152,6 +198,16 @@ const hasSlaPolicyId = computed(() => props.chat?.sla_policy_id);
         :parent-width="width"
         class="hidden md:flex"
       />
+      <button
+        v-if="isWhatsappVoiceInbox"
+        v-tooltip.bottom="$t('CONVERSATION.HEADER.WHATSAPP_CALL')"
+        type="button"
+        class="flex items-center justify-center size-7 rounded-md hover:bg-n-alpha-2 disabled:opacity-50"
+        :disabled="whatsappCallSession.isInitiating.value"
+        @click="startWhatsappCall"
+      >
+        <fluent-icon icon="call" size="16" class="text-n-slate-11" />
+      </button>
       <MoreActions :conversation-id="currentChat.id" />
     </div>
   </div>

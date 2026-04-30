@@ -4,6 +4,8 @@ import DashboardAudioNotificationHelper from './AudioAlerts/DashboardAudioNotifi
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 import { emitter } from 'shared/helpers/mitt';
 import { useImpersonation } from 'dashboard/composables/useImpersonation';
+import { useCallsStore } from 'dashboard/stores/calls';
+import { applyOutboundAnswer } from 'dashboard/composables/useWhatsappCallSession';
 
 const { isImpersonating } = useImpersonation();
 
@@ -35,6 +37,11 @@ class ActionCableConnector extends BaseActionCableConnector {
       'account.cache_invalidated': this.onCacheInvalidate,
       'account.enrichment_completed': this.onEnrichmentCompleted,
       'copilot.message.created': this.onCopilotMessageCreated,
+      // WhatsApp call SDP exchange happens via these events; Twilio-shaped voice_call.*
+      // events also flow through here but are ignored when provider !== 'whatsapp'.
+      'voice_call.incoming': this.onVoiceCallIncoming,
+      'voice_call.outbound_connected': this.onVoiceCallOutboundConnected,
+      'voice_call.ended': this.onVoiceCallEnded,
     };
   }
 
@@ -204,6 +211,33 @@ class ActionCableConnector extends BaseActionCableConnector {
     this.app.$store.dispatch('labels/revalidate', { newKey: keys.label });
     this.app.$store.dispatch('inboxes/revalidate', { newKey: keys.inbox });
     this.app.$store.dispatch('teams/revalidate', { newKey: keys.team });
+  };
+
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallIncoming = data => {
+    if (data?.provider !== 'whatsapp') return;
+    useCallsStore().addCall({
+      callSid: data.call_id,
+      callId: data.id,
+      conversationId: data.conversation_id,
+      inboxId: data.inbox_id,
+      callDirection: 'inbound',
+      provider: 'whatsapp',
+      sdpOffer: data.sdp_offer,
+      iceServers: data.ice_servers,
+    });
+  };
+
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallOutboundConnected = data => {
+    if (data?.provider !== 'whatsapp' || !data.sdp_answer) return;
+    applyOutboundAnswer(data.id, data.sdp_answer).catch(() => {});
+  };
+
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallEnded = data => {
+    if (data?.provider !== 'whatsapp') return;
+    useCallsStore().removeCall(data.call_id);
   };
 }
 
