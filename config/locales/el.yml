@@ -50,6 +50,8 @@ el:
       email_already_exists: 'Έχει ήδη καταχωρηθεί λογαριασμός στο %{email}'
       invalid_params: 'Invalid, please check the signup paramters and try again'
       failed: Η εγγραφή απέτυχε
+    voice:
+      call_already_accepted: '%{agent_name} is already handling the call.'
     assignment_policy:
       not_found: Assignment policy not found
     attachments:
