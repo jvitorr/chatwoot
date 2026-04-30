@@ -1,8 +1,4 @@
 class Voice::CallMessageBuilder
-  def self.update_status!(call:, status: nil, agent: nil, duration_seconds: nil)
-    new(call).update_status!(status: status, agent: agent, duration_seconds: duration_seconds)
-  end
-
   def initialize(call)
     @call = call
   end
