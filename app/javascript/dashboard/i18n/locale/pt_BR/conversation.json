@@ -84,7 +84,7 @@
       "NOT_ANSWERED_YET": "Ainda não respondido",
       "THEY_ANSWERED": "Eles responderam",
       "YOU_ANSWERED": "Você respondeu",
-      "AGENT_ANSWERED": "{agentName} answered"
+      "AGENT_ANSWERED": "{agentName} respondeu"
     },
     "HEADER": {
       "RESOLVE_ACTION": "Resolver",
