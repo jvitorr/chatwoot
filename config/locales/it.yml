@@ -50,6 +50,8 @@ it:
       email_already_exists: 'Ti sei già registrato per un account con %{email}'
       invalid_params: 'Non valido, controlla i dati di registrazione e riprova'
       failed: Registrazione non riuscita
+    voice:
+      call_already_accepted: '%{agent_name} is already handling the call.'
     assignment_policy:
       not_found: Policy di assegnazione non trovata
     attachments:
