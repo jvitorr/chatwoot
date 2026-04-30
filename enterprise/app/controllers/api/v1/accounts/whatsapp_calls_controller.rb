@@ -45,6 +45,10 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     @call_service ||= Whatsapp::CallService.new(call: @call, agent: Current.user, sdp_answer: params[:sdp_answer])
   end
 
+  def provider_service
+    @provider_service ||= @conversation.inbox.channel.provider_service
+  end
+
   def set_call
     @call = Current.account.calls.whatsapp.find(params[:id])
     authorize @call.conversation, :show?
@@ -97,7 +101,7 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
   # Browser-built SDP offer is forwarded to Meta; the connect webhook later delivers Meta's answer.
   def create_outbound_call
     contact_phone = @conversation.contact.phone_number.delete('+')
-    result = @conversation.inbox.channel.provider_service.initiate_call(contact_phone, params[:sdp_offer])
+    result = provider_service.initiate_call(contact_phone, params[:sdp_offer])
     provider_call_id = result.dig('calls', 0, 'id') || result['call_id']
 
     Current.account.calls.create!(
@@ -112,7 +116,7 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
   def render_permission_request
     return render json: { status: 'permission_pending' } if permission_request_throttled?
 
-    sent = @conversation.inbox.channel.provider_service.send_call_permission_request(@conversation.contact.phone_number.delete('+'))
+    sent = provider_service.send_call_permission_request(@conversation.contact.phone_number.delete('+'))
     return render_could_not_create_error(I18n.t('errors.whatsapp.calls.permission_request_failed')) unless sent
 
     record_permission_request_wamid(sent)
