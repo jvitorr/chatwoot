@@ -83,7 +83,8 @@
       "CALL_ENDED": "কল শেষ হয়েছে",
       "NOT_ANSWERED_YET": "এখনও উত্তর পাওয়া যায়নি",
       "THEY_ANSWERED": "তারা উত্তর দিয়েছে",
-      "YOU_ANSWERED": "আপনি উত্তর দিয়েছেন"
+      "YOU_ANSWERED": "আপনি উত্তর দিয়েছেন",
+      "AGENT_ANSWERED": "{agentName} answered"
     },
     "HEADER": {
       "RESOLVE_ACTION": "সমাধান করুন",
