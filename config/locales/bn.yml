@@ -50,6 +50,8 @@ bn:
       email_already_exists: 'আপনি ইতিমধ্যে %{email} দিয়ে একটি অ্যাকাউন্ট তৈরি করেছেন'
       invalid_params: 'অবৈধ, অনুগ্রহ করে সাইনআপের তথ্য যাচাই করুন এবং আবার চেষ্টা করুন'
       failed: সাইন আপ ব্যর্থ হয়েছে
+    voice:
+      call_already_accepted: '%{agent_name} is already handling the call.'
     assignment_policy:
       not_found: অ্যাসাইনমেন্ট নীতি পাওয়া যায়নি
     attachments:
