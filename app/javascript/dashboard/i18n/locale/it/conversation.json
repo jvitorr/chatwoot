@@ -83,7 +83,8 @@
       "CALL_ENDED": "Chiamata terminata",
       "NOT_ANSWERED_YET": "Non ancora risposta",
       "THEY_ANSWERED": "Hanno risposto",
-      "YOU_ANSWERED": "Hai risposto"
+      "YOU_ANSWERED": "Hai risposto",
+      "AGENT_ANSWERED": "{agentName} answered"
     },
     "HEADER": {
       "RESOLVE_ACTION": "Risolvi",
