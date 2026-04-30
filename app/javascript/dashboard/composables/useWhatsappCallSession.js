@@ -7,11 +7,36 @@ import WhatsappCallsAPI from 'dashboard/api/channel/whatsapp/whatsappCallsAPI';
 let pc = null;
 let localStream = null;
 let remoteStream = null;
+let remoteAudioEl = null;
 let mediaRecorder = null;
 let recorderChunks = [];
 let audioContext = null;
 let activeCallId = null;
 let intentionallyClosing = false;
+
+// Lazily attach a hidden <audio autoplay> to the document so Meta's track
+// actually plays through the speakers — without this, mic flows to Meta but
+// the user hears nothing back.
+const ensureRemoteAudioElement = () => {
+  if (remoteAudioEl) return remoteAudioEl;
+  remoteAudioEl = document.createElement('audio');
+  remoteAudioEl.id = 'whatsapp-call-remote-audio';
+  remoteAudioEl.autoplay = true;
+  remoteAudioEl.playsInline = true;
+  remoteAudioEl.style.display = 'none';
+  document.body.appendChild(remoteAudioEl);
+  return remoteAudioEl;
+};
+
+const playRemoteStream = stream => {
+  const el = ensureRemoteAudioElement();
+  el.srcObject = stream;
+  // play() may reject under autoplay policies; surface to console but don't crash the call.
+  el.play().catch(err => {
+    // eslint-disable-next-line no-console
+    console.warn('[WhatsApp Call] remote audio play() failed:', err);
+  });
+};
 
 const RECORDING_TIMESLICE_MS = 5000;
 const ICE_GATHER_TIMEOUT_MS = 10000;
@@ -50,6 +75,7 @@ const cleanup = () => {
   if (localStream) localStream.getTracks().forEach(t => t.stop());
   if (remoteStream) remoteStream.getTracks().forEach(t => t.stop());
   if (pc) pc.close();
+  if (remoteAudioEl) remoteAudioEl.srcObject = null;
 
   pc = null;
   localStream = null;
@@ -59,18 +85,6 @@ const cleanup = () => {
   audioContext = null;
   activeCallId = null;
   intentionallyClosing = false;
-};
-
-const buildPeerConnection = iceServers => {
-  const config = iceServers && iceServers.length ? { iceServers } : {};
-  pc = new RTCPeerConnection(config);
-  remoteStream = new MediaStream();
-  pc.ontrack = event => {
-    event.streams.forEach(stream =>
-      stream.getTracks().forEach(track => remoteStream.addTrack(track))
-    );
-  };
-  return pc;
 };
 
 // Mix local mic + remote audio via Web Audio so the recording captures both legs.
@@ -93,6 +107,30 @@ const setupRecorder = () => {
     if (event.data && event.data.size > 0) recorderChunks.push(event.data);
   };
   mediaRecorder.start(RECORDING_TIMESLICE_MS);
+};
+
+const buildPeerConnection = iceServers => {
+  const config = iceServers && iceServers.length ? { iceServers } : {};
+  pc = new RTCPeerConnection(config);
+  remoteStream = new MediaStream();
+  pc.ontrack = event => {
+    // Add to the stable placeholder stream so any sources/recorders referencing
+    // it stay connected — never reassign the variable, since the recorder's
+    // audioContext source taps the original MediaStream object.
+    const tracks =
+      event.streams && event.streams[0]
+        ? event.streams[0].getTracks()
+        : [event.track];
+    tracks.forEach(track => {
+      if (!remoteStream.getTracks().includes(track))
+        remoteStream.addTrack(track);
+    });
+    playRemoteStream(remoteStream);
+    // Defer recorder setup until we actually have remote tracks; createMediaStreamSource
+    // on an empty MediaStream is unreliable across browsers.
+    setupRecorder();
+  };
+  return pc;
 };
 
 const stopRecorderAndUpload = async callId => {
@@ -129,7 +167,7 @@ export function useWhatsappCallSession() {
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     await waitForIceGatheringComplete(pc);
-    setupRecorder();
+    // Recorder fires from ontrack once remote tracks arrive.
     return pc.localDescription.sdp;
   };
 
@@ -214,7 +252,7 @@ export const applyOutboundAnswer = async (callId, sdpAnswer) => {
   if (!pc) return;
   activeCallId = callId;
   await pc.setRemoteDescription({ type: 'answer', sdp: sdpAnswer });
-  setupRecorder();
+  // Recorder + audio playback fire from ontrack as soon as Meta's tracks arrive.
 };
 
 export const hasActiveWhatsappCall = () => Boolean(activeCallId);
