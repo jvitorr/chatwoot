@@ -38,9 +38,10 @@ const { t } = useI18n();
 const store = useStore();
 const { call, conversationId, currentUserId, inboxId, sender } =
   useMessageContext();
-const { activeCall, isJoining, joinCall } = useCallSession({
-  manageSessionState: false,
-});
+const { activeCall, hasActiveCall, isJoining, joinCall, endCall } =
+  useCallSession({
+    manageSessionState: false,
+  });
 
 const status = computed(() => call.value?.status);
 const isOutbound = computed(() => call.value?.direction === 'outgoing');
@@ -153,8 +154,23 @@ const joinLabel = computed(() =>
     : t('CONVERSATION.VOICE_CALL.JOIN_CALL')
 );
 
+const activeConversation = computed(() => {
+  const id = activeCall.value?.conversationId;
+  return id ? store.getters.getConversationById?.(id) : null;
+});
+
 const handleJoinClick = async () => {
   if (!canJoin.value || isJoining.value) return;
+  if (hasActiveCall.value && activeCall.value?.callSid !== callSid.value) {
+    const activeInboxId = activeConversation.value?.inbox_id;
+    if (activeCall.value?.conversationId && activeInboxId) {
+      await endCall({
+        conversationId: activeCall.value.conversationId,
+        inboxId: activeInboxId,
+        callSid: activeCall.value.callSid,
+      });
+    }
+  }
   await joinCall({
     conversationId: conversationId.value,
     inboxId: resolvedInboxId.value,
@@ -165,7 +181,18 @@ const handleJoinClick = async () => {
 
 <template>
   <BaseBubble class="p-0 border-none" hide-meta>
-    <div class="flex overflow-hidden flex-col w-full max-w-xs">
+    <button
+      type="button"
+      :disabled="!canJoin || isJoining"
+      data-test-id="voice-call-join"
+      class="flex overflow-hidden flex-col w-full max-w-xs text-left bg-transparent border-none"
+      :class="{
+        'cursor-pointer transition-colors hover:bg-n-alpha-1 active:bg-n-alpha-2':
+          canJoin,
+        'cursor-default': !canJoin,
+      }"
+      @click="handleJoinClick"
+    >
       <div class="flex gap-3 items-center p-3 w-full">
         <div
           class="flex justify-center items-center rounded-full size-10 shrink-0"
@@ -188,19 +215,11 @@ const handleJoinClick = async () => {
           <span class="text-xs text-n-slate-11">
             {{ subtext }}
           </span>
+          <span v-if="canJoin" class="mt-1 text-xs font-medium text-n-teal-10">
+            {{ joinLabel }}
+          </span>
         </div>
       </div>
-      <button
-        v-if="canJoin"
-        type="button"
-        :disabled="isJoining"
-        data-test-id="voice-call-join"
-        class="flex gap-2 justify-center items-center px-3 py-2 w-full text-sm font-medium border-t bg-n-alpha-1 hover:bg-n-alpha-2 text-n-teal-11 border-n-strong disabled:opacity-60"
-        @click="handleJoinClick"
-      >
-        <Icon class="size-4" icon="i-ph-phone-call" />
-        {{ joinLabel }}
-      </button>
-    </div>
+    </button>
   </BaseBubble>
 </template>
