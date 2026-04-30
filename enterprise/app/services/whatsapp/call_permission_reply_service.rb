@@ -35,9 +35,7 @@ class Whatsapp::CallPermissionReplyService
          .first&.contact
   end
 
-  # Pick the conversation that actually requested permission, not just any open
-  # one — a contact with multiple open threads in the same inbox would otherwise
-  # have the wrong conversation cleared and broadcast.
+  # Filter to threads that actually requested permission; multiple open threads otherwise hit the wrong one.
   def find_active_conversation(contact)
     inbox.conversations
          .where(contact: contact)

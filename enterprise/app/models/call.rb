@@ -39,6 +39,8 @@ class Call < ApplicationRecord
   # Frontend voice bubbles/stores expect inbound/outbound string values
   DISPLAY_DIRECTION = { 'incoming' => 'inbound', 'outgoing' => 'outbound' }.freeze
 
+  DEFAULT_STUN_URL = 'stun:stun.l.google.com:19302'.freeze
+
   enum :provider, { twilio: 0, whatsapp: 1 }
   enum :direction, { incoming: 0, outgoing: 1 }
 
@@ -69,7 +71,7 @@ class Call < ApplicationRecord
 
   # Browser ↔ Meta WebRTC needs at least one STUN server to discover its public srflx candidate.
   def self.default_ice_servers
-    urls = ENV.fetch('VOICE_CALL_STUN_URLS', 'stun:stun.l.google.com:19302').split(',').map(&:strip).reject(&:blank?)
+    urls = ENV.fetch('VOICE_CALL_STUN_URLS', DEFAULT_STUN_URL).split(',').filter_map { |u| u.strip.presence }
     [{ urls: urls }]
   end
 

@@ -87,8 +87,10 @@ describe Whatsapp::IncomingCallService do
       described_class.new(inbox: inbox, params: params).perform
 
       expect(call.reload).to have_attributes(status: 'completed', duration_seconds: 42, end_reason: 'completed_normally')
+      expect(call.ended_at).to be_present
       expect(ActionCable.server).to have_received(:broadcast).with(
-        "account_#{account.id}", hash_including(event: 'voice_call.ended')
+        "account_#{account.id}",
+        hash_including(event: 'voice_call.ended', data: hash_including(status: 'completed'))
       )
     end
 
@@ -155,6 +157,10 @@ describe Whatsapp::IncomingCallService do
       described_class.new(inbox: inbox, params: params).perform
 
       expect(call.reload.status).to eq('no_answer')
+      expect(ActionCable.server).to have_received(:broadcast).with(
+        "account_#{account.id}",
+        hash_including(event: 'voice_call.ended', data: hash_including(status: 'no-answer'))
+      )
     end
   end
 

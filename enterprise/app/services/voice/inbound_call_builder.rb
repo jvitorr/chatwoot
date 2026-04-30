@@ -1,9 +1,6 @@
 class Voice::InboundCallBuilder
   attr_reader :inbox, :from_number, :call_sid, :provider, :extra_meta
 
-  # `provider` defaults to :twilio for back-compat with the original Twilio-only
-  # call site; WhatsApp passes :whatsapp + extra_meta carrying the SDP offer
-  # and ICE servers.
   def self.perform!(inbox:, from_number:, call_sid:, provider: :twilio, extra_meta: {})
     new(inbox: inbox, from_number: from_number, call_sid: call_sid,
         provider: provider, extra_meta: extra_meta).perform!
@@ -61,8 +58,7 @@ class Voice::InboundCallBuilder
     end
   end
 
-  # WhatsApp ContactInbox.source_id must be digits-only (the wa_id); Twilio
-  # accepts the `+`-prefixed phone number as-is.
+  # WhatsApp ContactInbox.source_id must be digits-only (the wa_id); Twilio accepts the +.
   def source_id_for_provider
     provider == :whatsapp ? from_number.to_s.delete_prefix('+') : from_number
   end

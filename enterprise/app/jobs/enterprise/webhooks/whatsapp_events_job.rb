@@ -8,9 +8,7 @@ module Enterprise::Webhooks::WhatsappEventsJob
 
   private
 
-  # Call webhooks don't share the message-mutex sender_id; we lock per-call_id
-  # inside `handle_call_events` instead so multi-call batches don't share a
-  # single lock keyed on the first call's id.
+  # Lock per-call_id inside handle_call_events instead of the parent's per-sender mutex.
   def contact_sender_id(params)
     return nil if call_event?(params)
 
@@ -25,9 +23,7 @@ module Enterprise::Webhooks::WhatsappEventsJob
     params.dig(:entry, 0, :changes, 0, :value, :messages, 0, :interactive, :type) == 'call_permission_reply'
   end
 
-  # Acquire a per-call_id mutex around each call payload so that connect /
-  # terminate webhooks for the same call are serialized — even when Meta
-  # batches multiple calls in one webhook envelope.
+  # Per-call_id mutex so connect/terminate for the same call serialize across batches.
   def handle_call_events(channel, params)
     calls = params.dig(:entry, 0, :changes, 0, :value, :calls) || []
     calls.each do |call_payload|

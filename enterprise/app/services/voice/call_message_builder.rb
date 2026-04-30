@@ -15,13 +15,13 @@ class Voice::CallMessageBuilder
     message = call.message
     return unless message
 
-    data = (message.content_attributes || {}).deep_dup
-    data['data'] ||= {}
-    data['data']['status'] = status.to_s.tr('_', '-') if status
-    data['data']['accepted_by'] = { 'id' => agent.id, 'name' => agent.name } if agent
-    data['data']['duration_seconds'] = duration_seconds if duration_seconds
+    patch = {
+      'status' => status&.to_s&.tr('_', '-'),
+      'accepted_by' => agent && { 'id' => agent.id, 'name' => agent.name },
+      'duration_seconds' => duration_seconds
+    }.compact
 
-    message.update!(content_attributes: data)
+    message.update!(content_attributes: (message.content_attributes || {}).deep_merge('data' => patch))
     message
   end
 
@@ -43,8 +43,7 @@ class Voice::CallMessageBuilder
     call.outgoing? ? call.accepted_by_agent : call.contact
   end
 
-  # `call_source` lets the FE disambiguate WhatsApp vs Twilio for UI copy and
-  # event routing without fetching the whole Call record client-side.
+  # call_source lets the FE disambiguate WhatsApp vs Twilio without re-fetching the Call.
   def build_data_payload
     {
       'call_id' => call.id,
