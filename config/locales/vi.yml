@@ -50,6 +50,8 @@ vi:
       email_already_exists: 'Bạn đã đăng ký một tài khoản với %{email}'
       invalid_params: 'Invalid, please check the signup paramters and try again'
       failed: Đăng ký thât bại
+    voice:
+      call_already_accepted: '%{agent_name} is already handling the call.'
     assignment_policy:
       not_found: Assignment policy not found
     attachments:
