@@ -35,8 +35,10 @@ class Whatsapp::CallService
   private
 
   def transition_to_in_progress!
-    raise Voice::CallErrors::NotRinging, 'Call is not in ringing state' unless call.ringing?
+    # Order matters: in_progress and terminal both make ringing? false, so we have to
+    # branch on in_progress? first to surface the distinct AlreadyAccepted state.
     raise Voice::CallErrors::AlreadyAccepted, 'Call already accepted by another agent' if call.in_progress?
+    raise Voice::CallErrors::NotRinging, 'Call is not in ringing state' unless call.ringing?
 
     forward_answer_to_meta!
     call.update!(status: 'in_progress', accepted_by_agent_id: agent.id, started_at: Time.current,

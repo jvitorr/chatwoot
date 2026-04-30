@@ -44,6 +44,7 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
   def initiate
     return render_could_not_create_error(I18n.t('errors.whatsapp.calls.not_enabled')) unless calling_enabled?(@conversation)
     return render_could_not_create_error(I18n.t('errors.whatsapp.calls.sdp_offer_required')) if params[:sdp_offer].blank?
+    return render_could_not_create_error(I18n.t('errors.whatsapp.calls.contact_phone_required')) if @conversation.contact&.phone_number.blank?
 
     @call = create_outbound_call(@conversation, params[:sdp_offer])
     @message = Voice::CallMessageBuilder.new(@call).perform!
@@ -74,10 +75,9 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
   end
 
   # Browser-built SDP offer is forwarded to Meta; the connect webhook later delivers Meta's answer.
+  # Caller must validate `conversation.contact.phone_number` is present (initiate's guard does).
   def create_outbound_call(conversation, sdp_offer)
-    contact_phone = conversation.contact&.phone_number
-    raise ArgumentError, 'Contact phone number not available' if contact_phone.blank?
-
+    contact_phone = conversation.contact.phone_number
     result = conversation.inbox.channel.provider_service.initiate_call(contact_phone.delete('+'), sdp_offer)
     provider_call_id = result.dig('calls', 0, 'id') || result['call_id']
 

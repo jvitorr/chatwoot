@@ -50,8 +50,15 @@ describe Whatsapp::CallService do
       expect(conversation.reload.assignee_id).to eq(agent.id)
     end
 
-    it 'raises NotRinging when the call is no longer ringing' do
+    it 'raises AlreadyAccepted when another agent has already accepted the call' do
       call.update!(status: 'in_progress')
+
+      expect { described_class.new(call: call, agent: agent, sdp_answer: sdp_answer).accept }
+        .to raise_error(Voice::CallErrors::AlreadyAccepted)
+    end
+
+    it 'raises NotRinging when the call has reached a terminal state' do
+      call.update!(status: 'completed')
 
       expect { described_class.new(call: call, agent: agent, sdp_answer: sdp_answer).accept }
         .to raise_error(Voice::CallErrors::NotRinging)
