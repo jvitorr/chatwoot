@@ -50,6 +50,8 @@ ar:
       email_already_exists: 'لقد قمت بالفعل بتسجيل حساب سابقاً بالعنوان %{email}'
       invalid_params: 'غير صالح، الرجاء التحقق من خانات التسجيل وحاول مرة أخرى'
       failed: فشلت عملية التسجيل
+    voice:
+      call_already_accepted: '%{agent_name} is already handling the call.'
     assignment_policy:
       not_found: Assignment policy not found
     attachments:
