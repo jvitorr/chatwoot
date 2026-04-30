@@ -1,12 +1,5 @@
 <script setup>
-import {
-  computed,
-  onMounted,
-  onBeforeUnmount,
-  ref,
-  nextTick,
-  watch,
-} from 'vue';
+import { computed, onMounted, onUnmounted, ref, nextTick, watch } from 'vue';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useRoute } from 'vue-router';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
@@ -340,7 +333,7 @@ onMounted(async () => {
   }
 });
 
-onBeforeUnmount(() => {
+onUnmounted(() => {
   stopSyncPolling();
 });
 </script>
