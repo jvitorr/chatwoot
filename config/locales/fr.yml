@@ -50,6 +50,8 @@ fr:
       email_already_exists: 'Vous avez déjà créé un compte avec %{email}'
       invalid_params: 'Invalid, please check the signup paramters and try again'
       failed: L'inscription a échoué
+    voice:
+      call_already_accepted: '%{agent_name} is already handling the call.'
     assignment_policy:
       not_found: Assignment policy not found
     attachments:
