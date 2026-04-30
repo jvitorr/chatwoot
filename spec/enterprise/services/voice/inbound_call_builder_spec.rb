@@ -16,7 +16,6 @@ RSpec.describe Voice::InboundCallBuilder do
 
   def perform_builder
     described_class.perform!(
-      account: account,
       inbox: inbox,
       from_number: from_number,
       call_sid: call_sid

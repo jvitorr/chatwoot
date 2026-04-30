@@ -36,6 +36,9 @@ class Call < ApplicationRecord
 
   store_accessor :meta, :conference_sid, :recording_sid, :parent_call_sid, :initiated_at, :ended_at
 
+  # Frontend voice bubbles/stores expect inbound/outbound string values
+  DISPLAY_DIRECTION = { 'incoming' => 'inbound', 'outgoing' => 'outbound' }.freeze
+
   enum :provider, { twilio: 0, whatsapp: 1 }
   enum :direction, { incoming: 0, outgoing: 1 }
 
@@ -62,6 +65,31 @@ class Call < ApplicationRecord
 
   def default_conference_sid
     "conf_account_#{account_id}_call_#{id}"
+  end
+
+  # Browser ↔ Meta WebRTC needs at least one STUN server to discover its
+  # public srflx candidate. Configurable via VOICE_CALL_STUN_URLS (comma-
+  # separated). TURN can be added by appending turn:user@host?credential=...
+  # entries to the same env var.
+  def self.default_ice_servers
+    urls = ENV.fetch('VOICE_CALL_STUN_URLS', 'stun:stun.l.google.com:19302').split(',').map(&:strip).reject(&:blank?)
+    [{ urls: urls }]
+  end
+
+  def direction_label
+    DISPLAY_DIRECTION[direction]
+  end
+
+  def ringing?
+    status == 'ringing'
+  end
+
+  def in_progress?
+    status == 'in_progress'
+  end
+
+  def terminal?
+    TERMINAL_STATUSES.include?(status)
   end
 
   def display_status
