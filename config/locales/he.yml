@@ -50,6 +50,8 @@ he:
       email_already_exists: 'כבר נרשמת לחשבון עם %{email}'
       invalid_params: 'לא תקין, אנא בדוק את פרמטרי הרישום ונסה שוב'
       failed: הרישמה נכשלה
+    voice:
+      call_already_accepted: '%{agent_name} is already handling the call.'
     assignment_policy:
       not_found: מדיניות הקצאה לא נמצאה
     attachments:
