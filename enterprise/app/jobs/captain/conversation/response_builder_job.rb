@@ -106,7 +106,11 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
   end
 
   def v1_handoff_requested?
-    @response['action'] == 'handoff' || legacy_v1_handoff_token?
+    legacy_v1_handoff_token? || classifier_v1_handoff_requested?
+  end
+
+  def classifier_v1_handoff_requested?
+    @response['action'] == 'handoff'
   end
 
   def legacy_v1_handoff_token?
