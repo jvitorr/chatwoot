@@ -50,6 +50,8 @@ de:
       email_already_exists: 'Sie haben sich bereits für ein Konto bei %{email} angemeldet.'
       invalid_params: 'Ungültig, bitte überprüfen Sie die Anmeldeparameter und versuchen Sie es erneut'
       failed: Anmeldung gescheitert
+    voice:
+      call_already_accepted: '%{agent_name} is already handling the call.'
     assignment_policy:
       not_found: Assignment policy not found
     attachments:
