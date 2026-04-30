@@ -41,6 +41,12 @@ const { checkPermissions } = usePolicy();
 const SYNC_POLL_INTERVAL_MS = 5000;
 const SYNC_POLL_MAX_ATTEMPTS = 24;
 
+const FREQUENCY_BY_PLAN = {
+  startups: 'WEEKLY',
+  business: 'DAILY',
+  enterprise: 'EVERY_6_HOURS',
+};
+
 const { isOnChatwootCloud, currentAccount } = useAccount();
 const { isEnterprise, enterprisePlanName } = useConfig();
 const uiFlags = useMapGetter('captainDocuments/getUIFlags');
@@ -248,13 +254,20 @@ const onBulkDeleteSuccess = () => {
   fetchDocumentsAfterBulkAction();
 };
 
-const handleBulkSync = async () => {
-  const ids = (documents.value || [])
+const syncableSelectedIds = computed(() => {
+  if (!bulkSelectedIds.value.size) return [];
+  return (documents.value || [])
     .filter(
       doc =>
         bulkSelectedIds.value.has(doc.id) && !isPdfDocument(doc.external_link)
     )
     .map(doc => doc.id);
+});
+
+const hasNonPdfSelection = computed(() => syncableSelectedIds.value.length > 0);
+
+const handleBulkSync = async () => {
+  const ids = syncableSelectedIds.value;
   if (!ids.length) return;
 
   try {
@@ -282,25 +295,13 @@ const handleBulkSync = async () => {
   }
 };
 
-const hasNonPdfSelection = computed(() => {
-  if (!bulkSelectedIds.value.size) return false;
-  return (documents.value || []).some(
-    doc =>
-      bulkSelectedIds.value.has(doc.id) && !isPdfDocument(doc.external_link)
-  );
-});
-
 const planSyncFrequencyKey = computed(() => {
   const planName =
     currentAccount.value?.custom_attributes?.plan_name?.toLowerCase();
 
-  if (planName === 'startups') return 'WEEKLY';
-  if (planName === 'business') return 'DAILY';
-  if (planName === 'enterprise') return 'EVERY_6_HOURS';
-  if (!planName && isEnterprise && enterprisePlanName !== 'community') {
+  if (planName) return FREQUENCY_BY_PLAN[planName] ?? null;
+  if (isEnterprise && enterprisePlanName !== 'community')
     return 'EVERY_6_HOURS';
-  }
-
   return null;
 });
 
