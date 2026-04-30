@@ -50,6 +50,8 @@ ne:
       email_already_exists: 'तपाईंले पहिले नै %{email} मा खाता दर्ता गर्नुभएको छ'
       invalid_params: 'Invalid, please check the signup paramters and try again'
       failed: दर्ता असफल भयो
+    voice:
+      call_already_accepted: '%{agent_name} is already handling the call.'
     assignment_policy:
       not_found: Assignment policy not found
     attachments:
