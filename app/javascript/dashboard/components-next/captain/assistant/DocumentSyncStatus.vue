@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { dynamicTime } from 'shared/helpers/timeHelper';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
 const props = defineProps({
   status: {
@@ -113,10 +114,7 @@ const textClass = computed(() => {
     :class="textClass"
     :title="fullLabel"
   >
-    <span
-      v-if="isSyncing"
-      class="inline-block size-3 rounded-full border-2 border-n-amber-9 border-t-transparent animate-spin"
-    />
+    <Spinner v-if="isSyncing" class="text-n-amber-11 size-3" />
     <span
       v-else
       class="inline-block size-2 rounded-full shrink-0"
