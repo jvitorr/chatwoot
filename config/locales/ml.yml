@@ -50,6 +50,8 @@ ml:
       email_already_exists: 'നിങ്ങൾ ഇതിനകം ഈ %{email} ഉപയോഗിച്ചു ഒരു അക്കൗണ്ടിനായി സൈൻ അപ്പ് ചെയ്തു'
       invalid_params: 'Invalid, please check the signup paramters and try again'
       failed: സൈനപ്പ് പരാജയപ്പെട്ടു
+    voice:
+      call_already_accepted: '%{agent_name} is already handling the call.'
     assignment_policy:
       not_found: Assignment policy not found
     attachments:
