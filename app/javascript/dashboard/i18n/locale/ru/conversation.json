@@ -83,7 +83,8 @@
       "CALL_ENDED": "Звонок завершен",
       "NOT_ANSWERED_YET": "Пока нет ответа",
       "THEY_ANSWERED": "Они ответили",
-      "YOU_ANSWERED": "Вы ответили"
+      "YOU_ANSWERED": "Вы ответили",
+      "AGENT_ANSWERED": "{agentName} answered"
     },
     "HEADER": {
       "RESOLVE_ACTION": "Завершить",
