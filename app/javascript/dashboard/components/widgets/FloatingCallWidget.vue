@@ -42,12 +42,20 @@ const getCallInfo = call => {
   const conversation = store.getters.getConversationById(call?.conversationId);
   const inbox = store.getters['inboxes/getInbox'](conversation?.inbox_id);
   const sender = conversation?.meta?.sender;
+  // Inbound WhatsApp calls stash caller info on the call record (from the cable
+  // payload) so the widget has something to show before the conversation lands.
+  const caller = call?.caller;
   return {
     conversation,
     inbox,
-    contactName: sender?.name || sender?.phone_number || 'Unknown caller',
+    contactName:
+      sender?.name ||
+      sender?.phone_number ||
+      caller?.name ||
+      caller?.phone ||
+      'Unknown caller',
     inboxName: inbox?.name || 'Customer support',
-    avatar: sender?.avatar || sender?.thumbnail,
+    avatar: sender?.avatar || sender?.thumbnail || caller?.avatar,
   };
 };
 

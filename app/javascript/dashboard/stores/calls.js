@@ -32,8 +32,13 @@ export const useCallsStore = defineStore('calls', {
 
     addCall(callData) {
       if (!callData?.callSid) return;
-      const exists = this.calls.some(call => call.callSid === callData.callSid);
-      if (exists) return;
+      const existing = this.calls.find(c => c.callSid === callData.callSid);
+      if (existing) {
+        // Merge so a later cable event with sdp_offer/provider/caller fills in
+        // gaps left by the earlier message.created path (and vice versa).
+        Object.assign(existing, callData, { isActive: existing.isActive });
+        return;
+      }
 
       this.calls.push({
         ...callData,

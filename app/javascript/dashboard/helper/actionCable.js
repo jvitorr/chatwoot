@@ -225,6 +225,9 @@ class ActionCableConnector extends BaseActionCableConnector {
       provider: 'whatsapp',
       sdpOffer: data.sdp_offer,
       iceServers: data.ice_servers,
+      // Caller info for the FloatingCallWidget so it doesn't show "Unknown caller"
+      // before the conversation/contact has loaded into the store.
+      caller: data.caller,
     });
   };
 
