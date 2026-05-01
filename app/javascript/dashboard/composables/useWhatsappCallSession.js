@@ -38,7 +38,9 @@ const playRemoteStream = stream => {
   });
 };
 
-const RECORDING_TIMESLICE_MS = 5000;
+// Smaller timeslice → chunks flush to memory every second so a remote hangup
+// that races cleanup still leaves data behind to upload.
+const RECORDING_TIMESLICE_MS = 1000;
 const ICE_GATHER_TIMEOUT_MS = 10000;
 const RECORDER_MIME_CANDIDATES = [
   'audio/webm;codecs=opus',
@@ -95,8 +97,15 @@ const cleanup = () => {
 // Mix local mic + remote audio via Web Audio so the recording captures both legs.
 const setupRecorder = () => {
   if (!localStream || !remoteStream || mediaRecorder) return;
+  // Without at least one remote track, createMediaStreamSource on remoteStream
+  // wires up to nothing — the recorded mix is effectively just silence.
+  if (remoteStream.getAudioTracks().length === 0) return;
 
   audioContext = new AudioContext({ sampleRate: 48000 });
+  // AudioContext starts suspended under most autoplay policies. Resume so the
+  // graph actually runs; otherwise the destination stream produces silence.
+  audioContext.resume().catch(() => {});
+
   const destination = audioContext.createMediaStreamDestination();
   audioContext.createMediaStreamSource(localStream).connect(destination);
   audioContext.createMediaStreamSource(remoteStream).connect(destination);
@@ -188,7 +197,29 @@ export function useWhatsappCallSession() {
   };
 
   const acceptIncomingCall = async ({ callId, sdpOffer, iceServers }) => {
-    const sdpAnswer = await prepareInboundAnswer(sdpOffer, iceServers);
+    // The store may not have sdpOffer yet (cable's voice_call.incoming raced
+    // the click), so fall back to GET /whatsapp_calls/:id which exposes the
+    // SDP offer + ICE servers from the show jbuilder.
+    let offer = sdpOffer;
+    let ice = iceServers;
+    if (!offer && callId) {
+      try {
+        const fresh = await WhatsappCallsAPI.show(callId);
+        offer = fresh?.sdp_offer || fresh?.sdpOffer;
+        ice = ice || fresh?.ice_servers || fresh?.iceServers;
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(
+          '[WhatsApp Call] failed to fetch call data for accept:',
+          e
+        );
+      }
+    }
+    if (!offer) {
+      throw new Error('Missing sdp_offer for accept — call may have ended.');
+    }
+
+    const sdpAnswer = await prepareInboundAnswer(offer, ice);
     activeCallId = callId;
     await WhatsappCallsAPI.accept(callId, sdpAnswer);
   };

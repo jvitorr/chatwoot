@@ -5,6 +5,7 @@ import { useCallsStore } from 'dashboard/stores/calls';
 import {
   useWhatsappCallSession,
   sendWhatsappTerminateBeacon,
+  cleanupWhatsappSession,
 } from 'dashboard/composables/useWhatsappCallSession';
 import Timer from 'dashboard/helper/Timer';
 
@@ -127,6 +128,10 @@ export function useCallSession() {
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to join call:', error);
+      // Tear down any half-built WebRTC state so the user's next click starts
+      // fresh; otherwise the leftover pc + mic stream survives and confuses
+      // the second-attempt SDP exchange.
+      cleanupWhatsappSession();
       return null;
     } finally {
       isJoining.value = false;

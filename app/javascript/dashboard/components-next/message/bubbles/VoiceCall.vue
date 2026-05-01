@@ -118,7 +118,13 @@ const bgColor = computed(() => BG_COLOR_MAP[status.value] || 'bg-n-teal-9');
             {{ $t(labelKey) }}
           </span>
           <span class="text-xs text-n-slate-11">
-            {{ formattedDuration || $t(subtextKey) }}
+            <!-- When the audio chip is rendered it already shows duration in
+                 its own player; suppress here to avoid two competing numbers. -->
+            {{
+              audioAttachment
+                ? $t(subtextKey)
+                : formattedDuration || $t(subtextKey)
+            }}
           </span>
         </div>
       </div>
