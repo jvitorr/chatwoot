@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { useElementSize } from '@vueuse/core';
 import BackButton from '../BackButton.vue';
+import ButtonV4 from 'dashboard/components-next/button/Button.vue';
 import InboxName from '../InboxName.vue';
 import MoreActions from './MoreActions.vue';
 import Avatar from 'next/avatar/Avatar.vue';
@@ -198,16 +199,18 @@ const startWhatsappCall = async () => {
         :parent-width="width"
         class="hidden md:flex"
       />
-      <button
+      <ButtonV4
         v-if="isWhatsappVoiceInbox"
         v-tooltip.bottom="$t('CONVERSATION.HEADER.WHATSAPP_CALL')"
-        type="button"
-        class="flex items-center justify-center size-7 rounded-md hover:bg-n-alpha-2 disabled:opacity-50"
+        size="sm"
+        variant="ghost"
+        color="slate"
+        icon="i-lucide-phone"
+        :is-loading="whatsappCallSession.isInitiating.value"
         :disabled="whatsappCallSession.isInitiating.value"
+        class="rounded-md hover:bg-n-alpha-2"
         @click="startWhatsappCall"
-      >
-        <fluent-icon icon="call" size="16" class="text-n-slate-11" />
-      </button>
+      />
       <MoreActions :conversation-id="currentChat.id" />
     </div>
   </div>
