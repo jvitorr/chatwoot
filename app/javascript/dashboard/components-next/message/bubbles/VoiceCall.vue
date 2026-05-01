@@ -31,7 +31,7 @@ const BG_COLOR_MAP = {
   [VOICE_CALL_STATUS.FAILED]: 'bg-n-ruby-9',
 };
 
-const { call, attachments } = useMessageContext();
+const { call, attachments, contentAttributes } = useMessageContext();
 
 const status = computed(() => call.value?.status);
 const isOutbound = computed(() => call.value?.direction === 'outgoing');
@@ -43,9 +43,17 @@ const audioAttachment = computed(() =>
   (attachments?.value || []).find(a => a.fileType === 'audio')
 );
 
-const durationSeconds = computed(
-  () => call.value?.durationSeconds || call.value?.duration_seconds
-);
+// Duration lives in two places depending on which payload the FE got:
+//   - call.duration_seconds / call.durationSeconds  (push_event_data shape)
+//   - content_attributes.data.duration_seconds      (message-side mirror)
+// Both can be camelCased by useTransformKeys upstream — check every variant.
+const durationSeconds = computed(() => {
+  const fromCall = call.value?.durationSeconds || call.value?.duration_seconds;
+  if (fromCall != null) return fromCall;
+
+  const data = contentAttributes?.value?.data || contentAttributes?.value?.data;
+  return data?.durationSeconds || data?.duration_seconds;
+});
 
 const formattedDuration = computed(() => {
   const s = Number(durationSeconds.value);
