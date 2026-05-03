@@ -1,6 +1,8 @@
 require 'net/imap'
 
 class Imap::BaseFetchEmailService
+  MAX_MESSAGES_PER_SYNC = 500
+
   pattr_initialize [:channel!, :interval]
 
   def fetch_emails
@@ -77,26 +79,33 @@ class Imap::BaseFetchEmailService
     Rails.logger.info "[IMAP::FETCH_EMAIL_SERVICE] Fetching mails from #{channel.email}, found #{seq_nums.length}."
 
     message_ids_with_seq = []
-    seq_nums.each_slice(2000).each do |batch|
-      # Fetch only message-id only without mail body or contents.
-      batch_message_ids = imap_client.fetch(batch, 'BODY.PEEK[HEADER]')
-      Rails.logger.info "[IMAP::FETCH_EMAIL_SERVICE] Fetching the batch for #{channel.email}. Found #{batch_message_ids&.length} messages."
-
-      # .fetch returns an array of Net::IMAP::FetchData or nil
-      # (instead of an empty array) if there is no matching message.
-      # Check
-      if batch_message_ids.blank?
-        Rails.logger.info "[IMAP::FETCH_EMAIL_SERVICE] Fetching the batch failed for #{channel.email}."
-        next
-      end
-
-      batch_message_ids.each do |data|
-        message_id = build_mail_from_string(data.attr['BODY[HEADER]']).message_id
-        message_ids_with_seq.push([data.seqno, message_id])
-      end
+    seq_nums.each_slice(500).each do |batch|
+      append_message_ids_for_batch(batch, message_ids_with_seq)
+      break if message_ids_with_seq.length >= MAX_MESSAGES_PER_SYNC
     end
 
     message_ids_with_seq
+  end
+
+  def append_message_ids_for_batch(batch, message_ids_with_seq)
+    # Fetch only message-id only without mail body or contents.
+    batch_message_ids = imap_client.fetch(batch, 'BODY.PEEK[HEADER]')
+    Rails.logger.info "[IMAP::FETCH_EMAIL_SERVICE] Fetching the batch for #{channel.email}. Found #{batch_message_ids&.length} messages."
+
+    # .fetch returns an array of Net::IMAP::FetchData or nil
+    # (instead of an empty array) if there is no matching message.
+    if batch_message_ids.blank?
+      Rails.logger.info "[IMAP::FETCH_EMAIL_SERVICE] Fetching the batch failed for #{channel.email}."
+      return
+    end
+
+    batch_message_ids.each do |data|
+      message_id = build_mail_from_string(data.attr['BODY[HEADER]']).message_id
+      next if message_id.present? && email_already_present?(channel, message_id)
+
+      message_ids_with_seq.push([data.seqno, message_id])
+      break if message_ids_with_seq.length >= MAX_MESSAGES_PER_SYNC
+    end
   end
 
   # Sends a SEARCH command to search the mailbox for messages that were
