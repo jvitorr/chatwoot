@@ -77,9 +77,10 @@ class Imap::BaseFetchEmailService
     Rails.logger.info "[IMAP::FETCH_EMAIL_SERVICE] Fetching mails from #{channel.email}, found #{seq_nums.length}."
 
     message_ids_with_seq = []
-    seq_nums.each_slice(10).each do |batch|
+    seq_nums.each_slice(1000).each do |batch|
       # Fetch only message-id only without mail body or contents.
       batch_message_ids = imap_client.fetch(batch, 'BODY.PEEK[HEADER]')
+      Rails.logger.info "[IMAP::FETCH_EMAIL_SERVICE] Fetching the batch for #{channel.email}. Found #{batch_message_ids&.length} messages."
 
       # .fetch returns an array of Net::IMAP::FetchData or nil
       # (instead of an empty array) if there is no matching message.
