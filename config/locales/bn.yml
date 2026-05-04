@@ -231,6 +231,7 @@ bn:
       deleted: এই বার্তাটি মুছে ফেলা হয়েছে
       whatsapp:
         list_button_label: 'একটি আইটেম নির্বাচন করুন'
+        call_permission_request_body: 'We would like to call you regarding your conversation.'
       delivery_status:
         error_code: 'ত্রুটি কোড: %{error_code}'
     activity:
