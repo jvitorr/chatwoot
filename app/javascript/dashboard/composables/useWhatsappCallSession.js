@@ -2,9 +2,8 @@ import { ref } from 'vue';
 import Cookies from 'js-cookie';
 import WhatsappCallsAPI from 'dashboard/api/channel/whatsapp/whatsappCallsAPI';
 
-// Browser ↔ Meta WebRTC is a singleton — only one PeerConnection at a time can
-// hold the user's mic. Module-level state lets cable handlers and the pagehide
-// listener reach the live session without prop-drilling refs through composables.
+// Module-level state lets the cable handlers and unload listeners reach the
+// live PeerConnection without prop-drilling refs through every composable.
 let pc = null;
 let localStream = null;
 let remoteStream = null;
@@ -15,9 +14,6 @@ let audioContext = null;
 let activeCallId = null;
 let intentionallyClosing = false;
 
-// Lazily attach a hidden <audio autoplay> to the document so Meta's track
-// actually plays through the speakers — without this, mic flows to Meta but
-// the user hears nothing back.
 const ensureRemoteAudioElement = () => {
   if (remoteAudioEl) return remoteAudioEl;
   remoteAudioEl = document.createElement('audio');
@@ -32,15 +28,14 @@ const ensureRemoteAudioElement = () => {
 const playRemoteStream = stream => {
   const el = ensureRemoteAudioElement();
   el.srcObject = stream;
-  // play() may reject under autoplay policies; surface to console but don't crash the call.
   el.play().catch(err => {
     // eslint-disable-next-line no-console
     console.warn('[WhatsApp Call] remote audio play() failed:', err);
   });
 };
 
-// Smaller timeslice → chunks flush to memory every second so a remote hangup
-// that races cleanup still leaves data behind to upload.
+// 1s timeslice keeps a recent recording chunk in memory so a remote hangup
+// that races cleanup still has data to upload.
 const RECORDING_TIMESLICE_MS = 1000;
 const ICE_GATHER_TIMEOUT_MS = 10000;
 const RECORDER_MIME_CANDIDATES = [
@@ -49,9 +44,9 @@ const RECORDER_MIME_CANDIDATES = [
   'audio/ogg;codecs=opus',
 ];
 
-// Outbound calls don't get ice_servers from the backend (call doesn't exist yet
-// at offer time). Without STUN the browser only has host candidates which can't
-// reach Meta through NAT, so the browser→Meta direction silently drops media.
+// Outbound calls have no backend-supplied ice_servers (the call doesn't exist
+// at offer time). Without STUN the browser only sends host candidates and
+// browser→Meta media silently drops through any non-trivial NAT.
 const DEFAULT_OUTBOUND_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 
 const waitForIceGatheringComplete = peer =>
@@ -95,16 +90,15 @@ const cleanup = () => {
   intentionallyClosing = false;
 };
 
-// Mix local mic + remote audio via Web Audio so the recording captures both legs.
 const setupRecorder = () => {
   if (!localStream || !remoteStream || mediaRecorder) return;
-  // Without at least one remote track, createMediaStreamSource on remoteStream
-  // wires up to nothing — the recorded mix is effectively just silence.
+  // createMediaStreamSource on a stream with no audio tracks wires up to
+  // nothing — the recorded mix would be silence. Wait until ontrack fires.
   if (remoteStream.getAudioTracks().length === 0) return;
 
   audioContext = new AudioContext({ sampleRate: 48000 });
-  // AudioContext starts suspended under most autoplay policies. Resume so the
-  // graph actually runs; otherwise the destination stream produces silence.
+  // AudioContext starts suspended under most autoplay policies; without
+  // resume() the destination stream produces silence.
   audioContext.resume().catch(() => {});
 
   const destination = audioContext.createMediaStreamDestination();
@@ -129,9 +123,8 @@ const buildPeerConnection = iceServers => {
   pc = new RTCPeerConnection(config);
   remoteStream = new MediaStream();
   pc.ontrack = event => {
-    // Add to the stable placeholder stream so any sources/recorders referencing
-    // it stay connected — never reassign the variable, since the recorder's
-    // audioContext source taps the original MediaStream object.
+    // Reuse the same MediaStream object — the recorder's audioContext source
+    // taps it once, so reassigning would orphan the recorder.
     const tracks =
       event.streams && event.streams[0]
         ? event.streams[0].getTracks()
@@ -141,8 +134,6 @@ const buildPeerConnection = iceServers => {
         remoteStream.addTrack(track);
     });
     playRemoteStream(remoteStream);
-    // Defer recorder setup until we actually have remote tracks; createMediaStreamSource
-    // on an empty MediaStream is unreliable across browsers.
     setupRecorder();
   };
   return pc;
@@ -162,16 +153,60 @@ const stopRecorderAndUpload = async callId => {
   if (!recorderChunks.length || !callId) return;
 
   const blob = new Blob(recorderChunks, { type: recorderChunks[0].type });
+  // Best-effort — the controller's idempotency guard handles a retry.
   try {
     await WhatsappCallsAPI.uploadRecording(callId, blob);
   } catch (_) {
-    /* best-effort — server-side idempotency guard handles a retry */
+    /* noop */
+  }
+};
+
+// devise-token-auth requires access-token / client / uid headers on every
+// request — navigator.sendBeacon can't set custom headers, so we rehydrate
+// the auth payload from the cw_d_session_info cookie that the dashboard sets
+// at login. Used by the page-close terminate path below.
+const getDeviseAuthHeaders = () => {
+  try {
+    const raw = Cookies.get('cw_d_session_info');
+    if (!raw) return null;
+    const session = JSON.parse(raw);
+    return {
+      'access-token': session['access-token'] || '',
+      client: session.client || '',
+      uid: session.uid || '',
+      expiry: session.expiry || '',
+      'token-type': session['token-type'] || 'Bearer',
+    };
+  } catch (_) {
+    return null;
+  }
+};
+
+const beaconTerminate = callId => {
+  if (!callId) return;
+  const accountId = window.location.pathname.split('/')[3];
+  if (!accountId) return;
+  const headers = getDeviseAuthHeaders();
+  if (!headers) return;
+  const url = `/api/v1/accounts/${accountId}/whatsapp_calls/${callId}/terminate`;
+  // fetch+keepalive (instead of navigator.sendBeacon) so we can attach auth
+  // headers — without them devise-token-auth 401s and the call stays open on
+  // Meta until its carrier-side timeout (~60s).
+  try {
+    fetch(url, {
+      method: 'POST',
+      keepalive: true,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: '{}',
+    }).catch(() => {});
+  } catch (_) {
+    /* noop */
   }
 };
 
 export function useWhatsappCallSession() {
   const isInitiating = ref(false);
-  const error = ref(null);
 
   const prepareInboundAnswer = async (sdpOffer, iceServers) => {
     cleanup();
@@ -182,7 +217,6 @@ export function useWhatsappCallSession() {
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     await waitForIceGatheringComplete(pc);
-    // Recorder fires from ontrack once remote tracks arrive.
     return pc.localDescription.sdp;
   };
 
@@ -198,9 +232,8 @@ export function useWhatsappCallSession() {
   };
 
   const acceptIncomingCall = async ({ callId, sdpOffer, iceServers }) => {
-    // The store may not have sdpOffer yet (cable's voice_call.incoming raced
-    // the click), so fall back to GET /whatsapp_calls/:id which exposes the
-    // SDP offer + ICE servers from the show jbuilder.
+    // The store may not have sdpOffer yet (the cable broadcast can race the
+    // click). Fall back to GET /whatsapp_calls/:id which exposes it.
     let offer = sdpOffer;
     let ice = iceServers;
     if (!offer && callId) {
@@ -237,19 +270,17 @@ export function useWhatsappCallSession() {
   const initiateOutboundCall = async conversationId => {
     if (isInitiating.value) return null;
     isInitiating.value = true;
-    error.value = null;
     try {
       const sdpOffer = await prepareOutboundOffer();
       const response = await WhatsappCallsAPI.initiate(
         conversationId,
         sdpOffer
       );
-      // Permission flow returns no call id — let the caller render the banner.
+      // The permission-request branch returns no call id; let the caller render the banner.
       activeCallId = response?.id || null;
       return response;
     } catch (e) {
       cleanup();
-      error.value = e;
       throw e;
     } finally {
       isInitiating.value = false;
@@ -273,7 +304,6 @@ export function useWhatsappCallSession() {
 
   return {
     isInitiating,
-    error,
     prepareInboundAnswer,
     prepareOutboundOffer,
     acceptIncomingCall,
@@ -283,23 +313,17 @@ export function useWhatsappCallSession() {
   };
 }
 
-// Cable handlers fire outside any composable instance; expose the shared session
-// surface so they can apply the outbound answer onto the live PeerConnection.
+// Cable handlers fire outside any composable instance, so the shared session
+// surface is exposed as module-level functions for them.
+
 export const applyOutboundAnswer = async (callId, sdpAnswer) => {
   if (!pc) return;
   activeCallId = callId;
   await pc.setRemoteDescription({ type: 'answer', sdp: sdpAnswer });
-  // Recorder + audio playback fire from ontrack as soon as Meta's tracks arrive.
 };
 
-export const hasActiveWhatsappCall = () => Boolean(activeCallId);
-
-// Used by the calls store as a sync teardown safety net.
 export const cleanupWhatsappSession = () => cleanup();
 
-// Cable-driven end (contact hung up / call timed out). Flush any in-memory
-// recorder chunks and upload them so the resulting message bubble shows the
-// audio + transcript — without this, only agent-initiated hangups upload.
 export const handleWhatsappRemoteEnd = async callId => {
   // Snapshot before cleanup nulls activeCallId.
   const id = callId || activeCallId;
@@ -314,7 +338,6 @@ export const handleWhatsappRemoteEnd = async callId => {
   }
 };
 
-// Mute helpers — toggle the mic track's enabled flag (instantaneous, no renegotiation).
 export const setWhatsappCallMuted = muted => {
   if (!localStream) return false;
   localStream.getAudioTracks().forEach(track => {
@@ -323,66 +346,7 @@ export const setWhatsappCallMuted = muted => {
   return muted;
 };
 
-export const isWhatsappCallMuted = () => {
-  if (!localStream) return false;
-  const tracks = localStream.getAudioTracks();
-  if (!tracks.length) return false;
-  return !tracks[0].enabled;
-};
-
-// devise-token-auth requires access-token / client / uid headers on every
-// request — navigator.sendBeacon can't set custom headers, so the dashboard
-// stashes the auth payload in the cw_d_session_info cookie at login and we
-// rehydrate it here for unload-time requests.
-const getDeviseAuthHeaders = () => {
-  try {
-    const raw = Cookies.get('cw_d_session_info');
-    if (!raw) return null;
-    const session = JSON.parse(raw);
-    return {
-      'access-token': session['access-token'] || '',
-      client: session.client || '',
-      uid: session.uid || '',
-      expiry: session.expiry || '',
-      'token-type': session['token-type'] || 'Bearer',
-    };
-  } catch (_) {
-    return null;
-  }
-};
-
-// Best-effort terminate beacon for any WhatsApp call — the backend's terminate
-// endpoint handles both ringing and in_progress states (terminate while ringing
-// records 'no_answer' which is the right shape for "agent left the page").
-// Browser-direct WebRTC has no rejoin path, so the only sensible thing on page
-// close is to release the call on Meta's side.
-//
-// Uses fetch+keepalive instead of navigator.sendBeacon so we can attach the
-// devise-token-auth headers — without them the request 401s and the call
-// stays open on Meta until the carrier-side timeout (~60s).
-export const sendWhatsappCallBeacon = callId => {
-  if (!callId) return;
-  const accountId = window.location.pathname.split('/')[3];
-  if (!accountId) return;
-  const headers = getDeviseAuthHeaders();
-  if (!headers) return;
-  const url = `/api/v1/accounts/${accountId}/whatsapp_calls/${callId}/terminate`;
-  try {
-    fetch(url, {
-      method: 'POST',
-      keepalive: true,
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: '{}',
-    }).catch(() => {});
-  } catch (_) {
-    /* noop */
-  }
-};
-
-// Backward-compat wrapper for the active-call case — guarded by
-// intentionallyClosing so we don't double-terminate after an explicit hangup.
 export const sendWhatsappTerminateBeacon = () => {
   if (!activeCallId || intentionallyClosing) return;
-  sendWhatsappCallBeacon(activeCallId);
+  beaconTerminate(activeCallId);
 };

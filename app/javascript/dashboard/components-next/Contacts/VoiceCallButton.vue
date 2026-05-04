@@ -44,7 +44,6 @@ const voiceInboxes = computed(() =>
 );
 const hasVoiceInboxes = computed(() => voiceInboxes.value.length > 0);
 
-// Unified behavior: hide when no phone
 const shouldRender = computed(() => hasVoiceInboxes.value && !!props.phone);
 
 const isInitiatingCall = computed(() => {
@@ -128,7 +127,6 @@ const startCall = async inboxId => {
     });
     const { call_sid: callSid, conversation_id: conversationId } = response;
 
-    // Add call to store immediately so widget shows
     const callsStore = useCallsStore();
     callsStore.addCall({
       callSid,

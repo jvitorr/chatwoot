@@ -43,15 +43,14 @@ const audioAttachment = computed(() =>
   (attachments?.value || []).find(a => a.fileType === 'audio')
 );
 
-// Duration lives in two places depending on which payload the FE got:
-//   - call.duration_seconds / call.durationSeconds  (push_event_data shape)
-//   - content_attributes.data.duration_seconds      (message-side mirror)
-// Both can be camelCased by useTransformKeys upstream — check every variant.
+// Duration may arrive on call.duration_seconds (push_event_data) or
+// content_attributes.data.duration_seconds — and either may be camelCased
+// upstream, so check every variant.
 const durationSeconds = computed(() => {
   const fromCall = call.value?.durationSeconds || call.value?.duration_seconds;
   if (fromCall != null) return fromCall;
 
-  const data = contentAttributes?.value?.data || contentAttributes?.value?.data;
+  const data = contentAttributes?.value?.data;
   return data?.durationSeconds || data?.duration_seconds;
 });
 
@@ -118,8 +117,6 @@ const bgColor = computed(() => BG_COLOR_MAP[status.value] || 'bg-n-teal-9');
             {{ $t(labelKey) }}
           </span>
           <span class="text-xs text-n-slate-11">
-            <!-- When the audio chip is rendered it already shows duration in
-                 its own player; suppress here to avoid two competing numbers. -->
             {{
               audioAttachment
                 ? $t(subtextKey)

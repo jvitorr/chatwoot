@@ -77,15 +77,12 @@ const handleJoinCall = async call => {
   if (!call || isJoining.value) return;
   const { conversation } = getCallInfo(call);
 
-  // End current active call before joining new one
   if (hasActiveCall.value) {
     await handleEndCall();
   }
 
-  // After a hard refresh the conversation may not be hydrated yet — but the call
-  // object already carries inboxId from the cable / seeding path, so accept can
-  // proceed without it. Twilio still needs inboxId for initializeDevice; falls
-  // back to the conversation's inbox_id when present.
+  // The conversation may not be hydrated yet (post-refresh seeding path);
+  // call.inboxId already carries what joinCall needs.
   const result = await joinCall({
     conversationId: call.conversationId,
     inboxId: call.inboxId || conversation?.inbox_id,

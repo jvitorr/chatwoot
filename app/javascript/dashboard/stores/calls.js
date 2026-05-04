@@ -28,12 +28,8 @@ export const useCallsStore = defineStore('calls', {
       if (!TERMINAL_STATUSES.includes(status)) return;
 
       const call = this.calls.find(c => c.callSid === callSid);
-      // For WhatsApp, the upload-and-cleanup must happen before the recorder
-      // state is wiped — that runs from the voice_call.ended cable handler.
-      // If we tear down here (race-winning the cable end-event), the recorder
-      // chunks are gone before they get uploaded, so the recording is lost.
-      // Just drop the call from the store; voice_call.ended will idempotently
-      // finish cleanup once it arrives.
+      // WhatsApp recordings live in the in-memory recorder until voice_call.ended
+      // uploads them; tearing down here would race-wipe those chunks.
       if (call?.provider === 'whatsapp') {
         this.calls = this.calls.filter(c => c.callSid !== callSid);
         return;

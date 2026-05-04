@@ -41,22 +41,19 @@ export function useCallSession() {
     { immediate: true }
   );
 
-  // Browser-native confirm prompt when reload/close happens mid-call. Reload
-  // tears down the WebRTC session permanently for WhatsApp (no rejoin) and
-  // drops the agent leg for Twilio. Also warn while a call is ringing — the
-  // cable broadcast that delivered the incoming-call event isn't replayed on
-  // refresh, so the agent loses the ability to accept it.
+  // Warn before a refresh/close drops a live or ringing call. Cable events
+  // aren't replayed on reconnect, so a confirmed refresh during ringing would
+  // leave the agent unable to accept; for active calls the WebRTC session
+  // dies outright (no rejoin path).
   const handleBeforeUnload = event => {
     if (!hasActiveCall.value && !hasIncomingCall.value) return;
     event.preventDefault();
     event.returnValue = '';
   };
 
-  // Hydrate the calls store from already-loaded conversation messages. The
-  // voice_call.incoming / message.created cable events are one-shot and aren't
-  // replayed when the page reconnects, so without this seeding a hard refresh
-  // during a ringing call would leave the FloatingCallWidget empty even though
-  // the call is still ringing on Meta's side.
+  // Cable broadcasts (voice_call.incoming / message.created) are one-shot, so
+  // on a hard refresh they leave the calls store empty. Seed it from any
+  // ringing voice_call message in the conversation cache.
   const seedCallsFromHydratedMessages = () => {
     const conversations = store.getters.getAllConversations || [];
     const currentUserId = store.getters.getCurrentUserID;
@@ -69,11 +66,8 @@ export function useCallSession() {
     });
   };
 
-  // pagehide fires after the user confirms the refresh prompt. Terminate the
-  // active call only — its WebRTC session dies with the page and can't be
-  // rejoined. Ringing calls intentionally stay alive on Meta so the agent can
-  // pick them up after the page reloads (FloatingCallWidget rehydrates them
-  // via seedCallsFromHydratedMessages once the conversation messages land).
+  // Terminate only the active call — ringing calls stay alive on Meta so the
+  // agent can pick them up after reload (seeded back via the watcher above).
   const handlePageHide = () => {
     sendWhatsappTerminateBeacon();
   };
@@ -90,9 +84,7 @@ export function useCallSession() {
     seedCallsFromHydratedMessages();
   });
 
-  // Conversations are typically fetched after this composable mounts, so the
-  // initial seed pass runs before any messages exist. Re-seed whenever the
-  // conversation list changes — addCall is idempotent (it merges by callSid).
+  // Re-seed when conversations stream in after mount; addCall merges by callSid.
   watch(
     () => store.getters.getAllConversations?.length,
     () => seedCallsFromHydratedMessages()
@@ -163,9 +155,7 @@ export function useCallSession() {
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to join call:', error);
-      // Tear down any half-built WebRTC state so the user's next click starts
-      // fresh; otherwise the leftover pc + mic stream survives and confuses
-      // the second-attempt SDP exchange.
+      // Drop any half-built WebRTC state so the next click starts fresh.
       cleanupWhatsappSession();
       return null;
     } finally {
