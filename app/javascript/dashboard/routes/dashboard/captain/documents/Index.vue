@@ -267,14 +267,19 @@ const onBulkDeleteSuccess = () => {
   fetchDocumentsAfterBulkAction();
 };
 
+const isSyncableDocument = doc =>
+  !doc.pdf_document && doc.status === 'available' && !doc.sync_in_progress;
+
 const syncableSelectedIds = computed(() => {
   if (!bulkSelectedIds.value.size) return [];
   return (documents.value || [])
-    .filter(doc => bulkSelectedIds.value.has(doc.id) && !doc.pdf_document)
+    .filter(doc => bulkSelectedIds.value.has(doc.id) && isSyncableDocument(doc))
     .map(doc => doc.id);
 });
 
-const hasNonPdfSelection = computed(() => syncableSelectedIds.value.length > 0);
+const hasSyncableSelection = computed(
+  () => syncableSelectedIds.value.length > 0
+);
 
 const handleBulkSync = async () => {
   const ids = syncableSelectedIds.value;
@@ -387,7 +392,7 @@ onUnmounted(() => {
           :class="{ 'mb-2': bulkSelectedIds.size > 0 }"
           @bulk-delete="bulkDeleteDialog.dialogRef.open()"
         >
-          <template v-if="hasNonPdfSelection" #secondary-actions>
+          <template v-if="hasSyncableSelection" #secondary-actions>
             <Button
               :label="$t('CAPTAIN.DOCUMENTS.BULK_SYNC_BUTTON')"
               sm
@@ -447,6 +452,7 @@ onUnmounted(() => {
           :pdf-document="doc.pdf_document"
           :assistant="doc.assistant"
           :created-at="doc.created_at"
+          :status="doc.status"
           :sync-status="doc.sync_status"
           :last-synced-at="doc.last_synced_at"
           :last-sync-error-code="doc.last_sync_error_code"

@@ -42,6 +42,10 @@ const props = defineProps({
     type: Number,
     required: true,
   },
+  status: {
+    type: String,
+    default: null,
+  },
   syncStatus: {
     type: String,
     default: null,
@@ -94,6 +98,10 @@ const modelValue = computed({
 const isPdf = computed(() => props.pdfDocument);
 const hasSafeLink = computed(() => isSafeHttpLink(props.externalLink));
 const canManage = computed(() => checkPermissions(['administrator']));
+const isAvailable = computed(() => props.status === 'available');
+const canSync = computed(
+  () => canManage.value && !isPdf.value && isAvailable.value
+);
 const isSyncing = computed(() => props.syncStatus === 'syncing');
 const isFailed = computed(() => props.syncStatus === 'failed');
 const isRetryableSync = computed(
@@ -111,7 +119,7 @@ const menuItems = computed(() => {
     },
   ];
 
-  if (canManage.value && !isPdf.value) {
+  if (canSync.value) {
     allOptions.push({
       label: isRetryableSync.value
         ? t('CAPTAIN.DOCUMENTS.OPTIONS.RETRY_SYNC')
@@ -227,7 +235,7 @@ const handleRetry = () => {
         :last-synced-at="lastSyncedAt"
         :error-code="lastSyncErrorCode"
         :stale-after-hours="syncStaleAfterHours"
-        :show-retry="canManage && isFailed"
+        :show-retry="canSync && isFailed"
         @retry="handleRetry"
       />
       <div v-else class="text-sm shrink-0 text-n-slate-11 line-clamp-1">
