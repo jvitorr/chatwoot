@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, nextTick, watch } from 'vue';
+import { useTimeoutPoll } from '@vueuse/core';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useRoute } from 'vue-router';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
@@ -31,7 +32,12 @@ const { t } = useI18n();
 const { checkPermissions } = usePolicy();
 
 const SYNC_POLL_INTERVAL_MS = 5000;
-const SYNC_POLL_MAX_ATTEMPTS = 24;
+const SYNC_POLL_MAX_DURATION_MS = 15 * 60 * 1000;
+const PERMANENT_SYNC_ERROR_CODES = new Set([
+  'not_found',
+  'access_denied',
+  'content_empty',
+]);
 
 const { isOnChatwootCloud, currentAccount } = useAccount();
 const uiFlags = useMapGetter('captainDocuments/getUIFlags');
@@ -97,7 +103,7 @@ const fetchDocuments = async (page = 1) => {
   if (activeFilter.value) {
     filterParams.filter = activeFilter.value;
   }
-  fetchStats();
+  await fetchStats();
   return store.dispatch('captainDocuments/get', filterParams);
 };
 
@@ -107,40 +113,63 @@ const handleFilterSelect = filterKey => {
   fetchDocuments(1);
 };
 
-const syncPollTimer = ref(null);
-const syncPollAttempts = ref(0);
-
-const stopSyncPolling = () => {
-  if (syncPollTimer.value) {
-    clearTimeout(syncPollTimer.value);
-    syncPollTimer.value = null;
-  }
-  syncPollAttempts.value = 0;
-};
+const syncPollStartedAt = ref(null);
 
 const hasDocumentsSyncing = computed(() =>
   (documents.value || []).some(doc => doc.sync_in_progress)
 );
 
-const scheduleSyncPoll = () => {
-  if (syncPollTimer.value) return;
+const hasSyncingDocuments = computed(
+  () => hasDocumentsSyncing.value || Number(stats.value?.syncing) > 0
+);
 
-  syncPollTimer.value = setTimeout(async () => {
-    syncPollTimer.value = null;
-    syncPollAttempts.value += 1;
+const hasRetryableFailedDocuments = computed(() =>
+  (documents.value || []).some(
+    doc =>
+      doc.sync_status === 'failed' &&
+      !PERMANENT_SYNC_ERROR_CODES.has(doc.last_sync_error_code)
+  )
+);
+
+const isWithinSyncPollWindow = () =>
+  syncPollStartedAt.value &&
+  Date.now() - syncPollStartedAt.value < SYNC_POLL_MAX_DURATION_MS;
+
+const shouldContinueSyncPolling = () =>
+  (hasSyncingDocuments.value || hasRetryableFailedDocuments.value) &&
+  isWithinSyncPollWindow();
+
+let syncPollingControls;
+
+function stopSyncPolling() {
+  syncPollingControls.pause();
+  syncPollStartedAt.value = null;
+}
+
+async function pollSyncDocuments() {
+  try {
     await fetchDocuments(documentsMeta.value?.page || 1);
-    if (
-      hasDocumentsSyncing.value &&
-      syncPollAttempts.value < SYNC_POLL_MAX_ATTEMPTS
-    ) {
-      scheduleSyncPoll();
-    } else {
-      stopSyncPolling();
-    }
-  }, SYNC_POLL_INTERVAL_MS);
-};
+  } catch (error) {
+    // Keep the existing polling decision based on the last known sync state.
+  }
 
-watch(hasDocumentsSyncing, isSyncing => {
+  if (!shouldContinueSyncPolling()) {
+    stopSyncPolling();
+  }
+}
+
+function scheduleSyncPoll() {
+  if (syncPollingControls.isActive.value) return;
+
+  syncPollStartedAt.value ||= Date.now();
+  syncPollingControls.resume();
+}
+
+syncPollingControls = useTimeoutPoll(pollSyncDocuments, SYNC_POLL_INTERVAL_MS, {
+  immediate: false,
+});
+
+watch(hasSyncingDocuments, isSyncing => {
   if (isSyncing) {
     scheduleSyncPoll();
   }
@@ -325,7 +354,7 @@ watch(selectedAssistantId, () => {
 
 onMounted(async () => {
   await fetchDocuments();
-  if (hasDocumentsSyncing.value) {
+  if (hasSyncingDocuments.value) {
     scheduleSyncPoll();
   }
 });
