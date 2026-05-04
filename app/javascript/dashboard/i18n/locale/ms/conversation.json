@@ -84,7 +84,8 @@
       "NOT_ANSWERED_YET": "Belum dijawab",
       "THEY_ANSWERED": "Mereka menjawab",
       "YOU_ANSWERED": "Anda menjawab",
-      "AGENT_ANSWERED": "{agentName} answered"
+      "AGENT_ANSWERED": "{agentName} answered",
+      "JOIN_CALL": "Sertai panggilan"
     },
     "HEADER": {
       "RESOLVE_ACTION": "Selesaikan",
