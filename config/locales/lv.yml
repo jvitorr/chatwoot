@@ -231,6 +231,7 @@ lv:
       deleted: Šis ziņojums ir izdzēsts
       whatsapp:
         list_button_label: 'Choose an item'
+        call_permission_request_body: 'We would like to call you regarding your conversation.'
       delivery_status:
         error_code: 'Kļūdas kods: %{error_code}'
     activity:
