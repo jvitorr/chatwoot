@@ -84,7 +84,8 @@
       "NOT_ANSWERED_YET": "尚未回复",
       "THEY_ANSWERED": "对方已回复",
       "YOU_ANSWERED": "你已回复",
-      "AGENT_ANSWERED": "{agentName} answered"
+      "AGENT_ANSWERED": "{agentName} answered",
+      "JOIN_CALL": "Join call"
     },
     "HEADER": {
       "RESOLVE_ACTION": "已解决",
