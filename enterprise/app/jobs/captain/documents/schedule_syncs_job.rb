@@ -45,7 +45,7 @@ class Captain::Documents::ScheduleSyncsJob < ApplicationJob
       next unless document.syncable?
 
       # Reserve the sync slot before enqueueing so later scheduler runs skip this document while the job is queued.
-      document.update!(sync_status: :syncing, last_sync_attempted_at: Time.current)
+      mark_sync_started(document)
       Captain::Documents::PerformSyncJob.perform_later(document)
       @remaining_global_capacity -= 1
       enqueued_count += 1
@@ -62,5 +62,14 @@ class Captain::Documents::ScheduleSyncsJob < ApplicationJob
     }.merge(stats)
 
     Rails.logger.info("[Captain::Documents::ScheduleSyncsJob] #{payload.to_json}")
+  end
+
+  def mark_sync_started(document)
+    document.update!(
+      sync_status: :syncing,
+      sync_step: nil,
+      last_sync_error_code: nil,
+      last_sync_attempted_at: Time.current
+    )
   end
 end

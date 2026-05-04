@@ -48,7 +48,12 @@ class Api::V1::Accounts::Captain::DocumentsController < Api::V1::Accounts::BaseC
     return render_could_not_create_error(I18n.t('captain.documents.sync_only_available_documents')) unless @document.available?
     return render_could_not_create_error(I18n.t('captain.documents.sync_already_in_progress')) if @document.sync_in_progress?
 
-    @document.update!(sync_status: :syncing, last_sync_attempted_at: Time.current)
+    @document.update!(
+      sync_status: :syncing,
+      sync_step: nil,
+      last_sync_error_code: nil,
+      last_sync_attempted_at: Time.current
+    )
     Captain::Documents::PerformSyncJob.perform_later(@document)
     head :accepted
   end
