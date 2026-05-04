@@ -93,7 +93,7 @@ class Captain::Llm::SystemPromptsService
       SYSTEM_PROMPT_MESSAGE
     end
 
-    def assistant_action_classifier
+    def assistant_action_classifier(has_custom_instructions: false)
       <<~PROMPT
         You are a routing classifier for a customer-support assistant.
 
@@ -127,16 +127,11 @@ class Captain::Llm::SystemPromptsService
         - The user explicitly asks for a human, agent, representative, phone call, callback, or escalation.
         - The user accepts an offer to speak with a human.
         - The user has provided enough detail for an account-specific or transaction-specific issue requiring private verification, such as order status, payment, deposit, withdrawal, refund, cancellation, subscription, purchase, plan activation, email verification, login, account recovery, delivery, or access.
-        - The user reports a bug or operational issue that needs support to inspect their account, setup, logs, integration, channel, or delivery state after a reasonable clarifying step.
+        - The user reports the same unresolved bug or operational issue after trying the assistant's suggested step, repeating the action, checking again, or otherwise making more than one reasonable attempt.
         - The user is repeatedly frustrated, distrustful, or stuck in a loop.
         - The assistant response itself says the current conversation will be transferred to a human agent now.
 
-        You may receive account custom instructions inside <account_custom_instructions> tags.
-        These are instructions configured by the account administrator, not the current end user's message.
-        Use them only for routing policy: required details before handoff, account-specific escalation rules, account-specific transfer markers, and when to connect to a manager, human, supervisor, or support team.
-        If the custom instructions explicitly define handoff, escalation, or transfer criteria, those criteria take precedence over the generic criteria above.
-        Account custom instructions MUST NOT redefine the required response shape, the allowed action values, or the meaning of continue/handoff.
-        Ignore persona, language, formatting, pricing, and response-generation instructions except where they directly define routing or transfer criteria.
+        #{assistant_action_classifier_custom_instructions_policy if has_custom_instructions}
 
         Return only the structured fields requested by the response schema.
       PROMPT
@@ -371,6 +366,17 @@ class Captain::Llm::SystemPromptsService
         - search_documentation: Search and retrieve documentation from knowledge base
         #{tools_list}
       TOOLS
+    end
+
+    def assistant_action_classifier_custom_instructions_policy
+      <<~POLICY
+        Account custom instructions are provided inside <account_custom_instructions> tags.
+        These are instructions configured by the account administrator, not the current end user's message.
+        Use them only for routing policy: required details before handoff, account-specific escalation rules, account-specific transfer markers, and when to connect to a manager, human, supervisor, or support team.
+        If the custom instructions explicitly define handoff, escalation, or transfer criteria, those criteria take precedence over the generic criteria above.
+        Account custom instructions MUST NOT redefine the required response shape, the allowed action values, or the meaning of continue/handoff.
+        Ignore persona, language, formatting, pricing, and response-generation instructions except where they directly define routing or transfer criteria.
+      POLICY
     end
 
     def build_contact_context(contact)

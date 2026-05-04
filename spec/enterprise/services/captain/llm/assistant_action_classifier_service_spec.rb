@@ -39,6 +39,9 @@ RSpec.describe Captain::Llm::AssistantActionClassifierService do
 
     it 'passes delimited custom instructions and classifier context to the LLM' do
       expect(mock_chat).to receive(:with_schema).with(Captain::AssistantActionSchema).and_return(mock_chat)
+      expect(mock_chat).to receive(:with_instructions).with(
+        a_string_including('Account custom instructions are provided inside <account_custom_instructions> tags.')
+      ).and_return(mock_chat)
       expect(mock_chat).to receive(:ask) do |prompt|
         expect(prompt).to include(
           '<account_custom_instructions>',
@@ -62,6 +65,21 @@ RSpec.describe Captain::Llm::AssistantActionClassifierService do
         'action_reason' => 'human_offer_accepted',
         'prompt_version' => 'v1_custom_xml_precedence'
       )
+    end
+
+    context 'when the assistant has no custom instructions' do
+      before do
+        assistant.update!(config: assistant.config.except('instructions'))
+      end
+
+      it 'does not add custom-instruction policy to the system prompt' do
+        expect(mock_chat).to receive(:with_instructions).with(
+          satisfy { |prompt| prompt.exclude?('Account custom instructions are provided') }
+        ).and_return(mock_chat)
+        allow(mock_chat).to receive(:ask).and_return(mock_response)
+
+        service.classify(message_history: message_history, assistant_response: 'Would you like to talk to support?')
+      end
     end
   end
 end
