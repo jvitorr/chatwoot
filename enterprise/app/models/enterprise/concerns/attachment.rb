@@ -14,6 +14,7 @@ module Enterprise::Concerns::Attachment
 
   def enqueue_audio_transcription
     return unless file_type.to_sym == :audio
+    return unless file.attached?
 
     Messages::AudioTranscriptionJob.perform_later(id)
   end
@@ -21,6 +22,10 @@ module Enterprise::Concerns::Attachment
   def broadcast_message_update_for_audio
     return unless file_type.to_sym == :audio
     return unless message
+    # Without an attached file, the message serializer's audio_metadata path
+    # dereferences `file.metadata[:width]` on nil and raises. The pre-attach
+    # broadcast wouldn't carry useful audio info anyway — skip until upload completes.
+    return unless file.attached?
 
     message.reload.send_update_event
   end
