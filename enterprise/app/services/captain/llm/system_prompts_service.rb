@@ -261,7 +261,9 @@ class Captain::Llm::SystemPromptsService
         - Do not share anything outside of the context provided.
         - Add the reasoning why you arrived at the answer
         - Your answers will always be formatted in a valid JSON hash, as shown below. Never respond in non-JSON format.
-        #{config['instructions'] || ''}
+
+        #{build_custom_instructions_section(config['instructions'])}
+
         ```json
         {
           reasoning: '',
@@ -382,6 +384,18 @@ class Captain::Llm::SystemPromptsService
       return '' if lines.empty?
 
       "[Contact Information]\n#{lines.join("\n")}\n\n"
+    end
+
+    def build_custom_instructions_section(instructions)
+      return '' if instructions.blank?
+
+      <<~CUSTOM_INSTRUCTIONS
+        [Account Custom Instructions]
+        These instructions were configured by the account administrator. Follow them when they do not conflict with the JSON response format or the requirement to answer only from provided context.
+        <account_custom_instructions>
+        #{instructions}
+        </account_custom_instructions>
+      CUSTOM_INSTRUCTIONS
     end
 
     def contact_basic_lines(contact)

@@ -44,18 +44,21 @@ RSpec.describe Captain::Llm::AssistantActionClassifierService do
           'MUST NOT redefine this JSON schema'
         )
       ).and_return(mock_chat)
-      expect(mock_chat).to receive(:ask).with(
-        a_string_including(
+      expect(mock_chat).to receive(:ask) do |prompt|
+        expect(prompt).to include(
           '<account_custom_instructions>',
           'Only transfer to a manager after the user explicitly confirms.',
           '<conversation_context>',
-          '"content":"I cannot log in"',
-          '<current_user_message>',
-          'Yes, still no reset email',
+          'User: I cannot log in',
+          'Assistant: Did you check your inbox?',
+          'User: Yes, still no reset email',
           '<assistant_response_to_classify>',
           'Would you like to talk to support?'
         )
-      ).and_return(mock_response)
+        expect(prompt).not_to include('"role"', '"content"', '<current_user_message>')
+
+        mock_response
+      end
 
       result = service.classify(message_history: message_history, assistant_response: 'Would you like to talk to support?')
 
