@@ -84,7 +84,8 @@
       "NOT_ANSWERED_YET": "Hələ cavab verilməyib",
       "THEY_ANSWERED": "Onlar cavab verdi",
       "YOU_ANSWERED": "Siz cavab verdiniz",
-      "AGENT_ANSWERED": "{agentName} answered"
+      "AGENT_ANSWERED": "{agentName} answered",
+      "JOIN_CALL": "Zəngə qoşul"
     },
     "HEADER": {
       "RESOLVE_ACTION": "Həll et",
