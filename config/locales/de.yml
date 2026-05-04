@@ -231,6 +231,7 @@ de:
       deleted: Diese Nachricht wurde gelöscht
       whatsapp:
         list_button_label: 'Choose an item'
+        call_permission_request_body: 'We would like to call you regarding your conversation.'
       delivery_status:
         error_code: 'Fehlercode: %{error_code}'
     activity:
