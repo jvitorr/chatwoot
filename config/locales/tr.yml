@@ -231,6 +231,7 @@ tr:
       deleted: Bu mesaj silinmiş
       whatsapp:
         list_button_label: 'Bir öğe seçin'
+        call_permission_request_body: 'We would like to call you regarding your conversation.'
       delivery_status:
         error_code: 'Hata kodu: %{error_code}'
     activity:
