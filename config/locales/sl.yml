@@ -231,6 +231,7 @@ sl:
       deleted: To sporočilo je bilo izbrisano
       whatsapp:
         list_button_label: 'Choose an item'
+        call_permission_request_body: 'We would like to call you regarding your conversation.'
       delivery_status:
         error_code: 'Koda napake: %{error_code}'
     activity:
