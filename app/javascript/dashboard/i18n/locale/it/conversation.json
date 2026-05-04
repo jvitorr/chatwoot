@@ -84,7 +84,8 @@
       "NOT_ANSWERED_YET": "Non ancora risposta",
       "THEY_ANSWERED": "Hanno risposto",
       "YOU_ANSWERED": "Hai risposto",
-      "AGENT_ANSWERED": "{agentName} answered"
+      "AGENT_ANSWERED": "{agentName} answered",
+      "JOIN_CALL": "Entra nella chiamata"
     },
     "HEADER": {
       "RESOLVE_ACTION": "Risolvi",
