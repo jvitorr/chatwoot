@@ -59,7 +59,6 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     authorize @conversation, :show?
   end
 
-  # Twilio voice also exposes voice_enabled? but uses a different initiation path.
   def ensure_calling_enabled
     channel = @conversation.inbox.channel
     return if channel.is_a?(Channel::Whatsapp) && channel.voice_enabled?
@@ -98,7 +97,6 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     'uploaded'
   end
 
-  # Browser-built SDP offer is forwarded to Meta; the connect webhook later delivers Meta's answer.
   def create_outbound_call
     contact_phone = @conversation.contact.phone_number.delete('+')
     result = provider_service.initiate_call(contact_phone, params[:sdp_offer])
@@ -112,9 +110,8 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     )
   end
 
-  # 138006 = no call permission yet; send opt-in template (throttled) and surface state to FE.
-  # Lock the conversation so concurrent initiate requests can't both pass the throttle gate
-  # and double-send the opt-in template.
+  # Meta error 138006 means the contact hasn't opted in yet; send the opt-in
+  # template (throttled, behind a conversation lock to prevent double-send).
   def render_permission_request
     status = nil
     @conversation.with_lock do
@@ -142,8 +139,7 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     last_requested.present? && Time.zone.parse(last_requested) > PERMISSION_REQUEST_THROTTLE.ago
   end
 
-  # Treat transport errors the same as a falsy provider return so the action renders 422
-  # rather than letting Faraday/HTTParty exceptions bubble up as 500s.
+  # Treat transport errors as a falsy return so we render 422 rather than 500.
   def send_permission_request_safely
     provider_service.send_call_permission_request(@conversation.contact.phone_number.delete('+'))
   rescue StandardError => e
@@ -151,7 +147,7 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     nil
   end
 
-  # Record the wamid so the reply webhook can match context.id back to this conversation.
+  # Stash the outbound wamid so the reply webhook can match context.id back here.
   def record_permission_request_wamid(sent)
     attrs = (@conversation.additional_attributes || {}).merge(
       'call_permission_requested_at' => Time.current.iso8601,
