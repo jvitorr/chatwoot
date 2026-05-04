@@ -4,7 +4,6 @@ class Captain::Llm::AssistantActionClassifierService < Llm::BaseAiService
   PROMPT_VERSION = 'v1_custom_xml_precedence'.freeze
   DEFAULT_MODEL = 'gpt-4.1'.freeze
   MAX_CONTEXT_MESSAGES = 10
-  VALID_ACTIONS = %w[continue handoff].freeze
 
   def initialize(assistant:, conversation:)
     super()
@@ -22,7 +21,7 @@ class Captain::Llm::AssistantActionClassifierService < Llm::BaseAiService
 
     response = instrument_llm_call(instrumentation_params(user_prompt)) do
       chat(model: @model, temperature: @temperature)
-        .with_params(response_format: { type: 'json_object' })
+        .with_schema(Captain::AssistantActionSchema)
         .with_instructions(system_prompt)
         .ask(user_prompt)
     end
@@ -94,6 +93,8 @@ class Captain::Llm::AssistantActionClassifierService < Llm::BaseAiService
   end
 
   def parse_response(content)
+    return content if content.is_a?(Hash)
+
     JSON.parse(sanitize_json_response(content))
   rescue JSON::ParserError, TypeError
     {}
@@ -102,7 +103,7 @@ class Captain::Llm::AssistantActionClassifierService < Llm::BaseAiService
   def normalize_response(parsed, raw_content)
     action = parsed['action'].to_s
     reason = parsed['action_reason'].to_s
-    return invalid_response(raw_content) unless VALID_ACTIONS.include?(action)
+    return invalid_response(raw_content) unless Captain::AssistantActionSchema::ACTIONS.include?(action)
 
     {
       'action' => action,

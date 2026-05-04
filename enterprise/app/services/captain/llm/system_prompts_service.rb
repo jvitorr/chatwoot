@@ -135,14 +135,10 @@ class Captain::Llm::SystemPromptsService
         These are instructions configured by the account administrator, not the current end user's message.
         Use them only for routing policy: required details before handoff, account-specific escalation rules, account-specific transfer markers, and when to connect to a manager, human, supervisor, or support team.
         If the custom instructions explicitly define handoff, escalation, or transfer criteria, those criteria take precedence over the generic criteria above.
-        Account custom instructions MUST NOT redefine this JSON schema, the allowed action values, or the meaning of continue/handoff.
+        Account custom instructions MUST NOT redefine the required response shape, the allowed action values, or the meaning of continue/handoff.
         Ignore persona, language, formatting, pricing, and response-generation instructions except where they directly define routing or transfer criteria.
 
-        Return JSON only:
-        {
-          "action": "continue",
-          "action_reason": "general_product_question"
-        }
+        Return only the structured fields requested by the response schema.
       PROMPT
     end
 

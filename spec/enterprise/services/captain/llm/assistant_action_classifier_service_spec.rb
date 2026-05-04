@@ -17,14 +17,14 @@ RSpec.describe Captain::Llm::AssistantActionClassifierService do
   let(:mock_response) do
     instance_double(
       RubyLLM::Message,
-      content: '{"action":"handoff","action_reason":"human_offer_accepted"}'
+      content: { 'action' => 'handoff', 'action_reason' => 'human_offer_accepted' }
     )
   end
 
   before do
     allow(RubyLLM).to receive(:chat).and_return(mock_chat)
     allow(mock_chat).to receive(:with_temperature).and_return(mock_chat)
-    allow(mock_chat).to receive(:with_params).and_return(mock_chat)
+    allow(mock_chat).to receive(:with_schema).and_return(mock_chat)
     allow(mock_chat).to receive(:with_instructions).and_return(mock_chat)
   end
 
@@ -38,6 +38,7 @@ RSpec.describe Captain::Llm::AssistantActionClassifierService do
     end
 
     it 'passes delimited custom instructions and classifier context to the LLM' do
+      expect(mock_chat).to receive(:with_schema).with(Captain::AssistantActionSchema).and_return(mock_chat)
       expect(mock_chat).to receive(:ask) do |prompt|
         expect(prompt).to include(
           '<account_custom_instructions>',

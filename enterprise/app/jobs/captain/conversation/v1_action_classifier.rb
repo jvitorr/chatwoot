@@ -47,7 +47,7 @@ module Captain::Conversation::V1ActionClassifier
   end
 
   def valid_v1_action_classification?(action)
-    Captain::Llm::AssistantActionClassifierService::VALID_ACTIONS.include?(action)
+    Captain::AssistantActionSchema::ACTIONS.include?(action)
   end
 
   def log_invalid_v1_action_classification(classification)
