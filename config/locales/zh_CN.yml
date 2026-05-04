@@ -231,6 +231,7 @@ zh_CN:
       deleted: 此消息已被删除
       whatsapp:
         list_button_label: 'Choose an item'
+        call_permission_request_body: 'We would like to call you regarding your conversation.'
       delivery_status:
         error_code: '错误代码: %{error_code}'
     activity:
