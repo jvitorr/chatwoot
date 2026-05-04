@@ -18,6 +18,10 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  staleAfterHours: {
+    type: Number,
+    default: null,
+  },
   showRetry: {
     type: Boolean,
     default: false,
@@ -27,9 +31,7 @@ const props = defineProps({
 const emit = defineEmits(['retry']);
 const { t } = useI18n();
 
-const STALE_AFTER_DAYS = 7;
-const VERY_STALE_AFTER_DAYS = 30;
-const SECONDS_PER_DAY = 86400;
+const SECONDS_PER_HOUR = 3600;
 
 const SYNCING = 'syncing';
 const FAILED = 'failed';
@@ -48,11 +50,22 @@ const isSyncing = computed(() => props.status === SYNCING);
 const isFailed = computed(() => props.status === FAILED);
 const hasBeenSynced = computed(() => Boolean(props.lastSyncedAt));
 
-const ageInDays = computed(() => {
+const ageInHours = computed(() => {
   if (!props.lastSyncedAt) return null;
   const nowSeconds = Date.now() / 1000;
-  return (nowSeconds - props.lastSyncedAt) / SECONDS_PER_DAY;
+  return (nowSeconds - props.lastSyncedAt) / SECONDS_PER_HOUR;
 });
+
+const staleAfterHours = computed(() => Number(props.staleAfterHours));
+const hasStaleThreshold = computed(
+  () => Number.isFinite(staleAfterHours.value) && staleAfterHours.value > 0
+);
+const isStale = computed(
+  () =>
+    hasStaleThreshold.value &&
+    ageInHours.value !== null &&
+    ageInHours.value >= staleAfterHours.value
+);
 
 const errorLabel = computed(() =>
   t(ERROR_CODE_LABELS[props.errorCode] || DEFAULT_ERROR_LABEL)
@@ -88,8 +101,7 @@ const tone = computed(() => {
   if (isSyncing.value) return 'amber';
   if (isFailed.value) return 'ruby';
   if (!hasBeenSynced.value) return 'slate';
-  if (ageInDays.value >= VERY_STALE_AFTER_DAYS) return 'ruby';
-  if (ageInDays.value >= STALE_AFTER_DAYS) return 'amber';
+  if (isStale.value) return 'amber';
   return 'emerald';
 });
 

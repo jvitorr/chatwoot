@@ -764,7 +764,7 @@
         "TOTAL": "Web pages",
         "STALE": "Stale",
         "SYNCING": "Syncing",
-        "SYNCED_RECENTLY": "Synced this week",
+        "SYNCED_RECENTLY": "Synced recently",
         "PLACEHOLDER": "-",
         "CAPTION_AUTO": "Your web documents sync {frequency}. PDFs don't sync; they're processed once at upload.",
         "CAPTION_DISABLED": "Auto-sync is not enabled for this account yet. You can still sync web documents manually. PDFs don't sync; they're processed once at upload.",
@@ -772,7 +772,9 @@
         "FREQUENCY": {
           "WEEKLY": "weekly",
           "DAILY": "daily",
-          "EVERY_6_HOURS": "every 6 hours"
+          "HOURLY": "hourly",
+          "EVERY_N_HOURS": "every {count} hours",
+          "EVERY_N_DAYS": "every {count} days"
         }
       },
       "SYNC_STATUS": {

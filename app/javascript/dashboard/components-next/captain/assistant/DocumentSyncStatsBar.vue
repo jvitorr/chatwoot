@@ -40,7 +40,7 @@ const items = computed(() => {
     total = 0,
     stale = 0,
     syncing = 0,
-    synced_last_7_days: syncedRecently = 0,
+    synced_recently: syncedRecently = 0,
   } = props.stats ?? {};
   return [
     {
@@ -68,8 +68,8 @@ const items = computed(() => {
       tone: syncing > 0 ? 'amber' : 'slate',
     },
     {
-      key: 'synced_last_7_days',
-      filterKey: 'synced_last_7_days',
+      key: 'synced_recently',
+      filterKey: 'synced_recently',
       label: t('CAPTAIN.DOCUMENTS.STATS.SYNCED_RECENTLY'),
       value: syncedRecently,
       icon: 'i-lucide-check-circle',

@@ -4,7 +4,6 @@ import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useRoute } from 'vue-router';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import { useAccount } from 'dashboard/composables/useAccount';
-import { useConfig } from 'dashboard/composables/useConfig';
 import { useAlert } from 'dashboard/composables';
 import { usePolicy } from 'dashboard/composables/usePolicy';
 
@@ -34,14 +33,7 @@ const { checkPermissions } = usePolicy();
 const SYNC_POLL_INTERVAL_MS = 5000;
 const SYNC_POLL_MAX_ATTEMPTS = 24;
 
-const FREQUENCY_BY_PLAN = {
-  startups: 'WEEKLY',
-  business: 'DAILY',
-  enterprise: 'EVERY_6_HOURS',
-};
-
 const { isOnChatwootCloud, currentAccount } = useAccount();
-const { isEnterprise, enterprisePlanName } = useConfig();
 const uiFlags = useMapGetter('captainDocuments/getUIFlags');
 const documents = useMapGetter('captainDocuments/getRecords');
 const isFetching = computed(() => uiFlags.value.fetchingList);
@@ -288,17 +280,12 @@ const handleBulkSync = async () => {
   }
 };
 
-const planSyncFrequencyKey = computed(() => {
-  const planName =
-    currentAccount.value?.custom_attributes?.plan_name?.toLowerCase();
-
-  if (planName) return FREQUENCY_BY_PLAN[planName] ?? null;
-  if (isEnterprise && enterprisePlanName !== 'community')
-    return 'EVERY_6_HOURS';
-  return null;
-});
-
-const isAutoSyncEligible = computed(() => Boolean(planSyncFrequencyKey.value));
+const syncIntervalHours = computed(() =>
+  Number(stats.value?.sync_interval_hours)
+);
+const isAutoSyncEligible = computed(
+  () => Number.isFinite(syncIntervalHours.value) && syncIntervalHours.value > 0
+);
 
 const isAutoSyncEnabled = computed(() =>
   Boolean(
@@ -307,15 +294,25 @@ const isAutoSyncEnabled = computed(() =>
 );
 
 const syncFrequencyLabel = computed(() => {
-  if (!isAutoSyncEnabled.value || !planSyncFrequencyKey.value) return '';
+  if (!isAutoSyncEnabled.value || !isAutoSyncEligible.value) return '';
 
-  if (planSyncFrequencyKey.value === 'WEEKLY') {
+  if (syncIntervalHours.value === 168) {
     return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.WEEKLY');
   }
-  if (planSyncFrequencyKey.value === 'DAILY') {
+  if (syncIntervalHours.value === 24) {
     return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.DAILY');
   }
-  return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.EVERY_6_HOURS');
+  if (syncIntervalHours.value === 1) {
+    return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.HOURLY');
+  }
+  if (syncIntervalHours.value % 24 === 0) {
+    return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.EVERY_N_DAYS', {
+      count: syncIntervalHours.value / 24,
+    });
+  }
+  return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.EVERY_N_HOURS', {
+    count: syncIntervalHours.value,
+  });
 });
 
 watch(selectedAssistantId, () => {
@@ -428,6 +425,7 @@ onUnmounted(() => {
           :last-synced-at="doc.last_synced_at"
           :last-sync-error-code="doc.last_sync_error_code"
           :sync-in-progress="doc.sync_in_progress"
+          :sync-stale-after-hours="syncIntervalHours"
           :is-selected="canManageDocuments && bulkSelectedIds.has(doc.id)"
           :selectable="canManageDocuments"
           :show-selection-control="shouldShowSelectionControl(doc.id)"

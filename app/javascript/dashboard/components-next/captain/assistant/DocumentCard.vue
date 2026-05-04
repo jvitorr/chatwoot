@@ -55,6 +55,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  syncStaleAfterHours: {
+    type: Number,
+    default: null,
+  },
   isSelected: {
     type: Boolean,
     default: false,
@@ -219,6 +223,7 @@ const handleRetry = () => {
         :status="syncStatus"
         :last-synced-at="lastSyncedAt"
         :error-code="lastSyncErrorCode"
+        :stale-after-hours="syncStaleAfterHours"
         :show-retry="canManage && isFailed"
         @retry="handleRetry"
       />

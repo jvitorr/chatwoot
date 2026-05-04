@@ -23,9 +23,10 @@ class Api::V1::Accounts::Captain::DocumentsController < Api::V1::Accounts::BaseC
 
     @stats = {
       total: base_query.count,
-      stale: base_query.stale.count,
+      stale: stale_documents(base_query).count,
       syncing: base_query.sync_syncing.count,
-      synced_last_7_days: base_query.synced_since(Captain::Document::STALE_THRESHOLD.ago).count
+      synced_recently: synced_recently_documents(base_query).count,
+      sync_interval_hours: current_sync_interval&.in_hours&.to_i
     }
   end
 
@@ -81,11 +82,29 @@ class Api::V1::Accounts::Captain::DocumentsController < Api::V1::Accounts::BaseC
 
   def apply_filter(scope, filter)
     case filter
-    when 'stale' then scope.stale
+    when 'stale' then stale_documents(scope)
     when 'syncing' then scope.sync_syncing
-    when 'synced_last_7_days' then scope.synced_since(Captain::Document::STALE_THRESHOLD.ago)
+    when 'synced_recently' then synced_recently_documents(scope)
     else scope
     end
+  end
+
+  def stale_documents(scope)
+    return scope.none unless current_sync_interval
+
+    scope.stale(current_sync_interval.ago)
+  end
+
+  def synced_recently_documents(scope)
+    return scope.none unless current_sync_interval
+
+    scope.synced_since(current_sync_interval.ago)
+  end
+
+  def current_sync_interval
+    return @current_sync_interval if defined?(@current_sync_interval)
+
+    @current_sync_interval = Current.account.captain_document_sync_interval
   end
 
   def document_params
