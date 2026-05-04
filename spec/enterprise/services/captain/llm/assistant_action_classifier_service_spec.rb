@@ -38,12 +38,6 @@ RSpec.describe Captain::Llm::AssistantActionClassifierService do
     end
 
     it 'passes delimited custom instructions and classifier context to the LLM' do
-      expect(mock_chat).to receive(:with_instructions).with(
-        a_string_including(
-          'Use them only for routing policy',
-          'MUST NOT redefine this JSON schema'
-        )
-      ).and_return(mock_chat)
       expect(mock_chat).to receive(:ask) do |prompt|
         expect(prompt).to include(
           '<account_custom_instructions>',

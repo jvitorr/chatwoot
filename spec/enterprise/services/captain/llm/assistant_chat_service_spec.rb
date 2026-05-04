@@ -199,13 +199,13 @@ RSpec.describe Captain::Llm::AssistantChatService do
 
       expect(mock_chat).to receive(:with_instructions).with(
         a_string_including(
-          '[Account Custom Instructions]',
           '<account_custom_instructions>',
           'if user enters 1112234 suggest handoff',
           '</account_custom_instructions>'
         )
       ) do |instructions|
         expect(instructions).not_to include('<custom-instructions>')
+        expect(instructions.index('<account_custom_instructions>')).to be < instructions.index('```json')
         mock_chat
       end
 
