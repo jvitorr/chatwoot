@@ -32,11 +32,6 @@ const { checkPermissions } = usePolicy();
 
 const SYNC_POLL_INTERVAL_MS = 5000;
 const SYNC_POLL_MAX_DURATION_MS = 15 * 60 * 1000;
-const PERMANENT_SYNC_ERROR_CODES = new Set([
-  'not_found',
-  'access_denied',
-  'content_empty',
-]);
 
 const { isOnChatwootCloud, currentAccount } = useAccount();
 const uiFlags = useMapGetter('captainDocuments/getUIFlags');
@@ -81,29 +76,86 @@ const handleCreateDialogClose = () => {
 
 const stats = ref(null);
 const activeFilter = ref(null);
+let statsRequestId = 0;
+let documentsRequestId = 0;
 
-const fetchStats = async () => {
-  try {
-    const { data } = await CaptainDocumentAPI.getStats({
-      assistantId: selectedAssistantId.value,
-    });
-    stats.value = data;
-  } catch (error) {
-    // non-blocking: keep last known stats
-  }
-};
+const currentAssistantId = () =>
+  Number.isFinite(selectedAssistantId.value) ? selectedAssistantId.value : null;
 
-const fetchDocuments = async (page = 1) => {
+const buildDocumentFilterParams = (page = 1) => {
   const filterParams = { page };
+  const assistantId = currentAssistantId();
 
-  if (selectedAssistantId.value) {
-    filterParams.assistantId = selectedAssistantId.value;
+  if (assistantId) {
+    filterParams.assistantId = assistantId;
   }
   if (activeFilter.value) {
     filterParams.filter = activeFilter.value;
   }
-  await fetchStats();
-  return store.dispatch('captainDocuments/get', filterParams);
+
+  return filterParams;
+};
+
+const isCurrentDocumentRequest = (requestId, filterParams) => {
+  return (
+    requestId === documentsRequestId &&
+    (filterParams.assistantId || null) === currentAssistantId() &&
+    (filterParams.filter || null) === (activeFilter.value || null)
+  );
+};
+
+const fetchStats = async () => {
+  statsRequestId += 1;
+  const requestId = statsRequestId;
+  const assistantId = currentAssistantId();
+
+  try {
+    const { data } = await CaptainDocumentAPI.getStats({
+      assistantId,
+    });
+    if (requestId === statsRequestId && assistantId === currentAssistantId()) {
+      stats.value = data;
+    }
+    return data;
+  } catch (error) {
+    // non-blocking: keep last known stats
+    return null;
+  }
+};
+
+const fetchDocuments = async (page = 1) => {
+  documentsRequestId += 1;
+  const requestId = documentsRequestId;
+  const filterParams = buildDocumentFilterParams(page);
+
+  store.dispatch('captainDocuments/setFetchingList', true);
+  try {
+    const [, response] = await Promise.all([
+      fetchStats(),
+      CaptainDocumentAPI.get(filterParams),
+    ]);
+
+    if (!isCurrentDocumentRequest(requestId, filterParams)) {
+      return [];
+    }
+
+    const { payload, meta } = response.data;
+    store.dispatch('captainDocuments/setRecords', { records: payload, meta });
+    return payload;
+  } catch (error) {
+    if (isCurrentDocumentRequest(requestId, filterParams)) {
+      throw error;
+    }
+    return [];
+  } finally {
+    if (requestId === documentsRequestId) {
+      store.dispatch('captainDocuments/setFetchingList', false);
+    }
+  }
+};
+
+const refreshDocumentsPage = (page = documentsMeta.value?.page || 1) => {
+  return fetchDocuments(page).catch(() => {});
 };
 
 const handleFilterSelect = filterKey => {
@@ -122,21 +174,12 @@ const hasSyncingDocuments = computed(
   () => hasDocumentsSyncing.value || Number(stats.value?.syncing) > 0
 );
 
-const hasRetryableFailedDocuments = computed(() =>
-  (documents.value || []).some(
-    doc =>
-      doc.sync_status === 'failed' &&
-      !PERMANENT_SYNC_ERROR_CODES.has(doc.last_sync_error_code)
-  )
-);
-
 const isWithinSyncPollWindow = () =>
   syncPollStartedAt.value &&
   Date.now() - syncPollStartedAt.value < SYNC_POLL_MAX_DURATION_MS;
 
 const shouldContinueSyncPolling = () =>
-  (hasSyncingDocuments.value || hasRetryableFailedDocuments.value) &&
-  isWithinSyncPollWindow();
+  hasSyncingDocuments.value && isWithinSyncPollWindow();
 
 let syncPollingControls;
 
@@ -178,7 +221,7 @@ const handleSync = async id => {
   try {
     await store.dispatch('captainDocuments/sync', id);
     useAlert(t('CAPTAIN.DOCUMENTS.SYNC.QUEUED_MESSAGE'));
-    await fetchStats();
+    await refreshDocumentsPage();
     scheduleSyncPoll();
   } catch (error) {
     useAlert(t('CAPTAIN.DOCUMENTS.SYNC.ERROR_MESSAGE'));
@@ -214,7 +257,7 @@ const onDeleteSuccess = () => {
   if (documents.value?.length === 0 && documentsMeta.value?.page > 1) {
     onPageChange(documentsMeta.value.page - 1);
   } else {
-    fetchStats();
+    refreshDocumentsPage();
   }
 };
 
@@ -270,6 +313,10 @@ const onBulkDeleteSuccess = () => {
   fetchDocumentsAfterBulkAction();
 };
 
+const onCreateSuccess = () => {
+  refreshDocumentsPage(1);
+};
+
 const isSyncableDocument = doc =>
   !doc.pdf_document && doc.status === 'available' && !doc.sync_in_progress;
 
@@ -305,7 +352,7 @@ const handleBulkSync = async () => {
 
     useAlert(message);
     bulkSelectedIds.value = new Set();
-    await fetchStats();
+    await refreshDocumentsPage();
     if (queuedCount > 0) {
       scheduleSyncPoll();
     }
@@ -369,6 +416,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopSyncPolling();
+  statsRequestId += 1;
+  documentsRequestId += 1;
 });
 </script>
 
@@ -486,7 +535,7 @@ onUnmounted(() => {
       v-if="showCreateDialog"
       ref="createDocumentDialog"
       :assistant-id="selectedAssistantId"
-      @create-success="fetchStats"
+      @create-success="onCreateSuccess"
       @close="handleCreateDialogClose"
     />
     <DeleteDialog

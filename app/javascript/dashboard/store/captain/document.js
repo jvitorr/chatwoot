@@ -23,6 +23,24 @@ export default createStore({
   name: 'CaptainDocument',
   API: CaptainDocumentAPI,
   actions: mutations => ({
+    setFetchingList({ commit }, isFetching) {
+      commit(mutations.SET_UI_FLAG, { fetchingList: isFetching });
+    },
+    setRecords({ commit }, { records, meta }) {
+      commit(mutations.SET, records);
+      commit(mutations.SET_META, meta);
+    },
+    async create({ commit }, dataObj) {
+      commit(mutations.SET_UI_FLAG, { creatingItem: true });
+      try {
+        const response = await CaptainDocumentAPI.create(dataObj);
+        return response.data;
+      } catch (error) {
+        return throwErrorMessage(error);
+      } finally {
+        commit(mutations.SET_UI_FLAG, { creatingItem: false });
+      }
+    },
     removeBulkRecords({ commit, getters }, ids) {
       const records = getters.getRecords.filter(
         record => !ids.includes(record.id)
