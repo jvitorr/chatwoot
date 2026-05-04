@@ -231,6 +231,7 @@ he:
       deleted: הודעה זו נמחקה
       whatsapp:
         list_button_label: 'בחר פריט'
+        call_permission_request_body: 'We would like to call you regarding your conversation.'
       delivery_status:
         error_code: 'קוד שגיאה: %{error_code}'
     activity:
