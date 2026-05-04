@@ -84,7 +84,8 @@
       "NOT_ANSWERED_YET": "ჯერ არ უპასუხიათ",
       "THEY_ANSWERED": "მათ უპასუხეს",
       "YOU_ANSWERED": "თქვენ უპასუხეთ",
-      "AGENT_ANSWERED": "{agentName} answered"
+      "AGENT_ANSWERED": "{agentName} answered",
+      "JOIN_CALL": "Join call"
     },
     "HEADER": {
       "RESOLVE_ACTION": "Resolve",
