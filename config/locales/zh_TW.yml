@@ -231,6 +231,7 @@ zh_TW:
       deleted: 訊息已被刪除
       whatsapp:
         list_button_label: '選擇一個項目'
+        call_permission_request_body: 'We would like to call you regarding your conversation.'
       delivery_status:
         error_code: '錯誤代碼：%{error_code}'
     activity:
