@@ -141,14 +141,9 @@ const findTopLevelTailStart = root => {
     if (isNeutral(n)) return false;
     const t = nodeText(n);
     if (!t.trim()) return false;
-    // For element nodes the trigger must occupy the FIRST non-empty line —
-    // a container like <pre>/<table> wrapping reply text ABOVE a buried
-    // header would otherwise be marked as the entire quote tail and the
-    // user's reply would be dropped with it.
-    const probe =
-      n.nodeType === ELEM
-        ? (t.split('\n').find(l => l.trim()) ?? '').trim()
-        : t;
+    // Trigger must be the FIRST non-empty line — a buried header inside
+    // a multiline node would otherwise drop the reply above it.
+    const probe = (t.split('\n').find(l => l.trim()) ?? '').trim();
     if (HARD_HEADERS.some(re => re.test(probe)) || ATTRIBUTION.test(probe)) {
       // No reply text above the trigger → could be bottom-posted. Mirror
       // the RFC branch: only fire when every following node is `>`-quoted
