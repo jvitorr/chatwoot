@@ -141,7 +141,15 @@ const findTopLevelTailStart = root => {
     if (isNeutral(n)) return false;
     const t = nodeText(n);
     if (!t.trim()) return false;
-    if (HARD_HEADERS.some(re => re.test(t)) || ATTRIBUTION.test(t)) {
+    // For element nodes the trigger must occupy the FIRST non-empty line —
+    // a container like <pre>/<table> wrapping reply text ABOVE a buried
+    // header would otherwise be marked as the entire quote tail and the
+    // user's reply would be dropped with it.
+    const probe =
+      n.nodeType === ELEM
+        ? (t.split('\n').find(l => l.trim()) ?? '').trim()
+        : t;
+    if (HARD_HEADERS.some(re => re.test(probe)) || ATTRIBUTION.test(probe)) {
       // No reply text above the trigger → could be bottom-posted. Mirror
       // the RFC branch: only fire when every following node is `>`-quoted
       // or neutral. Otherwise leave the body alone.
@@ -149,7 +157,7 @@ const findTopLevelTailStart = root => {
         return kids.slice(i + 1).every(c => isRfcQuoted(c) || isNeutral(c));
       return true;
     }
-    return HEADER_LINE.test(t) && countHeaderLines(tailText(i)) >= 2;
+    return HEADER_LINE.test(probe) && countHeaderLines(tailText(i)) >= 2;
   });
   return idx === -1 ? -1 : walkBack(kids, idx);
 };
