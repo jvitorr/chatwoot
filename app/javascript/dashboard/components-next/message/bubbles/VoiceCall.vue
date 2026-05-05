@@ -97,20 +97,30 @@ const labelKey = computed(() => {
       ? 'CONVERSATION.VOICE_CALL.OUTGOING_CALL'
       : 'CONVERSATION.VOICE_CALL.INCOMING_CALL';
   }
-  return isFailed.value
-    ? 'CONVERSATION.VOICE_CALL.MISSED_CALL'
-    : 'CONVERSATION.VOICE_CALL.INCOMING_CALL';
+  if (isFailed.value) {
+    return isOutbound.value
+      ? 'CONVERSATION.VOICE_CALL.NO_ANSWER_OUTBOUND_LABEL'
+      : 'CONVERSATION.VOICE_CALL.MISSED_CALL';
+  }
+  return 'CONVERSATION.VOICE_CALL.INCOMING_CALL';
 });
 
 const subtext = computed(() => {
   if (status.value === VOICE_CALL_STATUS.RINGING) {
-    return t('CONVERSATION.VOICE_CALL.NOT_ANSWERED_YET');
+    return isOutbound.value
+      ? t('CONVERSATION.VOICE_CALL.CALLING')
+      : t('CONVERSATION.VOICE_CALL.NOT_ANSWERED_YET');
   }
   if (status.value === VOICE_CALL_STATUS.COMPLETED) {
     return formattedDuration.value;
   }
   if (status.value === VOICE_CALL_STATUS.IN_PROGRESS) {
-    if (isOutbound.value) return t('CONVERSATION.VOICE_CALL.THEY_ANSWERED');
+    // Outbound calls can flip to in-progress before the contact actually
+    // picks up (e.g., Twilio marks in-progress when the agent joins the
+    // conference); claiming "they answered" here would be misleading. The
+    // 'Call in progress' label alone is accurate; the floating widget shows
+    // the live duration.
+    if (isOutbound.value) return null;
     if (didCurrentUserAnswer.value) {
       return t('CONVERSATION.VOICE_CALL.YOU_ANSWERED');
     }
@@ -119,11 +129,14 @@ const subtext = computed(() => {
         agentName: displayAgentName.value,
       });
     }
-    return t('CONVERSATION.VOICE_CALL.THEY_ANSWERED');
+    return null;
   }
-  return isFailed.value
-    ? t('CONVERSATION.VOICE_CALL.NO_ANSWER')
-    : t('CONVERSATION.VOICE_CALL.NOT_ANSWERED_YET');
+  if (isFailed.value) {
+    return isOutbound.value
+      ? t('CONVERSATION.VOICE_CALL.NO_ANSWER_OUTBOUND_SUBTEXT')
+      : t('CONVERSATION.VOICE_CALL.MISSED_CALL_INBOUND_SUBTEXT');
+  }
+  return t('CONVERSATION.VOICE_CALL.NOT_ANSWERED_YET');
 });
 
 const iconName = computed(() => {
