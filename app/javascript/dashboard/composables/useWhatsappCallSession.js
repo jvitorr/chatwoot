@@ -297,6 +297,16 @@ export function useWhatsappCallSession() {
       return response;
     } catch (e) {
       cleanup();
+      // BE returns 422 when the contact hasn't opted in (permission template
+      // sent or already pending). Surface it to the caller as a normal
+      // response shape so it can render the banner instead of an error toast.
+      const data = e?.response?.data;
+      if (
+        data?.status === 'permission_requested' ||
+        data?.status === 'permission_pending'
+      ) {
+        return { status: data.status };
+      }
       throw e;
     } finally {
       isInitiating.value = false;
