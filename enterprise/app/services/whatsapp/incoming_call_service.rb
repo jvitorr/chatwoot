@@ -5,6 +5,7 @@ class Whatsapp::IncomingCallService
     return unless inbox.channel.voice_enabled?
 
     Array(params[:calls]).each { |c| handle_event(c.with_indifferent_access) }
+    Array(params[:statuses]).each { |s| handle_status(s.with_indifferent_access) }
   end
 
   private
@@ -15,6 +16,32 @@ class Whatsapp::IncomingCallService
     when 'terminate' then handle_terminate(payload)
     else Rails.logger.warn "[WHATSAPP CALL] Unknown call event: #{payload[:event]}"
     end
+  end
+
+  # Meta's `connect` event for outbound calls fires when the WebRTC tunnel is
+  # up — empirically ~20s before the contact actually answers. The real pickup
+  # is reported as a separate webhook with status=ACCEPTED, and is what
+  # `terminate.start_time` aligns to. Treat ACCEPTED as the pickup transition.
+  def handle_status(payload)
+    return unless payload[:type] == 'call'
+
+    call = Call.whatsapp.find_by(provider_call_id: payload[:id])
+    return unless call
+
+    case payload[:status]
+    when 'ACCEPTED' then mark_outbound_accepted(call, payload)
+    when 'RINGING' then nil # informational
+    else Rails.logger.info "[WHATSAPP CALL] Unhandled call status: #{payload[:status]} for #{payload[:id]}"
+    end
+  end
+
+  def mark_outbound_accepted(call, payload)
+    return unless call.outgoing?
+    return if call.in_progress? || call.terminal?
+
+    started_at = Time.zone.at(payload[:timestamp].to_i) if payload[:timestamp].present?
+    update_call!(call, 'in_progress', started_at: started_at || Time.current)
+    broadcast(call, 'voice_call.outbound_accepted')
   end
 
   def handle_connect(payload)
@@ -38,14 +65,15 @@ class Whatsapp::IncomingCallService
     broadcast_incoming(call, sdp_offer)
   end
 
+  # `connect` is the WebRTC tunnel-ready signal, not the pickup signal. Apply
+  # Meta's SDP answer so the handshake completes during ringing; the call
+  # stays in `ringing` until status=ACCEPTED arrives.
   def accept_outbound_call(call, payload)
     return if call.in_progress? || call.terminal?
 
     # Pin setup:active so browsers don't renegotiate when Meta echoes actpass.
     sdp_answer = payload.dig(:session, :sdp)&.gsub('a=setup:actpass', 'a=setup:active')
-    update_call!(call, 'in_progress',
-                 started_at: Time.current,
-                 meta: (call.meta || {}).merge('sdp_answer' => sdp_answer))
+    call.update!(meta: (call.meta || {}).merge('sdp_answer' => sdp_answer))
     broadcast(call, 'voice_call.outbound_connected', sdp_answer: sdp_answer)
   end
 
