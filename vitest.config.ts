@@ -2,9 +2,10 @@
 import { defineConfig } from 'vitest/config';
 import vue from '@vitejs/plugin-vue';
 import { aliases, vueOptions } from './vite.shared';
+import yaml from '@rollup/plugin-yaml';
 
 export default defineConfig({
-  plugins: [vue(vueOptions)],
+  plugins: [vue(vueOptions), yaml()],
   resolve: { alias: aliases },
   test: {
     environment: 'jsdom',
