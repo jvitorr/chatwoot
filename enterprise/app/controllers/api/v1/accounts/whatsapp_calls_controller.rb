@@ -132,7 +132,10 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
 
     return render_could_not_create_error(I18n.t('errors.whatsapp.calls.permission_request_failed')) if status == 'failed'
 
-    render json: { status: status }
+    # 422 (not 200) so any client treating 2xx as "call placed" can't mistake
+    # the permission-template path for a successful dial. The FE composable
+    # detects this status and surfaces the banner instead of throwing.
+    render json: { status: status }, status: :unprocessable_entity
   end
 
   def permission_request_throttled?
