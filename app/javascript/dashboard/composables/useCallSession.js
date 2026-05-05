@@ -106,8 +106,11 @@ export function useCallSession() {
   const findCall = callSid => callsStore.calls.find(c => c.callSid === callSid);
 
   const endCall = async ({ conversationId, inboxId, callSid }) => {
-    if (isWhatsappCall(findCall(callSid))) {
-      await whatsappSession.endActiveCall();
+    const call = findCall(callSid);
+    if (isWhatsappCall(call)) {
+      // Pass call.callId so a wiped module state (e.g. a prior accept attempt
+      // tore down the WebRTC session) doesn't stop us hitting /terminate.
+      await whatsappSession.endActiveCall(call.callId);
       durationTimer.stop();
       callsStore.clearActiveCall();
       return;
@@ -122,9 +125,15 @@ export function useCallSession() {
   const joinCall = async ({ conversationId, inboxId, callSid }) => {
     if (isJoining.value) return null;
 
+    const call = findCall(callSid);
+    // Outbound calls were initiated by this agent — there is no inbound offer
+    // to accept and the WebRTC session is already mid-handshake. Routing
+    // through acceptIncomingCall would call prepareInboundAnswer → cleanup()
+    // and destroy the live outbound session, then 409 from the backend.
+    if (call?.callDirection === 'outbound') return null;
+
     isJoining.value = true;
     try {
-      const call = findCall(callSid);
       if (isWhatsappCall(call)) {
         await whatsappSession.acceptIncomingCall({
           callId: call.callId,
@@ -174,7 +183,14 @@ export function useCallSession() {
   const rejectIncomingCall = callSid => {
     const call = findCall(callSid);
     if (isWhatsappCall(call) && call?.callId) {
-      whatsappSession.rejectIncomingCall(call.callId);
+      // Outbound calls that are still ringing must be terminated, not rejected
+      // (reject is the inbound-side verb on Meta's API). Pass call.callId so
+      // a wiped module state still hits /terminate.
+      if (call.callDirection === 'outbound') {
+        whatsappSession.endActiveCall(call.callId);
+      } else {
+        whatsappSession.rejectIncomingCall(call.callId);
+      }
     } else {
       TwilioVoiceClient.endClientCall();
     }

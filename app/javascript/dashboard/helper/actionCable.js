@@ -7,6 +7,7 @@ import { useImpersonation } from 'dashboard/composables/useImpersonation';
 import { useCallsStore } from 'dashboard/stores/calls';
 import {
   applyOutboundAnswer,
+  armOutboundRecorder,
   handleWhatsappRemoteEnd,
 } from 'dashboard/composables/useWhatsappCallSession';
 
@@ -42,6 +43,7 @@ class ActionCableConnector extends BaseActionCableConnector {
       'copilot.message.created': this.onCopilotMessageCreated,
       'voice_call.incoming': this.onVoiceCallIncoming,
       'voice_call.outbound_connected': this.onVoiceCallOutboundConnected,
+      'voice_call.outbound_accepted': this.onVoiceCallOutboundAccepted,
       'voice_call.ended': this.onVoiceCallEnded,
     };
   }
@@ -230,10 +232,28 @@ class ActionCableConnector extends BaseActionCableConnector {
     });
   };
 
+  // `connect` is the WebRTC tunnel-ready signal (fires ~20s before pickup
+  // for outbound). Apply the SDP answer so the handshake completes during
+  // ringing, but stay non-active until `outbound_accepted` arrives.
   // eslint-disable-next-line class-methods-use-this
-  onVoiceCallOutboundConnected = data => {
+  onVoiceCallOutboundConnected = async data => {
     if (data?.provider !== 'whatsapp' || !data.sdp_answer) return;
-    applyOutboundAnswer(data.id, data.sdp_answer).catch(() => {});
+    try {
+      await applyOutboundAnswer(data.id, data.sdp_answer);
+    } catch (_) {
+      /* noop */
+    }
+  };
+
+  // Real pickup signal — Meta sends status=ACCEPTED on the call when the
+  // contact answers. Flip active (timer starts) and arm the recorder.
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallOutboundAccepted = data => {
+    if (data?.provider !== 'whatsapp') return;
+    const store = useCallsStore();
+    if (!store.calls.some(c => c.callSid === data.call_id)) return;
+    store.setCallActive(data.call_id);
+    armOutboundRecorder();
   };
 
   // eslint-disable-next-line class-methods-use-this

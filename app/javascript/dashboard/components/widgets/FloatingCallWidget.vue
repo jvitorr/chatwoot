@@ -1,11 +1,13 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { useCallSession } from 'dashboard/composables/useCallSession';
 import { setWhatsappCallMuted } from 'dashboard/composables/useWhatsappCallSession';
 import WindowVisibilityHelper from 'dashboard/helper/AudioAlerts/WindowVisibilityHelper';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
+
+const RINGTONE_URL = '/audio/dashboard/bell.mp3';
 
 const router = useRouter();
 const store = useStore();
@@ -97,12 +99,15 @@ const handleJoinCall = async call => {
   }
 };
 
-// Auto-join outbound calls when window is visible
+// Auto-join outbound calls when window is visible. WhatsApp outbound has no
+// separate join step (the offer was sent at initiate time and the answer is
+// applied directly by the cable handler), so this only covers Twilio.
 watch(
   () => incomingCalls.value[0],
   call => {
     if (
       call?.callDirection === 'outbound' &&
+      call?.provider !== 'whatsapp' &&
       !hasActiveCall.value &&
       WindowVisibilityHelper.isWindowVisible()
     ) {
@@ -111,6 +116,37 @@ watch(
   },
   { immediate: true }
 );
+
+// Loop the ringtone while an inbound call is unanswered. Stop the moment any
+// call is active (we joined), every inbound call cleared, or the widget tears
+// down. Browser autoplay may reject the first play() if the tab has no prior
+// user gesture; that's fine — the visual widget still surfaces the call.
+const ringtone = new Audio(RINGTONE_URL);
+ringtone.loop = true;
+ringtone.volume = 1;
+
+const stopRingtone = () => {
+  ringtone.pause();
+  ringtone.currentTime = 0;
+};
+
+const ringingInbound = computed(() =>
+  incomingCalls.value.some(call => call.callDirection !== 'outbound')
+);
+
+watch(
+  () => ringingInbound.value && !hasActiveCall.value,
+  shouldRing => {
+    if (shouldRing) {
+      ringtone.play().catch(() => {});
+    } else {
+      stopRingtone();
+    }
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(stopRingtone);
 </script>
 
 <template>
@@ -223,7 +259,9 @@ watch(
           <i class="text-lg text-white i-ph-phone-x-bold" />
         </button>
         <button
-          v-if="!hasActiveCall"
+          v-if="
+            !hasActiveCall && incomingCalls[0]?.callDirection !== 'outbound'
+          "
           class="flex justify-center items-center w-10 h-10 bg-n-teal-9 hover:bg-n-teal-10 rounded-full transition-colors"
           @click="handleJoinCall(incomingCalls[0])"
         >

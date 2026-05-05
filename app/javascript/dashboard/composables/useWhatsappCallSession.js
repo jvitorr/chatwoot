@@ -13,6 +13,12 @@ let recorderChunks = [];
 let audioContext = null;
 let activeCallId = null;
 let intentionallyClosing = false;
+// Inbound calls record from the moment the agent clicks accept (their click =
+// pickup). Outbound calls must wait — Meta's `connect` webhook (which lands
+// during ringing) negotiates remote tracks ~20s before the contact actually
+// answers, and we don't want pre-pickup audio in the recording. This flag is
+// flipped to true by armOutboundRecorder() when the ACCEPTED status arrives.
+let recorderArmed = false;
 
 const ensureRemoteAudioElement = () => {
   if (remoteAudioEl) return remoteAudioEl;
@@ -38,6 +44,7 @@ const playRemoteStream = stream => {
 // that races cleanup still has data to upload.
 const RECORDING_TIMESLICE_MS = 1000;
 const ICE_GATHER_TIMEOUT_MS = 10000;
+
 const RECORDER_MIME_CANDIDATES = [
   'audio/webm;codecs=opus',
   'audio/webm',
@@ -63,32 +70,6 @@ const waitForIceGatheringComplete = peer =>
       }
     });
   });
-
-const cleanup = () => {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    try {
-      mediaRecorder.stop();
-    } catch (_) {
-      /* noop */
-    }
-  }
-  if (audioContext && audioContext.state !== 'closed') {
-    audioContext.close().catch(() => {});
-  }
-  if (localStream) localStream.getTracks().forEach(t => t.stop());
-  if (remoteStream) remoteStream.getTracks().forEach(t => t.stop());
-  if (pc) pc.close();
-  if (remoteAudioEl) remoteAudioEl.srcObject = null;
-
-  pc = null;
-  localStream = null;
-  remoteStream = null;
-  mediaRecorder = null;
-  recorderChunks = [];
-  audioContext = null;
-  activeCallId = null;
-  intentionallyClosing = false;
-};
 
 const setupRecorder = () => {
   if (!localStream || !remoteStream || mediaRecorder) return;
@@ -118,6 +99,33 @@ const setupRecorder = () => {
   mediaRecorder.start(RECORDING_TIMESLICE_MS);
 };
 
+const cleanup = () => {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    try {
+      mediaRecorder.stop();
+    } catch (_) {
+      /* noop */
+    }
+  }
+  if (audioContext && audioContext.state !== 'closed') {
+    audioContext.close().catch(() => {});
+  }
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  if (remoteStream) remoteStream.getTracks().forEach(t => t.stop());
+  if (pc) pc.close();
+  if (remoteAudioEl) remoteAudioEl.srcObject = null;
+
+  pc = null;
+  localStream = null;
+  remoteStream = null;
+  mediaRecorder = null;
+  recorderChunks = [];
+  audioContext = null;
+  activeCallId = null;
+  intentionallyClosing = false;
+  recorderArmed = false;
+};
+
 const buildPeerConnection = iceServers => {
   const config = iceServers && iceServers.length ? { iceServers } : {};
   pc = new RTCPeerConnection(config);
@@ -134,7 +142,10 @@ const buildPeerConnection = iceServers => {
         remoteStream.addTrack(track);
     });
     playRemoteStream(remoteStream);
-    setupRecorder();
+    // Only arm the recorder when the call is actually accepted. For outbound
+    // this is the ACCEPTED status webhook; for inbound this is the agent's
+    // own click (acceptIncomingCall flips recorderArmed before returning).
+    if (recorderArmed) setupRecorder();
   };
   return pc;
 };
@@ -255,6 +266,11 @@ export function useWhatsappCallSession() {
 
     const sdpAnswer = await prepareInboundAnswer(offer, ice);
     activeCallId = callId;
+    // Inbound: agent's click is the pickup. Arm the recorder before the API
+    // round-trip so when ontrack fires (triggered by setRemoteDescription
+    // back in prepareInboundAnswer) the recorder is already authorized.
+    recorderArmed = true;
+    setupRecorder();
     await WhatsappCallsAPI.accept(callId, sdpAnswer);
   };
 
@@ -287,16 +303,20 @@ export function useWhatsappCallSession() {
     }
   };
 
-  const endActiveCall = async () => {
-    if (!activeCallId) {
+  // callIdOverride is the call.id from the dashboard's calls store. Module
+  // `activeCallId` may be null after a prior accept attempt's cleanup() — but
+  // the call still exists on Meta and must still be terminated. Falling back
+  // to the override means hangup is robust to a wiped local session.
+  const endActiveCall = async (callIdOverride = null) => {
+    const callId = activeCallId || callIdOverride;
+    if (!callId) {
       cleanup();
       return;
     }
     intentionallyClosing = true;
-    const callIdSnapshot = activeCallId;
     try {
-      await stopRecorderAndUpload(callIdSnapshot);
-      await WhatsappCallsAPI.terminate(callIdSnapshot).catch(() => {});
+      await stopRecorderAndUpload(callId);
+      await WhatsappCallsAPI.terminate(callId).catch(() => {});
     } finally {
       cleanup();
     }
@@ -320,6 +340,15 @@ export const applyOutboundAnswer = async (callId, sdpAnswer) => {
   if (!pc) return;
   activeCallId = callId;
   await pc.setRemoteDescription({ type: 'answer', sdp: sdpAnswer });
+};
+
+// Called by the cable handler when Meta delivers status=ACCEPTED for the
+// outbound call (real pickup). Flips the recorder gate and starts the
+// MediaRecorder. Idempotent — safe if ontrack hasn't fired yet (setupRecorder
+// bails until the remote stream has audio tracks; ontrack will retry).
+export const armOutboundRecorder = () => {
+  recorderArmed = true;
+  setupRecorder();
 };
 
 export const cleanupWhatsappSession = () => cleanup();

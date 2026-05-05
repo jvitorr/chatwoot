@@ -93,6 +93,8 @@ const startWhatsappCall = async inboxId => {
   }
 
   const callsStore = useCallsStore();
+  // Stay non-active until the connect cable event arrives — flipping to active
+  // here would start the duration timer before the contact picks up.
   callsStore.addCall({
     callSid: response.call_id,
     callId: response.id,
@@ -101,7 +103,6 @@ const startWhatsappCall = async inboxId => {
     callDirection: 'outbound',
     provider: 'whatsapp',
   });
-  callsStore.setCallActive(response.call_id);
 
   useAlert(t('CONTACT_PANEL.CALL_INITIATED'));
   navigateToConversation(conversationId);

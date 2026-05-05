@@ -107,6 +107,13 @@ const isWhatsappVoiceInbox = computed(
   () => getVoiceCallProvider(inbox.value) === VOICE_CALL_PROVIDERS.WHATSAPP
 );
 
+const isWhatsappCallButtonDisabled = computed(
+  () =>
+    whatsappCallSession.isInitiating.value ||
+    callsStore.hasActiveCall ||
+    callsStore.hasIncomingCall
+);
+
 const startWhatsappCall = async () => {
   if (whatsappCallSession.isInitiating.value) return;
   try {
@@ -125,6 +132,8 @@ const startWhatsappCall = async () => {
       return;
     }
 
+    // Stay non-active until Meta delivers the connect webhook (sdp_answer);
+    // flipping to active here would start the duration timer before pickup.
     callsStore.addCall({
       callSid: response.call_id,
       callId: response.id,
@@ -133,7 +142,6 @@ const startWhatsappCall = async () => {
       callDirection: 'outbound',
       provider: 'whatsapp',
     });
-    callsStore.setCallActive(response.call_id);
   } catch (error) {
     useAlert(error?.message || t('CONVERSATION.HEADER.WHATSAPP_CALL_FAILED'));
   }
@@ -207,7 +215,7 @@ const startWhatsappCall = async () => {
         color="slate"
         icon="i-lucide-phone"
         :is-loading="whatsappCallSession.isInitiating.value"
-        :disabled="whatsappCallSession.isInitiating.value"
+        :disabled="isWhatsappCallButtonDisabled"
         class="rounded-md hover:bg-n-alpha-2"
         @click="startWhatsappCall"
       />
