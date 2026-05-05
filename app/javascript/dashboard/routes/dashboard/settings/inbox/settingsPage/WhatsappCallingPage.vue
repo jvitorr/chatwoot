@@ -3,12 +3,14 @@ import { useAlert } from 'dashboard/composables';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
 import SettingsToggleSection from 'dashboard/components-next/Settings/SettingsToggleSection.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
+import TextArea from 'next/textarea/TextArea.vue';
 
 export default {
   components: {
     SettingsFieldSection,
     SettingsToggleSection,
     NextButton,
+    TextArea,
   },
   props: {
     inbox: {
@@ -19,6 +21,8 @@ export default {
   data() {
     return {
       callingEnabled: this.inbox.provider_config?.calling_enabled || false,
+      permissionRequestBody:
+        this.inbox.provider_config?.call_permission_request_body || '',
       isUpdating: false,
     };
   },
@@ -33,6 +37,9 @@ export default {
     'inbox.provider_config.calling_enabled'(val) {
       this.callingEnabled = val || false;
     },
+    'inbox.provider_config.call_permission_request_body'(val) {
+      this.permissionRequestBody = val || '';
+    },
   },
   methods: {
     async updateCallingSettings() {
@@ -45,6 +52,8 @@ export default {
             provider_config: {
               ...this.inbox.provider_config,
               calling_enabled: this.callingEnabled,
+              call_permission_request_body:
+                this.permissionRequestBody.trim() || null,
             },
           },
         });
@@ -73,6 +82,22 @@ export default {
       :help-text="$t('INBOX_MGMT.WHATSAPP_CALLING.PHONE_NUMBER.HELP_TEXT')"
     >
       <woot-code :script="phoneNumber" lang="html" />
+    </SettingsFieldSection>
+
+    <SettingsFieldSection
+      :label="$t('INBOX_MGMT.WHATSAPP_CALLING.PERMISSION_REQUEST_BODY.LABEL')"
+      :help-text="
+        $t('INBOX_MGMT.WHATSAPP_CALLING.PERMISSION_REQUEST_BODY.HELP_TEXT')
+      "
+    >
+      <TextArea
+        v-model="permissionRequestBody"
+        :placeholder="
+          $t('INBOX_MGMT.WHATSAPP_CALLING.PERMISSION_REQUEST_BODY.PLACEHOLDER')
+        "
+        auto-height
+        resize
+      />
     </SettingsFieldSection>
 
     <SettingsFieldSection

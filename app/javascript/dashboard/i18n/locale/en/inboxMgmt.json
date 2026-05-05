@@ -661,6 +661,11 @@
       "HOW_IT_WORKS": {
         "LABEL": "How it works",
         "DESCRIPTION": "Calls are placed peer-to-peer between the agent's browser and Meta — no extra credentials are required. Make sure the agent's browser has microphone permission for this site."
+      },
+      "PERMISSION_REQUEST_BODY": {
+        "LABEL": "Call permission request message",
+        "HELP_TEXT": "Shown to the contact when they haven't yet consented to receive calls. Leave blank to use the default.",
+        "PLACEHOLDER": "We would like to call you regarding your conversation."
       }
     },
     "CHANNEL_PREFERENCES": "Channel Preferences",
