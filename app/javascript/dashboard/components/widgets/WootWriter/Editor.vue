@@ -63,7 +63,6 @@ import {
   calculateMenuPosition,
   getEffectiveChannelType,
   stripUnsupportedFormatting,
-  hasContentBeforeSignature,
 } from 'dashboard/helper/editorHelper';
 import {
   hasPressedEnterAndNotCmdOrShift,
@@ -898,7 +897,7 @@ useEmitter(BUS_EVENTS.INSERT_INTO_RICH_EDITOR, insertContentIntoEditor);
       v-on-click-outside="handleClickOutside"
       :has-selection="isTextSelected"
       :is-editor-menu-popover="isEditorMenuPopover"
-      :has-content="hasContentBeforeSignature(modelValue)"
+      :has-content="!isBodyEmpty(modelValue)"
       :conversation-id="conversationId"
       :show-selection-menu="showSelectionMenu"
       :show-general-menu="false"

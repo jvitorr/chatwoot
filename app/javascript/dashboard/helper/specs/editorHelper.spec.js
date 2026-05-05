@@ -13,7 +13,6 @@ import {
   getFormattingForEditor,
   getMenuAnchor,
   getSelectionCoords,
-  hasContentBeforeSignature,
   insertAtCursor,
   removeSignature,
   replaceSignature,
@@ -398,73 +397,6 @@ describe('removeSignature with stripped signature', () => {
     const body = 'Hello\n\n--\n\nBest regards';
     const result = removeSignature(body, simpleSignature);
     expect(result).toBe('Hello\n\n');
-  });
-});
-
-describe('hasContentBeforeSignature', () => {
-  it('returns false for empty or falsy body', () => {
-    expect(hasContentBeforeSignature('')).toBe(false);
-    expect(hasContentBeforeSignature(null)).toBe(false);
-    expect(hasContentBeforeSignature(undefined)).toBe(false);
-  });
-
-  it('returns false for whitespace-only body', () => {
-    expect(hasContentBeforeSignature('   ')).toBe(false);
-    expect(hasContentBeforeSignature('\n\n')).toBe(false);
-    expect(hasContentBeforeSignature('\t\n \t')).toBe(false);
-  });
-
-  it('returns false when only signature follows the delimiter', () => {
-    expect(hasContentBeforeSignature('\n\n--\n\nBest,\nJohn')).toBe(false);
-    expect(hasContentBeforeSignature('--\n\nSincerely')).toBe(false);
-    expect(hasContentBeforeSignature('   \n--\n\nThanks')).toBe(false);
-  });
-
-  it('returns true when real content exists before the delimiter', () => {
-    expect(hasContentBeforeSignature('Hello\n\n--\n\nBest,\nJohn')).toBe(true);
-    expect(hasContentBeforeSignature('Hi')).toBe(true);
-    expect(hasContentBeforeSignature('Reply text\n--\nSig')).toBe(true);
-  });
-
-  it('returns true for content without any delimiter', () => {
-    expect(hasContentBeforeSignature('Just a plain reply')).toBe(true);
-    expect(hasContentBeforeSignature('Line 1\nLine 2')).toBe(true);
-  });
-
-  it('ignores extra delimiters inside the signature region', () => {
-    // Multiple "--" only the first acts as the split point
-    expect(hasContentBeforeSignature('Hello\n\n--\n\nBest\n--\nDept')).toBe(
-      true
-    );
-    expect(hasContentBeforeSignature('\n\n--\n\nBest\n--\nDept')).toBe(false);
-  });
-
-  it('tolerates horizontal whitespace around the delimiter line', () => {
-    expect(hasContentBeforeSignature('Hello\n\n  --  \n\nBest')).toBe(true);
-    expect(hasContentBeforeSignature('\n\n\t--\t\n\nBest')).toBe(false);
-  });
-
-  it('does not treat markdown horizontal rules as the delimiter', () => {
-    // Body starts with a horizontal rule; content follows
-    expect(hasContentBeforeSignature('---\nSome content')).toBe(true);
-    expect(hasContentBeforeSignature('----\nSome content')).toBe(true);
-    // Horizontal rule mid-body, content after
-    expect(hasContentBeforeSignature('Hello\n\n---\n\nWorld')).toBe(true);
-    // Horizontal rule only (no content) is still "no content"
-    expect(hasContentBeforeSignature('---')).toBe(true); // `---` is itself non-whitespace text before any delimiter line
-  });
-
-  it('does not treat inline "--" as the delimiter', () => {
-    expect(hasContentBeforeSignature('checkout -- quickly')).toBe(true);
-    expect(hasContentBeforeSignature('Hello -- world\n\n--\n\nSig')).toBe(true);
-    expect(hasContentBeforeSignature('foo--bar')).toBe(true);
-    expect(hasContentBeforeSignature('foo -- bar')).toBe(true);
-  });
-
-  it('does not mutate the input', () => {
-    const body = '  \n\nHello\n\n--\n\nBest  ';
-    hasContentBeforeSignature(body);
-    expect(body).toBe('  \n\nHello\n\n--\n\nBest  ');
   });
 });
 

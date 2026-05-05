@@ -99,30 +99,6 @@ export function stripUnsupportedMarkdown(
 export const SIGNATURE_DELIMITER = '--';
 
 /**
- * Matches the signature delimiter only when it sits on its own line
- * (horizontal whitespace around it is allowed so user edits don't break it).
- * This is the format produced by `appendDelimiter`, so plain markdown
- * horizontal rules like `---` / `----` or an inline `--` inside a sentence
- * are NOT treated as the delimiter.
- */
-const SIGNATURE_DELIMITER_LINE_REGEX = /^[^\S\n]*--[^\S\n]*$/m;
-
-/**
- * Returns true if there is meaningful (non-whitespace) content before the
- * signature delimiter line. Stray newlines/spaces left behind by a signature
- * toggle don't count as content. Does not mutate the input.
- *
- * @param {string} body
- * @returns {boolean}
- */
-export function hasContentBeforeSignature(body) {
-  if (!body) return false;
-  const match = body.match(SIGNATURE_DELIMITER_LINE_REGEX);
-  const beforeDelimiter = match ? body.slice(0, match.index) : body;
-  return !!beforeDelimiter.trim();
-}
-
-/**
  * Parse and Serialize the markdown text to remove any extra spaces or new lines
  */
 export function cleanSignature(signature) {

@@ -49,7 +49,6 @@ import {
   appendSignature,
   removeSignature,
   getEffectiveChannelType,
-  hasContentBeforeSignature,
 } from 'dashboard/helper/editorHelper';
 import { useCopilotReply } from 'dashboard/composables/useCopilotReply';
 import { useKbd } from 'dashboard/composables/utils/useKbd';
@@ -184,7 +183,15 @@ export default {
       return true;
     },
     hasMeaningfulEditorContent() {
-      return hasContentBeforeSignature(this.message);
+      const body = this.message || '';
+      // Private notes never carry a signature, so just trim-check.
+      if (this.isPrivate || !this.messageSignature) return !!body.trim();
+      const stripped = removeSignature(
+        body,
+        this.messageSignature,
+        getEffectiveChannelType(this.channelType, this.inbox?.medium || '')
+      );
+      return !!stripped.trim();
     },
     isReplyRestricted() {
       return (
