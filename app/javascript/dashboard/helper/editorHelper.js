@@ -1,11 +1,8 @@
 import {
   MessageMarkdownSerializer,
-<<<<<<< fix/CW-6960
   MessageMarkdownTransformer,
   messageSchema,
-=======
   Selection,
->>>>>>> develop
 } from '@chatwoot/prosemirror-schema';
 import { replaceVariablesInMessage } from '@chatwoot/utils';
 import * as Sentry from '@sentry/vue';

@@ -5,6 +5,7 @@ import {
   appendSignature,
   calculateMenuPosition,
   cleanSignature,
+  collapseSelection,
   extractTextFromMarkdown,
   findNodeToInsertImage,
   findSignatureInBody,
@@ -18,12 +19,8 @@ import {
   replaceSignature,
   setURLWithQueryAndSize,
   stripInlineBase64Images,
-<<<<<<< fix/CW-6960
   stripUnsupportedFormatting,
   stripUnsupportedMarkdown,
-=======
-  collapseSelection,
->>>>>>> develop
 } from '../editorHelper';
 
 // Define a basic ProseMirror schema
