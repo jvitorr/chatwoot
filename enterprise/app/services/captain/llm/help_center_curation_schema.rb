@@ -1,10 +1,10 @@
 class Captain::Llm::HelpCenterCurationSchema < RubyLLM::Schema
   CATEGORIES_DESCRIPTION = '3 to 5 high-level categories that group the chosen articles. ' \
-                           'Names must be short (1-3 words) and reusable.'
+                           'Names must be short (1-3 words) and reusable.'.freeze
   ARTICLES_DESCRIPTION = 'Up to 12 URLs from the input list that would make the best customer-support help-center articles. ' \
-                         'Skip blog posts, marketing/landing pages, login, pricing, legal, careers.'
-  TITLE_DESCRIPTION = 'Concise article title (max 80 chars), rewritten if the source title is too long or marketing-y.'
-  CATEGORY_DESCRIPTION = 'One sentence describing what kind of articles belong in this category.'
+                         'Skip blog posts, marketing/landing pages, login, pricing, legal, careers.'.freeze
+  TITLE_DESCRIPTION = 'Concise article title (max 80 chars), rewritten if the source title is too long or marketing-y.'.freeze
+  CATEGORY_DESCRIPTION = 'One sentence describing what kind of articles belong in this category.'.freeze
 
   array :categories, description: CATEGORIES_DESCRIPTION, min_items: 1, max_items: 5 do
     object do
