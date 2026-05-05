@@ -145,11 +145,20 @@ const findTopLevelTailStart = root => {
     // a multiline node would otherwise drop the reply above it.
     const probe = (t.split('\n').find(l => l.trim()) ?? '').trim();
     if (HARD_HEADERS.some(re => re.test(probe)) || ATTRIBUTION.test(probe)) {
-      // No reply text above the trigger → could be bottom-posted. Mirror
-      // the RFC branch: only fire when every following node is `>`-quoted
-      // or neutral. Otherwise leave the body alone.
-      if (kids.slice(0, i).every(isNeutral))
-        return kids.slice(i + 1).every(c => isRfcQuoted(c) || isNeutral(c));
+      // No sibling content above → could be bottom-posted. Fire only when
+      // both the lines BELOW the trigger inside this node AND every
+      // following sibling are `>`-quoted or empty. Otherwise leave alone.
+      if (kids.slice(0, i).every(isNeutral)) {
+        const probeIdx = t.split('\n').findIndex(l => l.trim());
+        const tailHereOk = t
+          .split('\n')
+          .slice(probeIdx + 1)
+          .every(l => !l.trim() || l.trim().startsWith('>'));
+        return (
+          tailHereOk &&
+          kids.slice(i + 1).every(c => isRfcQuoted(c) || isNeutral(c))
+        );
+      }
       return true;
     }
     return HEADER_LINE.test(probe) && countHeaderLines(tailText(i)) >= 2;
