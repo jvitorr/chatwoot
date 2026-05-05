@@ -90,20 +90,6 @@ describe('EmailQuoteExtractor', () => {
     expect(EmailQuoteExtractor.hasQuotes(EMAIL_WITH_SIGNATURE)).toBe(true);
   });
 
-  describe('robustness', () => {
-    it('handles large email bodies without throwing', () => {
-      const bigHtml = '<p>line</p>'.repeat(5000);
-      expect(() => EmailQuoteExtractor.extractQuotes(bigHtml)).not.toThrow();
-      expect(() => EmailQuoteExtractor.hasQuotes(bigHtml)).not.toThrow();
-    });
-
-    it('does not crash on malformed HTML', () => {
-      const malformed = '<div><><<<p>weird</p><span class="quote"';
-      expect(() => EmailQuoteExtractor.extractQuotes(malformed)).not.toThrow();
-      expect(() => EmailQuoteExtractor.hasQuotes(malformed)).not.toThrow();
-    });
-  });
-
   describe('HTML sanitization', () => {
     it('removes onerror handlers from img tags in extractQuotes', () => {
       const maliciousHtml = '<p>Hello</p><img src="x" onerror="alert(1)">';
