@@ -354,16 +354,17 @@ function isBodyEmpty(content) {
   // if content is undefined, we assume that the body is empty
   if (!content) return true;
 
-  // if the signature is present, we need to remove it before checking
-  // note that we don't update the editorView, so this is safe
-  // Use effective channel type to match how signature was appended
-  const bodyWithoutSignature = props.signature
-    ? removeSignatureHelper(
-        content,
-        props.signature,
-        effectiveChannelType.value
-      )
-    : content;
+  // Only strip the signature when it's actually being auto-appended for this
+  // draft. Otherwise an agent whose typed text happens to match their saved
+  // signature would be mistakenly treated as empty.
+  const bodyWithoutSignature =
+    sendWithSignature.value && props.signature
+      ? removeSignatureHelper(
+          content,
+          props.signature,
+          effectiveChannelType.value
+        )
+      : content;
 
   // trimming should remove all the whitespaces, so we can check the length
   return bodyWithoutSignature.trim().length === 0;

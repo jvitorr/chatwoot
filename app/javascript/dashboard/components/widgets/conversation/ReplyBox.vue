@@ -184,8 +184,12 @@ export default {
     },
     hasMeaningfulEditorContent() {
       const body = this.message || '';
-      // Private notes never carry a signature, so just trim-check.
-      if (this.isPrivate || !this.messageSignature) return !!body.trim();
+      // Only strip the signature when it's actually being auto-appended.
+      // If the toggle is off, the agent's text might happen to match their
+      // saved signature and we'd incorrectly treat it as empty.
+      const shouldStripSignature =
+        !this.isPrivate && this.sendWithSignature && !!this.messageSignature;
+      if (!shouldStripSignature) return !!body.trim();
       const stripped = removeSignature(
         body,
         this.messageSignature,
