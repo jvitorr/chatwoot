@@ -30,6 +30,14 @@ class Captain::Tools::FirecrawlService
     )
   end
 
+  def map(url, limit: 100)
+    HTTParty.post(
+      "#{BASE_URL}/map",
+      body: { url: url, limit: limit }.to_json,
+      headers: headers
+    )
+  end
+
   private
 
   def crawl_payload(url, webhook_url, crawl_limit)
