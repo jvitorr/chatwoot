@@ -138,8 +138,9 @@ const findTopLevelTailStart = root => {
   const idx = kids.findIndex((n, i) => {
     if (isRfcQuoted(n))
       return kids.slice(i).every(c => isRfcQuoted(c) || isNeutral(c));
-    if (n.nodeType !== TEXT || !n.textContent.trim()) return false;
-    const t = n.textContent;
+    if (isNeutral(n)) return false;
+    const t = nodeText(n);
+    if (!t.trim()) return false;
     if (HARD_HEADERS.some(re => re.test(t)) || ATTRIBUTION.test(t)) {
       // No reply text above the trigger → could be bottom-posted. Mirror
       // the RFC branch: only fire when every following node is `>`-quoted
@@ -167,19 +168,22 @@ const apply = root => {
     root.lastElementChild.remove();
   // 4. Soft headers. Match inside a <blockquote> → remove that blockquote
   // (Apple Mail wraps attribution + body together). Match inside a nested
-  // outer wrapper (WordSection1 shape) → hard-cut at the wrapper. Flat
-  // layout or wrapper directly under root → just block.remove(); body and
-  // bottom-posted reply look identical so leave following siblings alone.
+  // outer wrapper (WordSection1 shape) → hard-cut at the wrapper. At root,
+  // strip trailing siblings only when reply content sits ABOVE the trigger
+  // — header-first at root could be a bottom-posted reply, so leave it.
   findBlocks(root, isSoftHeader).forEach(block => {
     const bq = findEnclosingBlockquote(block, root);
     if (bq) return bq.remove();
+    const marker = t => HEADER_LINE.test(t) || ATTRIBUTION.test(t);
     const cutPoint = expandToWrapper(block, root);
     if (cutPoint !== block && cutPoint.parentElement !== root) {
-      return cutBlockAtMarker(
-        cutPoint,
-        t => HEADER_LINE.test(t) || ATTRIBUTION.test(t)
-      );
+      return cutBlockAtMarker(cutPoint, marker);
     }
+    const kids = [...root.childNodes];
+    const hasPrecedingContent = kids
+      .slice(0, kids.indexOf(block))
+      .some(n => !isNeutral(n) && n.textContent.trim());
+    if (hasPrecedingContent) return cutBlockAtMarker(block, marker);
     return block.remove();
   });
   // 5. Top-level RFC `>` / header tail.
