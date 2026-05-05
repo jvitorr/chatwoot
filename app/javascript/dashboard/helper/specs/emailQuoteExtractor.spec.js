@@ -53,33 +53,20 @@ const cleaned = html => {
 
 describe('EmailQuoteExtractor', () => {
   it('removes blockquote-based quotes from the email body', () => {
-    const cleanedHtml = EmailQuoteExtractor.extractQuotes(SAMPLE_EMAIL_HTML);
-
-    const container = document.createElement('div');
-    container.innerHTML = cleanedHtml;
-
-    expect(container.querySelectorAll('blockquote').length).toBe(0);
-    expect(container.textContent?.trim()).toBe('method');
-    expect(container.textContent).not.toContain(
-      'On Mon, Sep 29, 2025 at 5:18 PM'
-    );
+    const c = cleaned(SAMPLE_EMAIL_HTML);
+    expect(c.querySelectorAll('blockquote').length).toBe(0);
+    expect(c.textContent?.trim()).toBe('method');
+    expect(c.textContent).not.toContain('On Mon, Sep 29, 2025 at 5:18 PM');
   });
 
   it('keeps blockquote fallback when it is not the last top-level element', () => {
-    const cleanedHtml = EmailQuoteExtractor.extractQuotes(
-      EMAIL_WITH_FOLLOW_UP_CONTENT
-    );
-
-    const container = document.createElement('div');
-    container.innerHTML = cleanedHtml;
-
-    expect(container.querySelector('blockquote')).not.toBeNull();
-    expect(container.lastElementChild?.tagName).toBe('P');
+    const c = cleaned(EMAIL_WITH_FOLLOW_UP_CONTENT);
+    expect(c.querySelector('blockquote')).not.toBeNull();
+    expect(c.lastElementChild?.tagName).toBe('P');
   });
 
   it('detects quote indicators in nested blockquotes', () => {
-    const result = EmailQuoteExtractor.hasQuotes(SAMPLE_EMAIL_HTML);
-    expect(result).toBe(true);
+    expect(EmailQuoteExtractor.hasQuotes(SAMPLE_EMAIL_HTML)).toBe(true);
   });
 
   it('does not flag blockquotes that are followed by other elements', () => {
@@ -89,20 +76,32 @@ describe('EmailQuoteExtractor', () => {
   });
 
   it('returns false when no quote indicators are present', () => {
-    const html = '<p>Plain content</p>';
-    expect(EmailQuoteExtractor.hasQuotes(html)).toBe(false);
+    expect(EmailQuoteExtractor.hasQuotes('<p>Plain content</p>')).toBe(false);
   });
 
   it('removes trailing blockquotes while preserving trailing signatures', () => {
-    const cleanedHtml = EmailQuoteExtractor.extractQuotes(EMAIL_WITH_SIGNATURE);
-
-    expect(cleanedHtml).toContain('<p>Thanks,</p>');
-    expect(cleanedHtml).toContain('<p>Jane Doe</p>');
-    expect(cleanedHtml).not.toContain('<blockquote');
+    const c = cleaned(EMAIL_WITH_SIGNATURE);
+    expect(c.querySelector('blockquote')).toBeNull();
+    expect(c.textContent).toContain('Thanks,');
+    expect(c.textContent).toContain('Jane Doe');
   });
 
   it('detects quotes for trailing blockquotes even when signatures follow text', () => {
     expect(EmailQuoteExtractor.hasQuotes(EMAIL_WITH_SIGNATURE)).toBe(true);
+  });
+
+  describe('robustness', () => {
+    it('handles large email bodies without throwing', () => {
+      const bigHtml = '<p>line</p>'.repeat(5000);
+      expect(() => EmailQuoteExtractor.extractQuotes(bigHtml)).not.toThrow();
+      expect(() => EmailQuoteExtractor.hasQuotes(bigHtml)).not.toThrow();
+    });
+
+    it('does not crash on malformed HTML', () => {
+      const malformed = '<div><><<<p>weird</p><span class="quote"';
+      expect(() => EmailQuoteExtractor.extractQuotes(malformed)).not.toThrow();
+      expect(() => EmailQuoteExtractor.hasQuotes(malformed)).not.toThrow();
+    });
   });
 
   describe('HTML sanitization', () => {
