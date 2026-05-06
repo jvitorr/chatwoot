@@ -95,6 +95,7 @@
       "OPEN": "Tovább",
       "CLOSE": "Bezárás",
       "DETAILS": "részletek",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "Halasztás eddig",
       "SNOOZED_UNTIL_TOMORROW": "Halasztás holnapig",
       "SNOOZED_UNTIL_NEXT_WEEK": "Halasztás jövő hétig",
