@@ -95,6 +95,7 @@
       "OPEN": "Mer",
       "CLOSE": "Stäng",
       "DETAILS": "detaljer",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "Snoozad till",
       "SNOOZED_UNTIL_TOMORROW": "Snoozad till imorgon",
       "SNOOZED_UNTIL_NEXT_WEEK": "Snoozad till nästa vecka",
