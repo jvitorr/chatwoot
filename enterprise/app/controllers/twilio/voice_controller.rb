@@ -7,6 +7,12 @@ class Twilio::VoiceController < ApplicationController
   }.freeze
 
   before_action :set_inbox!
+  # Twilio's recording webhook fetches the audio file with the channel's
+  # auth credentials, so accepting an unsigned POST would let an attacker
+  # who guesses (or is leaked) a ConferenceSid coerce credential-bearing
+  # requests to an arbitrary host. Verify the signature before doing
+  # anything with the payload.
+  before_action :verify_twilio_signature!, only: :recording_status
 
   def status
     Voice::StatusUpdateService.new(
@@ -184,6 +190,18 @@ class Twilio::VoiceController < ApplicationController
     return if call.twilio_conference_sid == sid
 
     call.update!(twilio_conference_sid: sid)
+  end
+
+  def verify_twilio_signature!
+    signature = request.headers['X-Twilio-Signature'].to_s
+    auth_token = inbox_channel.auth_token.to_s
+    return head :forbidden if signature.blank? || auth_token.blank?
+
+    validator = Twilio::Security::RequestValidator.new(auth_token)
+    payload = request.request_method.to_s.upcase == 'POST' ? request.request_parameters : request.query_parameters
+    return if validator.validate(request.original_url, payload, signature)
+
+    head :forbidden
   end
 
   def set_inbox!

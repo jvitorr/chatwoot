@@ -9,6 +9,7 @@ import {
   applyOutboundAnswer,
   armOutboundRecorder,
   handleWhatsappRemoteEnd,
+  isLocalWhatsappCall,
 } from 'dashboard/composables/useWhatsappCallSession';
 
 const { isImpersonating } = useImpersonation();
@@ -238,6 +239,10 @@ class ActionCableConnector extends BaseActionCableConnector {
   // eslint-disable-next-line class-methods-use-this
   onVoiceCallOutboundConnected = async data => {
     if (data?.provider !== 'whatsapp' || !data.sdp_answer) return;
+    // Account-wide broadcast: skip SDPs for calls another agent is handling,
+    // otherwise applyOutboundAnswer would feed a foreign SDP into this tab's
+    // peer connection.
+    if (!isLocalWhatsappCall(data.id)) return;
     try {
       await applyOutboundAnswer(data.id, data.sdp_answer);
     } catch (_) {
@@ -259,12 +264,18 @@ class ActionCableConnector extends BaseActionCableConnector {
   // eslint-disable-next-line class-methods-use-this
   onVoiceCallEnded = async data => {
     if (data?.provider !== 'whatsapp') return;
-    // Await upload before removeCall — the store's sync teardown would otherwise
-    // wipe the recorder chunks before they reach the server.
-    try {
-      await handleWhatsappRemoteEnd(data.id);
-    } catch (_) {
-      /* noop */
+    // The store entry should always be removed for this account-wide broadcast,
+    // but the WebRTC/recorder teardown must only run for the call this tab owns
+    // — otherwise an unrelated agent's call ending would stop this tab's
+    // recorder and upload its chunks against the wrong call id.
+    if (isLocalWhatsappCall(data.id)) {
+      // Await upload before removeCall — the store's sync teardown would otherwise
+      // wipe the recorder chunks before they reach the server.
+      try {
+        await handleWhatsappRemoteEnd(data.id);
+      } catch (_) {
+        /* noop */
+      }
     }
     useCallsStore().removeCall(data.call_id);
   };

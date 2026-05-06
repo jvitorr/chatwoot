@@ -14,134 +14,117 @@ import { handleVoiceCallCreated } from 'dashboard/helper/voice';
 import Timer from 'dashboard/helper/Timer';
 
 const isWhatsappCall = call => call?.provider === 'whatsapp';
+// Calls seeded after a refresh / arriving via message.updated may lack provider
+// metadata. Treat anything that has a callId (Meta's wacid) as WhatsApp — the
+// Twilio path keys off provider_call_id (a CA…) and never sets callId.
+const isWhatsappLikeCall = call => isWhatsappCall(call) || !!call?.callId;
 
-export function useCallSession() {
-  const store = useStore();
-  const callsStore = useCallsStore();
-  const whatsappSession = useWhatsappCallSession();
-  const { t } = useI18n();
-  const isJoining = ref(false);
-  const callDuration = ref(0);
-  const durationTimer = new Timer(elapsed => {
-    callDuration.value = elapsed;
+// Dismissed call sids must not be re-seeded by the conversation-load watcher.
+// Lives at module scope so all consumers share the same set.
+const dismissedCallSids = new Set();
+const markDismissed = callSid => {
+  if (callSid) dismissedCallSids.add(callSid);
+};
+
+// Globals attached once across all useCallSession() consumers — bubbles in a
+// long thread call this composable many times, and a per-instance Timer +
+// window listener stack would multiply work.
+let globalsAttachedCount = 0;
+let globalDurationTimer = null;
+const globalCallDuration = ref(0);
+let storedCallsStoreRef = null;
+// Shared join lock so two surfaces (bubble + widget) clicking concurrently
+// see one in-flight join, not two unrelated isJoining refs.
+const globalIsJoining = ref(false);
+
+const handleBeforeUnloadGlobal = event => {
+  const store = storedCallsStoreRef;
+  if (!store) return;
+  if (!store.hasActiveCall && !store.hasIncomingCall) return;
+  event.preventDefault();
+  event.returnValue = '';
+};
+const handlePageHideGlobal = () => sendWhatsappTerminateBeacon();
+const handleTwilioDisconnectedGlobal = () =>
+  storedCallsStoreRef?.clearActiveCall();
+
+const attachGlobalsOnFirstMount = callsStore => {
+  globalsAttachedCount += 1;
+  if (globalsAttachedCount > 1) return;
+  storedCallsStoreRef = callsStore;
+  globalDurationTimer = new Timer(elapsed => {
+    globalCallDuration.value = elapsed;
   });
-
-  const activeCall = computed(() => callsStore.activeCall);
-  const incomingCalls = computed(() => callsStore.incomingCalls);
-  const hasActiveCall = computed(() => callsStore.hasActiveCall);
-  const hasIncomingCall = computed(() => callsStore.hasIncomingCall);
-
-  watch(
-    hasActiveCall,
-    active => {
-      if (active) {
-        durationTimer.start();
-      } else {
-        durationTimer.stop();
-        callDuration.value = 0;
-      }
-    },
-    { immediate: true }
+  TwilioVoiceClient.addEventListener(
+    'call:disconnected',
+    handleTwilioDisconnectedGlobal
   );
+  window.addEventListener('beforeunload', handleBeforeUnloadGlobal);
+  window.addEventListener('pagehide', handlePageHideGlobal);
+};
 
-  // Warn before a refresh/close drops a live or ringing call. Cable events
-  // aren't replayed on reconnect, so a confirmed refresh during ringing would
-  // leave the agent unable to accept; for active calls the WebRTC session
-  // dies outright (no rejoin path).
-  const handleBeforeUnload = event => {
-    if (!hasActiveCall.value && !hasIncomingCall.value) return;
-    event.preventDefault();
-    event.returnValue = '';
-  };
-
-  // Cable broadcasts (voice_call.incoming / message.created) are one-shot, so
-  // on a hard refresh they leave the calls store empty. Seed it from any
-  // ringing voice_call message in the conversation cache.
-  const seedCallsFromHydratedMessages = () => {
-    const conversations = store.getters.getAllConversations || [];
-    const currentUserId = store.getters.getCurrentUserID;
-    conversations.forEach(conv => {
-      (conv.messages || []).forEach(msg => {
-        if (msg.content_type !== 'voice_call') return;
-        if (msg.call?.status !== 'ringing') return;
-        handleVoiceCallCreated(msg, currentUserId);
-      });
-    });
-  };
-
-  // Terminate only the active call — ringing calls stay alive on Meta so the
-  // agent can pick them up after reload (seeded back via the watcher above).
-  const handlePageHide = () => {
-    sendWhatsappTerminateBeacon();
-  };
-
-  const handleTwilioDisconnected = () => callsStore.clearActiveCall();
-
-  onMounted(() => {
-    TwilioVoiceClient.addEventListener(
-      'call:disconnected',
-      handleTwilioDisconnected
-    );
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('pagehide', handlePageHide);
-    seedCallsFromHydratedMessages();
-  });
-
-  // Re-seed when conversations stream in after mount; addCall merges by callSid.
-  watch(
-    () => store.getters.getAllConversations?.length,
-    () => seedCallsFromHydratedMessages()
+const detachGlobalsOnLastUnmount = () => {
+  globalsAttachedCount -= 1;
+  if (globalsAttachedCount > 0) return;
+  globalDurationTimer?.stop();
+  globalDurationTimer = null;
+  globalCallDuration.value = 0;
+  storedCallsStoreRef = null;
+  TwilioVoiceClient.removeEventListener(
+    'call:disconnected',
+    handleTwilioDisconnectedGlobal
   );
+  window.removeEventListener('beforeunload', handleBeforeUnloadGlobal);
+  window.removeEventListener('pagehide', handlePageHideGlobal);
+};
 
-  onUnmounted(() => {
-    durationTimer.stop();
-    TwilioVoiceClient.removeEventListener(
-      'call:disconnected',
-      handleTwilioDisconnected
-    );
-    window.removeEventListener('beforeunload', handleBeforeUnload);
-    window.removeEventListener('pagehide', handlePageHide);
-  });
-
+// Build the action surface used by both the root session composable and the
+// lighter useCallActions consumer. All state is module-scoped — the actions
+// don't depend on per-instance refs, so they're cheap to call from anywhere.
+const buildCallActions = ({ callsStore, whatsappSession, t }) => {
   const findCall = callSid => callsStore.calls.find(c => c.callSid === callSid);
 
   const endCall = async ({ conversationId, inboxId, callSid }) => {
     const call = findCall(callSid);
-    if (isWhatsappCall(call)) {
+    if (isWhatsappLikeCall(call)) {
       // Pass call.callId so a wiped module state (e.g. a prior accept attempt
       // tore down the WebRTC session) doesn't stop us hitting /terminate.
-      await whatsappSession.endActiveCall(call.callId);
-      durationTimer.stop();
+      await whatsappSession.endActiveCall(call?.callId);
+      globalDurationTimer?.stop();
       callsStore.clearActiveCall();
       return;
     }
 
     await VoiceAPI.leaveConference({ inboxId, conversationId, callSid });
     TwilioVoiceClient.endClientCall();
-    durationTimer.stop();
+    globalDurationTimer?.stop();
     callsStore.clearActiveCall();
   };
 
   const joinCall = async ({ conversationId, inboxId, callSid }) => {
-    if (isJoining.value) return null;
+    if (globalIsJoining.value) return null;
 
     const call = findCall(callSid);
-    // Outbound calls were initiated by this agent — there is no inbound offer
-    // to accept and the WebRTC session is already mid-handshake. Routing
-    // through acceptIncomingCall would call prepareInboundAnswer → cleanup()
-    // and destroy the live outbound session, then 409 from the backend.
-    if (call?.callDirection === 'outbound') return null;
+    // Outbound *WhatsApp* calls have no separate join step — the offer was
+    // sent at initiate time and the answer is applied by the cable handler.
+    // Routing through acceptIncomingCall here would call prepareInboundAnswer →
+    // cleanup() and destroy the live outbound session. Outbound *Twilio*
+    // calls still need joinConference + joinClientCall (FloatingCallWidget
+    // auto-joins them), so don't short-circuit those.
+    if (call?.callDirection === 'outbound' && isWhatsappLikeCall(call)) {
+      return null;
+    }
 
-    isJoining.value = true;
+    globalIsJoining.value = true;
     try {
-      if (isWhatsappCall(call)) {
+      if (isWhatsappLikeCall(call)) {
         await whatsappSession.acceptIncomingCall({
           callId: call.callId,
           sdpOffer: call.sdpOffer,
           iceServers: call.iceServers,
         });
         callsStore.setCallActive(callSid);
-        durationTimer.start();
+        globalDurationTimer?.start();
         return { callId: call.callId };
       }
 
@@ -161,13 +144,14 @@ export function useCallSession() {
       });
 
       callsStore.setCallActive(callSid);
-      durationTimer.start();
+      globalDurationTimer?.start();
 
       return { conferenceSid: joinResponse?.conference_sid };
     } catch (error) {
       useAlert(error?.response?.data?.error || t('CONTACT_PANEL.CALL_FAILED'));
       if (error?.response?.status === 409) {
         TwilioVoiceClient.endClientCall();
+        markDismissed(callSid);
         callsStore.dismissCall(callSid);
       }
       // eslint-disable-next-line no-console
@@ -176,46 +160,134 @@ export function useCallSession() {
       cleanupWhatsappSession();
       return null;
     } finally {
-      isJoining.value = false;
+      globalIsJoining.value = false;
     }
   };
 
-  const rejectIncomingCall = callSid => {
+  // Await provider-side reject before dismissing the local entry; if the API
+  // call fails the call should stay surfaced so the agent can retry instead of
+  // disappearing while the backend still rings.
+  const rejectIncomingCall = async callSid => {
     const call = findCall(callSid);
-    if (isWhatsappCall(call) && call?.callId) {
-      // Outbound calls that are still ringing must be terminated, not rejected
-      // (reject is the inbound-side verb on Meta's API). Pass call.callId so
-      // a wiped module state still hits /terminate.
-      if (call.callDirection === 'outbound') {
-        whatsappSession.endActiveCall(call.callId);
+    try {
+      if (isWhatsappLikeCall(call) && call?.callId) {
+        if (call.callDirection === 'outbound') {
+          // Outbound calls that are still ringing must be terminated, not
+          // rejected (reject is the inbound-side verb on Meta's API).
+          await whatsappSession.endActiveCall(call.callId);
+        } else {
+          await whatsappSession.rejectIncomingCall(call.callId);
+        }
       } else {
-        whatsappSession.rejectIncomingCall(call.callId);
+        TwilioVoiceClient.endClientCall();
       }
-    } else {
-      TwilioVoiceClient.endClientCall();
+    } finally {
+      markDismissed(callSid);
+      callsStore.dismissCall(callSid);
     }
-    callsStore.dismissCall(callSid);
   };
 
   const dismissCall = callSid => {
+    markDismissed(callSid);
     callsStore.dismissCall(callSid);
   };
 
+  return { endCall, joinCall, rejectIncomingCall, dismissCall };
+};
+
+const buildReactiveSurface = callsStore => {
+  const activeCall = computed(() => callsStore.activeCall);
+  const incomingCalls = computed(() => callsStore.incomingCalls);
+  const hasActiveCall = computed(() => callsStore.hasActiveCall);
   const formattedCallDuration = computed(() => {
-    const minutes = Math.floor(callDuration.value / 60);
-    const seconds = callDuration.value % 60;
+    const total = globalCallDuration.value;
+    const minutes = Math.floor(total / 60);
+    const seconds = total % 60;
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   });
-
   return {
     activeCall,
     incomingCalls,
     hasActiveCall,
-    isJoining,
+    isJoining: globalIsJoining,
     formattedCallDuration,
-    joinCall,
-    endCall,
-    rejectIncomingCall,
-    dismissCall,
   };
+};
+
+// Root-mount composable. Call once at the dashboard root (FloatingCallWidget
+// is the natural anchor — always mounted, lifetime spans the whole session).
+// This is the only path that registers global window/Twilio listeners and
+// owns the duration Timer.
+export function useCallSession() {
+  const store = useStore();
+  const callsStore = useCallsStore();
+  const whatsappSession = useWhatsappCallSession();
+  const { t } = useI18n();
+
+  const reactive = buildReactiveSurface(callsStore);
+
+  // Cable broadcasts (voice_call.incoming / message.created) are one-shot, so
+  // on a hard refresh they leave the calls store empty. Seed it from any
+  // ringing voice_call message in the conversation cache. Skip calls the
+  // agent has already dismissed locally so they don't re-pop on the next
+  // conversation update.
+  const seedCallsFromHydratedMessages = () => {
+    const conversations = store.getters.getAllConversations || [];
+    const currentUserId = store.getters.getCurrentUserID;
+    conversations.forEach(conv => {
+      (conv.messages || []).forEach(msg => {
+        if (msg.content_type !== 'voice_call') return;
+        if (msg.call?.status !== 'ringing') return;
+        const callSid = msg.call?.provider_call_id;
+        if (callSid && dismissedCallSids.has(callSid)) return;
+        handleVoiceCallCreated(msg, currentUserId);
+      });
+    });
+  };
+
+  watch(
+    reactive.hasActiveCall,
+    active => {
+      if (active) {
+        globalDurationTimer?.start();
+      } else {
+        globalDurationTimer?.stop();
+        globalCallDuration.value = 0;
+      }
+    },
+    { immediate: true }
+  );
+
+  onMounted(() => {
+    attachGlobalsOnFirstMount(callsStore);
+    seedCallsFromHydratedMessages();
+  });
+
+  // Re-seed when conversations stream in after mount; addCall merges by callSid
+  // and dismissed sids are filtered, so this is idempotent.
+  watch(
+    () => store.getters.getAllConversations?.length,
+    () => seedCallsFromHydratedMessages()
+  );
+
+  onUnmounted(() => detachGlobalsOnLastUnmount());
+
+  const actions = buildCallActions({ callsStore, whatsappSession, t });
+
+  return { ...reactive, ...actions };
+}
+
+// Lightweight consumer for components that need to read state and trigger
+// actions but should NOT mount global listeners (e.g., per-message bubbles
+// rendered in a thread). Reads from the same module-level state that
+// useCallSession owns, so the duration timer and dismissed set stay coherent.
+export function useCallActions() {
+  const callsStore = useCallsStore();
+  const whatsappSession = useWhatsappCallSession();
+  const { t } = useI18n();
+
+  const reactive = buildReactiveSurface(callsStore);
+  const actions = buildCallActions({ callsStore, whatsappSession, t });
+
+  return { ...reactive, ...actions };
 }

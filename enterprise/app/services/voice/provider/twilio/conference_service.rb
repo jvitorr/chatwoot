@@ -8,8 +8,14 @@ class Voice::Provider::Twilio::ConferenceService
     call.conference_sid
   end
 
+  # Surface the 409 collision to a second agent who clicks accept, but DON'T
+  # claim accepted_by_agent here — the actual claim happens when Twilio's
+  # participant-join webhook fires for this agent's leg (Voice::Conference::Manager).
+  # If we claimed up-front and the browser's joinClientCall failed (device init
+  # error, tab close, network drop), the call would stay ringing-but-claimed
+  # and every other agent would 409 with no recovery path.
   def mark_agent_joined(user:)
-    claim_call!(user)
+    raise_already_accepted!(call.accepted_by_agent) if claimed_by_other_agent?(user)
     assign_conversation!(user)
   end
 
@@ -24,13 +30,6 @@ class Voice::Provider::Twilio::ConferenceService
   end
 
   private
-
-  def claim_call!(user)
-    call.with_lock do
-      raise_already_accepted!(call.accepted_by_agent) if claimed_by_other_agent?(user)
-      call.update!(accepted_by_agent: user) if call.accepted_by_agent_id != user.id
-    end
-  end
 
   def claimed_by_other_agent?(user)
     call.accepted_by_agent_id.present? && call.accepted_by_agent_id != user.id

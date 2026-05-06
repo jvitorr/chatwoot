@@ -12,7 +12,12 @@ let mediaRecorder = null;
 let recorderChunks = [];
 let audioContext = null;
 let activeCallId = null;
-let intentionallyClosing = false;
+// Module-scoped so multiple composable callers (header button + contact-panel
+// button) share the same lock. A per-instance ref let two parallel callers
+// both pass the guard and tear down each other's WebRTC state in cleanup().
+// ref() so consumers can reactively gate buttons on it (the composable
+// re-exports this as `isInitiating`).
+const isInitiatingOutbound = ref(false);
 // Inbound calls record from the moment the agent clicks accept (their click =
 // pickup). Outbound calls must wait — Meta's `connect` webhook (which lands
 // during ringing) negotiates remote tracks ~20s before the contact actually
@@ -122,7 +127,6 @@ const cleanup = () => {
   recorderChunks = [];
   audioContext = null;
   activeCallId = null;
-  intentionallyClosing = false;
   recorderArmed = false;
 };
 
@@ -216,9 +220,12 @@ const beaconTerminate = callId => {
   }
 };
 
-export function useWhatsappCallSession() {
-  const isInitiating = ref(false);
+export const hasActiveWhatsappCall = () => !!(activeCallId || pc);
 
+export const isLocalWhatsappCall = callId =>
+  !!callId && activeCallId != null && callId === activeCallId;
+
+export function useWhatsappCallSession() {
   const prepareInboundAnswer = async (sdpOffer, iceServers) => {
     cleanup();
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -275,7 +282,6 @@ export function useWhatsappCallSession() {
   };
 
   const rejectIncomingCall = async callId => {
-    intentionallyClosing = true;
     try {
       await WhatsappCallsAPI.reject(callId);
     } finally {
@@ -284,16 +290,27 @@ export function useWhatsappCallSession() {
   };
 
   const initiateOutboundCall = async conversationId => {
-    if (isInitiating.value) return null;
-    isInitiating.value = true;
+    // Module-scoped lock + active-session guard so a second click — from the
+    // same composable instance OR a different one (header vs contact panel)
+    // OR while a call is already live — can't tear down the in-flight setup
+    // via prepareOutboundOffer's cleanup().
+    if (isInitiatingOutbound.value) return { status: 'locked' };
+    if (hasActiveWhatsappCall()) return { status: 'locked' };
+    isInitiatingOutbound.value = true;
     try {
       const sdpOffer = await prepareOutboundOffer();
       const response = await WhatsappCallsAPI.initiate(
         conversationId,
         sdpOffer
       );
-      // The permission-request branch returns no call id; let the caller render the banner.
-      activeCallId = response?.id || null;
+      if (response?.id) {
+        activeCallId = response.id;
+        return response;
+      }
+      // No call id back: this is the permission-request branch. The mic +
+      // PeerConnection allocated by prepareOutboundOffer aren't useful until
+      // the contact opts in and the agent retries — release them.
+      cleanup();
       return response;
     } catch (e) {
       cleanup();
@@ -309,7 +326,7 @@ export function useWhatsappCallSession() {
       }
       throw e;
     } finally {
-      isInitiating.value = false;
+      isInitiatingOutbound.value = false;
     }
   };
 
@@ -323,7 +340,6 @@ export function useWhatsappCallSession() {
       cleanup();
       return;
     }
-    intentionallyClosing = true;
     try {
       await stopRecorderAndUpload(callId);
       await WhatsappCallsAPI.terminate(callId).catch(() => {});
@@ -333,7 +349,7 @@ export function useWhatsappCallSession() {
   };
 
   return {
-    isInitiating,
+    isInitiating: isInitiatingOutbound,
     prepareInboundAnswer,
     prepareOutboundOffer,
     acceptIncomingCall,
@@ -348,6 +364,9 @@ export function useWhatsappCallSession() {
 
 export const applyOutboundAnswer = async (callId, sdpAnswer) => {
   if (!pc) return;
+  // voice_call.outbound_connected is broadcast account-wide; only apply
+  // the SDP answer if it's for this tab's in-flight outbound call.
+  if (activeCallId != null && callId !== activeCallId) return;
   activeCallId = callId;
   await pc.setRemoteDescription({ type: 'answer', sdp: sdpAnswer });
 };
@@ -386,6 +405,10 @@ export const setWhatsappCallMuted = muted => {
 };
 
 export const sendWhatsappTerminateBeacon = () => {
-  if (!activeCallId || intentionallyClosing) return;
+  // Always fire when there's a live callId. The beacon endpoint is idempotent,
+  // so racing it with an in-flight Axios terminate (which unload may abort) is
+  // fine — Meta gets exactly one terminate either way, and we avoid leaving
+  // the call ringing on Meta until its carrier-side timeout.
+  if (!activeCallId) return;
   beaconTerminate(activeCallId);
 };

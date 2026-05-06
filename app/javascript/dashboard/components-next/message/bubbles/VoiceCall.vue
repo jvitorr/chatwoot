@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useStore } from 'vuex';
 import { useMessageContext } from '../provider.js';
 import { VOICE_CALL_STATUS } from '../constants';
-import { useCallSession } from 'dashboard/composables/useCallSession';
+import { useCallActions } from 'dashboard/composables/useCallSession';
 import { formatDuration } from 'shared/helpers/timeHelper';
 
 import Icon from 'dashboard/components-next/icon/Icon.vue';
@@ -40,8 +40,10 @@ const {
   currentUserId,
   inboxId,
 } = useMessageContext();
+// Lightweight consumer — bubble doesn't own global listeners; the
+// FloatingCallWidget is the singleton root that drives the session.
 const { joinCall, endCall, activeCall, hasActiveCall, isJoining } =
-  useCallSession();
+  useCallActions();
 
 const status = computed(() => call.value?.status);
 const isOutbound = computed(() => call.value?.direction === 'outgoing');

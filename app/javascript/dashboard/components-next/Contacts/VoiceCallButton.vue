@@ -70,12 +70,17 @@ const whatsappCallSession = useWhatsappCallSession();
 
 // Find the most recent open conversation for this contact in the picked inbox.
 // WhatsApp /initiate is conversation-scoped (unlike Twilio's contact-scoped path).
+// Pass inboxId so the BE applies the filter before the 20-row cap — without it,
+// contacts whose latest WhatsApp conversation falls outside the 20 most recent
+// across all inboxes would be treated as having no conversation.
 const findWhatsappConversationId = async inboxId => {
-  const { data } = await ContactAPI.getConversations(props.contactId);
+  const { data } = await ContactAPI.getConversations(props.contactId, {
+    inboxId,
+  });
   const conversations = data?.payload || [];
-  const match = conversations
-    .filter(c => c.inbox_id === inboxId)
-    .sort((a, b) => (b.last_activity_at || 0) - (a.last_activity_at || 0))[0];
+  const match = [...conversations].sort(
+    (a, b) => (b.last_activity_at || 0) - (a.last_activity_at || 0)
+  )[0];
   return match?.id || null;
 };
 
@@ -92,6 +97,10 @@ const startWhatsappCall = async (inboxId, conversationIdHint) => {
 
   const response =
     await whatsappCallSession.initiateOutboundCall(conversationId);
+  // The composable returns { status: 'locked' } when an init is already in
+  // flight or a call is already active; treat that as a soft no-op rather than
+  // claiming success.
+  if (response?.status === 'locked') return;
   if (!response?.id) {
     // Permission flow returns no id — banner already handled server-side; surface to user.
     useAlert(t('CONTACT_PANEL.CALL_INITIATED'));

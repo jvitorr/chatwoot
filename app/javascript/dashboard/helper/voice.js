@@ -142,6 +142,20 @@ export function syncConversationCallVisibility(conversation, currentUserId) {
   const assigneeId = extractAssigneeId(conversation);
   if (!isAssignedToAnotherAgent(assigneeId, currentUserId)) return;
 
+  // Outbound calls belong to the initiator regardless of who the conversation
+  // is currently assigned to (auto-assignment may flip mid-call). Mirror
+  // shouldShowCall's outbound exception so an in-progress outbound call isn't
+  // ripped out from under the caller when the conversation reassigns.
   const callsStore = useCallsStore();
-  callsStore.removeCallsForConversation(conversation.id);
+  const callsToRemove = callsStore.calls.filter(
+    call =>
+      call.conversationId === conversation.id &&
+      !shouldShowCall({
+        callDirection: call.callDirection,
+        senderId: call.senderId,
+        assigneeId,
+        currentUserId,
+      })
+  );
+  callsToRemove.forEach(call => callsStore.removeCall(call.callSid));
 }
