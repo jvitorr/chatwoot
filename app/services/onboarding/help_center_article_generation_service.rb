@@ -72,26 +72,35 @@ class Onboarding::HelpCenterArticleGenerationService
     end
   end
 
-  # TODO: replace this in-process Thread.new fan-out with per-URL Sidekiq jobs
+  # TODO: replace this in-process Thread.new fan-out with per-article Sidekiq jobs
   # before wiring this service into the onboarding flow. Threads inside a single
   # Rails request/job each check out their own AR connection and exhaust the
   # pool quickly; Sidekiq workers run isolated and scale independently.
   def build_articles(planned)
     pool = [planned.size, SCRAPE_THREAD_POOL].min
 
-    planned.each_slice(pool).flat_map do |batch|
-      batch.map { |article| Thread.new { [article[:url].to_s, scrape_and_rewrite(article)] } }.map(&:value)
+    planned.each_with_index.each_slice(pool).flat_map do |batch|
+      batch.map { |article, idx| Thread.new { [idx, scrape_and_rewrite(article)] } }.map(&:value)
     end.to_h
   end
 
   def scrape_and_rewrite(article)
-    raw = scrape_one(article[:url].to_s)
-    return nil if raw.nil? || raw[:markdown].blank?
+    source_pages = collect_source_pages(article)
+    return nil if source_pages.empty?
 
-    rewrite(raw, article)
+    rewrite(source_pages, article)
   rescue StandardError => e
-    Rails.logger.warn "[HelpCenterArticleGeneration] build failed for #{article[:url]}: #{e.message}"
+    Rails.logger.warn "[HelpCenterArticleGeneration] build failed for #{Array(article[:urls]).join(', ')}: #{e.message}"
     nil
+  end
+
+  def collect_source_pages(article)
+    Array(article[:urls]).map(&:to_s).reject(&:blank?).filter_map do |url|
+      raw = scrape_one(url)
+      next if raw.nil? || raw[:markdown].blank?
+
+      { url: url, markdown: raw[:markdown], page_title: raw[:page_title] }
+    end
   end
 
   def scrape_one(url)
@@ -112,24 +121,23 @@ class Onboarding::HelpCenterArticleGenerationService
     }
   end
 
-  def rewrite(raw, article)
+  def rewrite(source_pages, article)
     response = Captain::Llm::ArticleWriterService.new(
       account: @account,
-      source_markdown: raw[:markdown],
-      source_url: article[:url].to_s,
-      hint_title: article[:title].presence || raw[:page_title]
+      source_pages: source_pages,
+      hint_title: article[:title].presence || source_pages.first[:page_title]
     ).perform
     return nil if response[:error]
 
     payload = response[:message] || {}
     return nil if payload[:content].blank? || payload[:title].blank?
 
-    payload
+    payload.merge(source_urls: source_pages.pluck(:url))
   end
 
   def create_articles(planned, pages, categories_by_name)
-    planned.filter_map do |article|
-      page = pages[article[:url].to_s]
+    planned.each_with_index.filter_map do |article, idx|
+      page = pages[idx]
       next if page.nil? || page[:content].blank? || page[:title].blank?
 
       @portal.articles.create!(
@@ -139,7 +147,7 @@ class Onboarding::HelpCenterArticleGenerationService
         author_id: @user.id,
         category_id: categories_by_name[article[:category_name].to_s]&.id,
         status: :draft,
-        meta: { source_url: article[:url] }
+        meta: { source_urls: page[:source_urls] }
       )
     end
   end

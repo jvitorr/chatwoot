@@ -40,6 +40,26 @@ class Captain::Llm::HelpCenterCurationService < Captain::BaseTaskService
       Group your picks into 3-5 short, reusable categories.
       Use the URL paths and page titles to judge relevance — do not invent URLs.
 
+      For each article, output one URL by default. Use 2 or 3 URLs ONLY when the pages
+      clearly cover the SAME topic from complementary angles. When in doubt, use one URL.
+
+      Strong overlap signals (multi-URL is appropriate):
+        - One URL is a topic overview, another is a provider/variant-specific guide on
+          the same topic ("SSO setup" + "SSO with Okta"; "Webhooks overview" + "Webhook
+          payload reference").
+        - One URL is an FAQ for a topic, another is the deep-dive that the FAQ links to.
+        - A how-to is split across multiple URLs by step or platform.
+
+      NOT overlap (use separate articles, one URL each):
+        - Topics that share a category but cover different things ("Setting up SSO" and
+          "Setting up MFA" are both auth — still separate articles).
+        - One URL is a marketing page about a feature, another is the feature's docs —
+          skip the marketing page entirely.
+        - Pages that are merely thematically related ("Pricing" and "Plan limits" — pick
+          one).
+
+      Almost every article on a typical site has one URL. Multi-URL is the exception, not the norm.
+
       Write all category names, category descriptions, and article titles in #{locale_name}.
       The input page titles and descriptions may be in another language; translate the labels you emit into #{locale_name}.
       Keep URLs unchanged.
