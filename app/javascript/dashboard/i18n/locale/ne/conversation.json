@@ -95,6 +95,7 @@
       "OPEN": "थप",
       "CLOSE": "बन्दा गार्नुहोस्",
       "DETAILS": "विवरणहरू",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "यस मितिसम्म सुस्काइयो",
       "SNOOZED_UNTIL_TOMORROW": "भोलिसम्म सुताइएको",
       "SNOOZED_UNTIL_NEXT_WEEK": "अर्को हप्ता सम्म सुताइएको",
