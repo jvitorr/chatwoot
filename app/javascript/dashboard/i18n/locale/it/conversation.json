@@ -365,7 +365,19 @@
       "PREVIOUS_CONVERSATION": "Conversazioni Precedenti",
       "MACROS": "Macro",
       "LINEAR_ISSUES": "Issue Linear Connessi",
-      "SHOPIFY_ORDERS": "Ordini Shopify"
+      "SHOPIFY_ORDERS": "Ordini Shopify",
+      "SHARED_FILES": "Attachments"
+    },
+    "SHARED_FILES": {
+      "EMPTY": "No attachments yet",
+      "DOWNLOAD": "Download file",
+      "DOWNLOAD_ERROR": "Could not download the file. Please try again.",
+      "MEDIA_HEADING": "Media",
+      "FILES_HEADING": "Files",
+      "VIEW_ALL": "Vedi tutti",
+      "SHOW_LESS": "Show less",
+      "MORE_COUNT": "+{count}",
+      "UNTITLED_FILE": "Untitled file"
     },
     "SHOPIFY": {
       "ORDER_ID": "Ordine #{id}",
