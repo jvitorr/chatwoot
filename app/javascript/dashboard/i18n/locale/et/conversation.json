@@ -95,6 +95,7 @@
       "OPEN": "Rohkem",
       "CLOSE": "Sulge",
       "DETAILS": "üksikasjad",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "Vaigistatud kuni",
       "SNOOZED_UNTIL_TOMORROW": "Edasilükatud homseni",
       "SNOOZED_UNTIL_NEXT_WEEK": "Edasilükatud järgmise nädalani",
