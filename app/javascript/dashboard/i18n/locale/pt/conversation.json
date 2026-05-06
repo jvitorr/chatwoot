@@ -95,6 +95,7 @@
       "OPEN": "Mais",
       "CLOSE": "Fechar",
       "DETAILS": "Detalhes",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "Suspender até",
       "SNOOZED_UNTIL_TOMORROW": "Adiada até amanhã",
       "SNOOZED_UNTIL_NEXT_WEEK": "Adiada até a próxima semana",
