@@ -3,14 +3,15 @@
     "HEADER": "Пользовательские атрибуты",
     "HEADER_BTN_TXT": "Добавить пользовательский атрибут",
     "LOADING": "Получение пользовательских атрибутов",
-    "DESCRIPTION": "Пользовательский атрибут отслеживает дополнительную информацию о ваших контактах или разговорах, таких как план подписки или дата их первой покупки. Вы можете добавить различные типы пользовательских атрибутов, такие как текст, списки или цифры, чтобы захватить нужную вам информацию.",
+    "DESCRIPTION": "A custom attribute tracks additional details about your contacts, companies, or conversations—such as the subscription plan or the date of their first purchase. You can add different types of custom attributes, such as text, lists, or numbers, to capture the specific information you need.",
     "LEARN_MORE": "Узнайте больше о пользовательских атрибутах",
     "COUNT": "{n} атрибут | {n} атрибутов",
     "SEARCH_PLACEHOLDER": "Поиск по атрибутам...",
     "NO_RESULTS": "Не найдено атрибутов, соответствующих вашему запросу",
     "ATTRIBUTE_MODELS": {
       "CONVERSATION": "Диалог",
-      "CONTACT": "Контакт"
+      "CONTACT": "Контакт",
+      "COMPANY": "Компания"
     },
     "ATTRIBUTE_TYPES": {
       "TEXT": "Текст",
@@ -108,7 +109,8 @@
     "TABS": {
       "HEADER": "Пользовательские атрибуты",
       "CONVERSATION": "Диалог",
-      "CONTACT": "Контакт"
+      "CONTACT": "Контакт",
+      "COMPANY": "Компания"
     },
     "LIST": {
       "TABLE_HEADER": {
