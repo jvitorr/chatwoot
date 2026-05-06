@@ -20,6 +20,9 @@ import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 const props = defineProps({
   phone: { type: String, default: '' },
   contactId: { type: [String, Number], required: true },
+  // When set, the WhatsApp call continues in this conversation (matching the
+  // header button) instead of looking up the contact's most recent one.
+  conversationId: { type: [String, Number], default: null },
   label: { type: String, default: '' },
   icon: { type: [String, Object, Function], default: '' },
   size: { type: String, default: 'sm' },
@@ -76,8 +79,12 @@ const findWhatsappConversationId = async inboxId => {
   return match?.id || null;
 };
 
-const startWhatsappCall = async inboxId => {
-  const conversationId = await findWhatsappConversationId(inboxId);
+const startWhatsappCall = async (inboxId, conversationIdHint) => {
+  // WhatsApp /initiate is conversation-scoped, so we must hand it a
+  // conversation. Use the caller's hint when given (in-conversation flow);
+  // otherwise pick the most recent one in the inbox.
+  const conversationId =
+    conversationIdHint || (await findWhatsappConversationId(inboxId));
   if (!conversationId) {
     useAlert(t('CONTACT_PANEL.CALL_FAILED'));
     return;
@@ -108,13 +115,13 @@ const startWhatsappCall = async inboxId => {
   navigateToConversation(conversationId);
 };
 
-const startCall = async inboxId => {
+const startCall = async (inboxId, conversationIdHint = null) => {
   if (isInitiatingCall.value) return;
 
   const inbox = (inboxesList.value || []).find(i => i.id === inboxId);
   if (getVoiceCallProvider(inbox) === VOICE_CALL_PROVIDERS.WHATSAPP) {
     try {
-      await startWhatsappCall(inboxId);
+      await startWhatsappCall(inboxId, conversationIdHint);
     } catch (error) {
       useAlert(error?.message || t('CONTACT_PANEL.CALL_FAILED'));
     }
@@ -125,6 +132,7 @@ const startCall = async inboxId => {
     const response = await store.dispatch('contacts/initiateCall', {
       contactId: props.contactId,
       inboxId,
+      conversationId: conversationIdHint,
     });
     const { call_sid: callSid, conversation_id: conversationId } = response;
 
@@ -145,6 +153,22 @@ const startCall = async inboxId => {
 };
 
 const onClick = async () => {
+  // In conversation context, only stay in this conversation if its inbox is
+  // itself voice-capable (works the same for Twilio and WhatsApp). For
+  // non-voice channels (email, web, …) fall back to the picker so the call
+  // goes out via a voice inbox.
+  if (props.conversationId) {
+    const conversation = store.getters.getConversationById(
+      props.conversationId
+    );
+    const conversationInbox = (inboxesList.value || []).find(
+      i => i.id === conversation?.inbox_id
+    );
+    if (conversationInbox && isVoiceCallEnabled(conversationInbox)) {
+      await startCall(conversationInbox.id, props.conversationId);
+      return;
+    }
+  }
   if (voiceInboxes.value.length > 1) {
     dialogRef.value?.open();
     return;

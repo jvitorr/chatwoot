@@ -309,7 +309,8 @@
       "JOIN_CALL": "Join call",
       "END_CALL": "End call",
       "MUTE": "Mute mic",
-      "UNMUTE": "Unmute mic"
+      "UNMUTE": "Unmute mic",
+      "VIEW_CHAT_HISTORY": "View chat history"
     }
   },
   "EMAIL_TRANSCRIPT": {
