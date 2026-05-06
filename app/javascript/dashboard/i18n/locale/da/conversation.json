@@ -95,6 +95,7 @@
       "OPEN": "Mere",
       "CLOSE": "Luk",
       "DETAILS": "detaljer",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "Snoozed until",
       "SNOOZED_UNTIL_TOMORROW": "Udsat til i morgen",
       "SNOOZED_UNTIL_NEXT_WEEK": "Udsat indtil næste uge",
