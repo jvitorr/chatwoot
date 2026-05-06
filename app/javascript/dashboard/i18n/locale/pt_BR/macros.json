@@ -50,7 +50,7 @@
       }
     },
     "VIEW": {
-      "TOOLTIP": "View macro"
+      "TOOLTIP": "Ver macro"
     },
     "EDIT": {
       "TOOLTIP": "Editar macro",
@@ -70,8 +70,8 @@
         "GLOBAL": {
           "LABEL": "Publico",
           "DESCRIPTION": "Esta macro está disponível publicamente para todos os agentes desta conta.",
-          "CREATE_DISABLED_DESCRIPTION": "Only administrators can create public macros.",
-          "EDIT_DISABLED_DESCRIPTION": "Only administrators can edit public macros."
+          "CREATE_DISABLED_DESCRIPTION": "Somente administradores podem criar macros públicos.",
+          "EDIT_DISABLED_DESCRIPTION": "Somente administradores podem editar macros públicos."
         },
         "PERSONAL": {
           "LABEL": "Privada",
