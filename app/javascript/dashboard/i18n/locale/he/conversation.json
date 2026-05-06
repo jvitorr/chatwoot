@@ -365,7 +365,19 @@
       "PREVIOUS_CONVERSATION": "שיחות קודמות",
       "MACROS": "מאקרו",
       "LINEAR_ISSUES": "בעיות Linear מקושרות",
-      "SHOPIFY_ORDERS": "הזמנות Shopify"
+      "SHOPIFY_ORDERS": "הזמנות Shopify",
+      "SHARED_FILES": "Attachments"
+    },
+    "SHARED_FILES": {
+      "EMPTY": "No attachments yet",
+      "DOWNLOAD": "Download file",
+      "DOWNLOAD_ERROR": "Could not download the file. Please try again.",
+      "MEDIA_HEADING": "מדיה",
+      "FILES_HEADING": "Files",
+      "VIEW_ALL": "הצג הכל",
+      "SHOW_LESS": "Show less",
+      "MORE_COUNT": "+{count}",
+      "UNTITLED_FILE": "Untitled file"
     },
     "SHOPIFY": {
       "ORDER_ID": "הזמנה #{id}",
