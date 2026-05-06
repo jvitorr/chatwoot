@@ -107,12 +107,12 @@
         "SECTION_DESCRIPTION": "Exclua esta empresa e desvincule seus contatos. Os contatos permanecerão na conta.",
         "BUTTON": "Excluir empresa",
         "TITLE": "Excluir empresa?",
-        "DESCRIPTION": "This will remove the company and unlink all associated contacts. Contacts themselves will be preserved.",
-        "DESCRIPTION_WITH_NAME": "This will remove {companyName} and unlink all associated contacts. Contacts themselves will be preserved.",
+        "DESCRIPTION": "Isso removerá a empresa e desvinculará todos os contatos associados. Os próprios contatos serão preservados.",
+        "DESCRIPTION_WITH_NAME": "Isso removerá {companyName} e desvinculará todos os contatos associados. Os próprios contatos serão preservados.",
         "CONFIRM": "Excluir empresa",
         "MESSAGES": {
-          "SUCCESS": "Company deleted.",
-          "ERROR": "Could not delete the company."
+          "SUCCESS": "Empresa excluída.",
+          "ERROR": "Não foi possível excluir a empresa."
         }
       }
     },
