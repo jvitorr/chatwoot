@@ -365,7 +365,19 @@
       "PREVIOUS_CONVERSATION": "Əvvəlki Söhbətlər",
       "MACROS": "Makrolar",
       "LINEAR_ISSUES": "Əlaqəli Linear məsələlər",
-      "SHOPIFY_ORDERS": "Shopify Sifarişləri"
+      "SHOPIFY_ORDERS": "Shopify Sifarişləri",
+      "SHARED_FILES": "Attachments"
+    },
+    "SHARED_FILES": {
+      "EMPTY": "No attachments yet",
+      "DOWNLOAD": "Download file",
+      "DOWNLOAD_ERROR": "Could not download the file. Please try again.",
+      "MEDIA_HEADING": "Media",
+      "FILES_HEADING": "Files",
+      "VIEW_ALL": "View all",
+      "SHOW_LESS": "Show less",
+      "MORE_COUNT": "+{count}",
+      "UNTITLED_FILE": "Untitled file"
     },
     "SHOPIFY": {
       "ORDER_ID": "Sifariş #{id}",
