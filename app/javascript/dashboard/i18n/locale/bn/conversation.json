@@ -365,7 +365,19 @@
       "PREVIOUS_CONVERSATION": "পূর্বের আলোচনা",
       "MACROS": "ম্যাক্রো",
       "LINEAR_ISSUES": "সংযুক্ত Linear সমস্যা",
-      "SHOPIFY_ORDERS": "Shopify অর্ডার"
+      "SHOPIFY_ORDERS": "Shopify অর্ডার",
+      "SHARED_FILES": "Attachments"
+    },
+    "SHARED_FILES": {
+      "EMPTY": "No attachments yet",
+      "DOWNLOAD": "Download file",
+      "DOWNLOAD_ERROR": "Could not download the file. Please try again.",
+      "MEDIA_HEADING": "Media",
+      "FILES_HEADING": "Files",
+      "VIEW_ALL": "সব দেখুন",
+      "SHOW_LESS": "Show less",
+      "MORE_COUNT": "+{count}",
+      "UNTITLED_FILE": "Untitled file"
     },
     "SHOPIFY": {
       "ORDER_ID": "Order #{id}",
