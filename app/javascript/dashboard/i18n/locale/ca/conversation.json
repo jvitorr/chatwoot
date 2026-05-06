@@ -95,6 +95,7 @@
       "OPEN": "Més",
       "CLOSE": "Tanca",
       "DETAILS": "detalls",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "Posposat fins a",
       "SNOOZED_UNTIL_TOMORROW": "Posposat fins demà",
       "SNOOZED_UNTIL_NEXT_WEEK": "Posposat fins a la setmana vinent",
