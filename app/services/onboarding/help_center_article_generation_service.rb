@@ -1,7 +1,6 @@
 class Onboarding::HelpCenterArticleGenerationService
   MAP_LIMIT = 100
   SCRAPE_THREAD_POOL = 6
-  ARTICLE_CONTENT_MAX_LENGTH = 200_000
 
   def initialize(account, user, portal)
     @account = account
@@ -35,7 +34,7 @@ class Onboarding::HelpCenterArticleGenerationService
 
   def generate(plan)
     categories_by_name = create_categories(plan[:categories])
-    pages = scrape_pages(plan[:articles])
+    pages = build_articles(plan[:articles])
     create_articles(plan[:articles], pages, categories_by_name)
   end
 
@@ -73,13 +72,22 @@ class Onboarding::HelpCenterArticleGenerationService
     end
   end
 
-  def scrape_pages(articles)
-    urls = articles.filter_map { |a| a[:url].to_s.presence }.uniq
-    pool = [urls.size, SCRAPE_THREAD_POOL].min
+  def build_articles(planned)
+    pool = [planned.size, SCRAPE_THREAD_POOL].min
 
-    urls.each_slice(pool).flat_map do |batch|
-      batch.map { |url| Thread.new { [url, scrape_one(url)] } }.map(&:value)
+    planned.each_slice(pool).flat_map do |batch|
+      batch.map { |article| Thread.new { [article[:url].to_s, scrape_and_rewrite(article)] } }.map(&:value)
     end.to_h
+  end
+
+  def scrape_and_rewrite(article)
+    raw = scrape_one(article[:url].to_s)
+    return nil if raw.nil? || raw[:markdown].blank?
+
+    rewrite(raw, article)
+  rescue StandardError => e
+    Rails.logger.warn "[HelpCenterArticleGeneration] build failed for #{article[:url]}: #{e.message}"
+    nil
   end
 
   def scrape_one(url)
@@ -90,24 +98,34 @@ class Onboarding::HelpCenterArticleGenerationService
     return nil if data.blank?
 
     {
-      title: data.dig('metadata', 'title').to_s.strip,
-      content: data['markdown'].to_s.truncate(ARTICLE_CONTENT_MAX_LENGTH, omission: '')
+      page_title: data.dig('metadata', 'title').to_s.strip,
+      markdown: data['markdown'].to_s
     }
-  rescue StandardError => e
-    Rails.logger.warn "[HelpCenterArticleGeneration] scrape failed for #{url}: #{e.message}"
-    nil
+  end
+
+  def rewrite(raw, article)
+    response = Captain::Llm::ArticleWriterService.new(
+      account: @account,
+      source_markdown: raw[:markdown],
+      source_url: article[:url].to_s,
+      hint_title: article[:title].presence || raw[:page_title]
+    ).perform
+    return nil if response[:error]
+
+    payload = response[:message] || {}
+    return nil if payload[:content].blank? || payload[:title].blank?
+
+    payload
   end
 
   def create_articles(planned, pages, categories_by_name)
     planned.filter_map do |article|
       page = pages[article[:url].to_s]
-      next if page.nil? || page[:content].blank?
-
-      title = article[:title].to_s.strip.presence || page[:title].presence
-      next if title.blank?
+      next if page.nil? || page[:content].blank? || page[:title].blank?
 
       @portal.articles.create!(
-        title: title,
+        title: page[:title],
+        description: page[:description].presence,
         content: page[:content],
         author_id: @user.id,
         category_id: categories_by_name[article[:category_name].to_s]&.id,
