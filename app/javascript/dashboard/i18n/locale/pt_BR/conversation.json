@@ -95,7 +95,7 @@
       "OPEN": "Mais",
       "CLOSE": "Fechar",
       "DETAILS": "detalhes",
-      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
+      "COPY_ID_SUCCESS": "ID da conversa copiado para área de transferência",
       "SNOOZED_UNTIL": "Adiar até",
       "SNOOZED_UNTIL_TOMORROW": "Adiado até amanhã",
       "SNOOZED_UNTIL_NEXT_WEEK": "Adiada até a próxima semana",
@@ -367,18 +367,18 @@
       "MACROS": "Macros",
       "LINEAR_ISSUES": "Problemas do Linear vinculados",
       "SHOPIFY_ORDERS": "Pedidos do Shopify",
-      "SHARED_FILES": "Attachments"
+      "SHARED_FILES": "Anexos"
     },
     "SHARED_FILES": {
-      "EMPTY": "No attachments yet",
-      "DOWNLOAD": "Download file",
-      "DOWNLOAD_ERROR": "Could not download the file. Please try again.",
+      "EMPTY": "Nenhum anexo ainda",
+      "DOWNLOAD": "Baixar arquivo",
+      "DOWNLOAD_ERROR": "Não foi possível baixar o arquivo. Por favor, tente novamente.",
       "MEDIA_HEADING": "Mídia",
-      "FILES_HEADING": "Files",
+      "FILES_HEADING": "Arquivos",
       "VIEW_ALL": "Visualizar tudo",
-      "SHOW_LESS": "Show less",
+      "SHOW_LESS": "Mostrar menos",
       "MORE_COUNT": "+{count}",
-      "UNTITLED_FILE": "Untitled file"
+      "UNTITLED_FILE": "Arquivo sem nome"
     },
     "SHOPIFY": {
       "ORDER_ID": "Pedido #{id}",
