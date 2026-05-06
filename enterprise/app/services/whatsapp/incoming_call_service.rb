@@ -52,6 +52,10 @@ class Whatsapp::IncomingCallService
   def handle_terminate(payload)
     call = Call.whatsapp.find_by(provider_call_id: payload[:id])
     return unless call
+    # Webhook retries can re-deliver terminate after we've already finalized the
+    # call; don't recompute status or a duration=0 retry can flip a completed
+    # short call back to no_answer.
+    return if call.terminal?
 
     duration = payload[:duration]&.to_i
     status = answered?(call, duration) ? 'completed' : 'no_answer'
