@@ -95,6 +95,7 @@
       "OPEN": "Mehr",
       "CLOSE": "Schließen",
       "DETAILS": "Einzelheiten",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "Stummschalten bis",
       "SNOOZED_UNTIL_TOMORROW": "Schlummern bis morgen",
       "SNOOZED_UNTIL_NEXT_WEEK": "Schlummern bis nächste Woche",
