@@ -251,7 +251,14 @@ export default {
         ];
       }
 
-      if (this.isAWhatsAppCloudChannel && this.isEmbeddedSignupWhatsApp) {
+      if (
+        this.isAWhatsAppCloudChannel &&
+        this.isEmbeddedSignupWhatsApp &&
+        this.isFeatureEnabledonAccount(
+          this.accountId,
+          FEATURE_FLAGS.CHANNEL_VOICE
+        )
+      ) {
         visibleToAllChannelTabs = [
           ...visibleToAllChannelTabs,
           {
