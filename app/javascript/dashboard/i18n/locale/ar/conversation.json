@@ -95,6 +95,7 @@
       "OPEN": "المزيد",
       "CLOSE": "أغلق",
       "DETAILS": "التفاصيل",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "غفوة حتى",
       "SNOOZED_UNTIL_TOMORROW": "تأجيل حتى الغد",
       "SNOOZED_UNTIL_NEXT_WEEK": "تأجيل حتى الأسبوع القادم",
