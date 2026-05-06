@@ -365,7 +365,19 @@
       "PREVIOUS_CONVERSATION": "先前的對話",
       "MACROS": "巨集",
       "LINEAR_ISSUES": "已連結的 Linear 議題",
-      "SHOPIFY_ORDERS": "Shopify 訂單"
+      "SHOPIFY_ORDERS": "Shopify 訂單",
+      "SHARED_FILES": "Attachments"
+    },
+    "SHARED_FILES": {
+      "EMPTY": "No attachments yet",
+      "DOWNLOAD": "Download file",
+      "DOWNLOAD_ERROR": "Could not download the file. Please try again.",
+      "MEDIA_HEADING": "媒體",
+      "FILES_HEADING": "Files",
+      "VIEW_ALL": "查看全部",
+      "SHOW_LESS": "Show less",
+      "MORE_COUNT": "+{count}",
+      "UNTITLED_FILE": "Untitled file"
     },
     "SHOPIFY": {
       "ORDER_ID": "訂單 #{id}",
