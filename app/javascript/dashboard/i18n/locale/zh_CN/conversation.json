@@ -95,6 +95,7 @@
       "OPEN": "详细信息",
       "CLOSE": "关闭",
       "DETAILS": "详情",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "推迟到",
       "SNOOZED_UNTIL_TOMORROW": "推迟到明天",
       "SNOOZED_UNTIL_NEXT_WEEK": "推迟到下周",
