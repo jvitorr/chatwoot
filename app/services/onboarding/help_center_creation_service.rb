@@ -1,5 +1,6 @@
 class Onboarding::HelpCenterCreationService
   DEFAULT_PORTAL_COLOR = '#1f93ff'.freeze
+  LOGO_MAX_DOWNLOAD_SIZE = 5.megabytes
 
   def initialize(account, user)
     @account = account
@@ -13,7 +14,9 @@ class Onboarding::HelpCenterCreationService
       return existing
     end
 
-    @account.portals.create!(portal_attributes)
+    @account.portals.create!(portal_attributes).tap do |portal|
+      attach_brand_logo(portal)
+    end
   rescue StandardError => e
     Rails.logger.error "[HelpCenterCreation] #{e.message}"
     nil
@@ -57,6 +60,27 @@ class Onboarding::HelpCenterCreationService
 
   def homepage_link
     @account.domain.presence || brand_info[:domain].presence
+  end
+
+  def attach_brand_logo(portal)
+    logo_url = brand_logo_url
+    return if logo_url.blank?
+
+    SafeFetch.fetch(logo_url, max_bytes: LOGO_MAX_DOWNLOAD_SIZE, allowed_content_type_prefixes: ['image/']) do |logo_file|
+      portal.logo.attach(
+        io: logo_file.tempfile,
+        filename: logo_file.original_filename,
+        content_type: logo_file.content_type
+      )
+    end
+  rescue StandardError => e
+    Rails.logger.error "[HelpCenterCreation] Logo attachment failed for account #{@account.id}: #{e.class} - #{e.message}"
+  end
+
+  def brand_logo_url
+    Array(brand_info[:logos]).filter_map do |logo|
+      logo.is_a?(Hash) ? logo[:url] : logo
+    end.find(&:present?)
   end
 
   def web_widget_channel_id
