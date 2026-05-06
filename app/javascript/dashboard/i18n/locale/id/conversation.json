@@ -95,6 +95,7 @@
       "OPEN": "Selebihnya",
       "CLOSE": "Tutup",
       "DETAILS": "detail",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "Ditunda hingga",
       "SNOOZED_UNTIL_TOMORROW": "Ditunda hingga besok",
       "SNOOZED_UNTIL_NEXT_WEEK": "Ditunda hingga minggu depan",
