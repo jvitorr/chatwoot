@@ -95,6 +95,7 @@
       "OPEN": "Lagi",
       "CLOSE": "Tutup",
       "DETAILS": "butiran",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "Ditangguhkan sehingga",
       "SNOOZED_UNTIL_TOMORROW": "Ditangguhkan sehingga esok",
       "SNOOZED_UNTIL_NEXT_WEEK": "Ditangguhkan sehingga minggu depan",
