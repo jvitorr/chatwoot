@@ -1,6 +1,6 @@
 class Onboarding::HelpCenterArticleGenerationService
   MAP_LIMIT = 200
-  SCRAPE_THREAD_POOL = 6
+  SCRAPE_THREAD_POOL = 3
 
   def initialize(account, user, portal)
     @account = account
@@ -72,6 +72,10 @@ class Onboarding::HelpCenterArticleGenerationService
     end
   end
 
+  # TODO: replace this in-process Thread.new fan-out with per-URL Sidekiq jobs
+  # before wiring this service into the onboarding flow. Threads inside a single
+  # Rails request/job each check out their own AR connection and exhaust the
+  # pool quickly; Sidekiq workers run isolated and scale independently.
   def build_articles(planned)
     pool = [planned.size, SCRAPE_THREAD_POOL].min
 
