@@ -3,14 +3,15 @@
     "HEADER": "Pielāgotas Īpašības",
     "HEADER_BTN_TXT": "Pievienot Pielāgotu Īpašību",
     "LOADING": "Notiek pielāgotu īpašību iegūšana",
-    "DESCRIPTION": "Pielāgots atribūts ļauj izsekot papildu informāciju par jūsu kontaktpersonām vai sarunām, piemēram, abonēšanas plānu vai viņu pirmā pirkuma datumu. Varat pievienot dažāda veida pielāgotus atribūtus, piemēram, tekstu, sarakstus vai skaitļus, lai tvertu konkrētu jums nepieciešamo informāciju.",
+    "DESCRIPTION": "A custom attribute tracks additional details about your contacts, companies, or conversations—such as the subscription plan or the date of their first purchase. You can add different types of custom attributes, such as text, lists, or numbers, to capture the specific information you need.",
     "LEARN_MORE": "Uzzināt vairāk par pielāgotajiem atribūtiem",
     "COUNT": "{n} attribute | {n} attributes",
     "SEARCH_PLACEHOLDER": "Meklēt īpašības...",
     "NO_RESULTS": "No attributes found matching your search",
     "ATTRIBUTE_MODELS": {
       "CONVERSATION": "Saruna",
-      "CONTACT": "Kontaktpersona"
+      "CONTACT": "Kontaktpersona",
+      "COMPANY": "Uzņēmums"
     },
     "ATTRIBUTE_TYPES": {
       "TEXT": "Teksts",
@@ -108,7 +109,8 @@
     "TABS": {
       "HEADER": "Pielāgotās Īpašības",
       "CONVERSATION": "Saruna",
-      "CONTACT": "Kontaktpersona"
+      "CONTACT": "Kontaktpersona",
+      "COMPANY": "Uzņēmums"
     },
     "LIST": {
       "TABLE_HEADER": {
