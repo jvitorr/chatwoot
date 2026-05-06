@@ -95,6 +95,7 @@
       "OPEN": "Ще",
       "CLOSE": "Закрити",
       "DETAILS": "подробиці",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "Відкладено до",
       "SNOOZED_UNTIL_TOMORROW": "Відкладено до завтра",
       "SNOOZED_UNTIL_NEXT_WEEK": "Відкладено до наступного тижня",
