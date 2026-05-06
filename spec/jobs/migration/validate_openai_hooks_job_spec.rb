@@ -1,13 +1,20 @@
 require 'rails_helper'
 
-RSpec.describe Internal::ValidateOpenaiHooksJob do
-  before { allow(Integrations::Openai::KeyValidator).to receive(:valid?).and_return(true) }
+RSpec.describe Migration::ValidateOpenaiHooksJob do
+  let(:integrations_mailer) { instance_double(AdministratorNotifications::IntegrationsNotificationMailer) }
+  let(:mailer_response) { instance_double(ActionMailer::MessageDelivery, deliver_later: true) }
+
+  before do
+    allow(Integrations::Openai::KeyValidator).to receive(:valid?).and_return(true)
+    allow(AdministratorNotifications::IntegrationsNotificationMailer).to receive(:with).and_return(integrations_mailer)
+    allow(integrations_mailer).to receive(:openai_disconnect).and_return(mailer_response)
+  end
 
   def create_openai_hook(account:, api_key: 'sk-good')
     create(:integrations_hook, :openai, account: account, settings: { 'api_key' => api_key })
   end
 
-  it 'destroys invalid hooks, preserves valid ones, and reports stats' do
+  it 'destroys invalid hooks, preserves valid ones, sends disconnect email, and reports stats' do
     account_a = create(:account)
     account_b = create(:account)
     valid_hook = create_openai_hook(account: account_a, api_key: 'sk-good')
@@ -18,6 +25,7 @@ RSpec.describe Internal::ValidateOpenaiHooksJob do
 
     expect(valid_hook.reload).to be_enabled
     expect { invalid_hook.reload }.to raise_error(ActiveRecord::RecordNotFound)
+    expect(AdministratorNotifications::IntegrationsNotificationMailer).to have_received(:with).with(account: account_b)
     expect(result).to eq(checked: 2, destroyed: 1)
   end
 

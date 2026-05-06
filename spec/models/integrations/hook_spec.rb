@@ -138,6 +138,27 @@ RSpec.describe Integrations::Hook do
       expect(hook).to be_valid
     end
 
+    it 'skips validation when an enabled openai hook is saved without changing the api key' do
+      allow(Integrations::Openai::KeyValidator).to receive(:valid?).and_return(true)
+      hook = create(:integrations_hook, :openai, account: account, settings: { 'api_key' => 'sk-good', 'label_suggestion' => false })
+
+      allow(Integrations::Openai::KeyValidator).to receive(:valid?).and_return(false)
+      hook.settings['label_suggestion'] = true
+
+      expect(hook.save).to be true
+    end
+
+    it 'validates when a disabled openai hook is re-enabled' do
+      allow(Integrations::Openai::KeyValidator).to receive(:valid?).and_return(true)
+      hook = create(:integrations_hook, :openai, account: account, settings: { 'api_key' => 'sk-bad' })
+      hook.update!(status: :disabled)
+
+      allow(Integrations::Openai::KeyValidator).to receive(:valid?).with('sk-bad').and_return(false)
+
+      expect(hook.update(status: :enabled)).to be false
+      expect(hook.errors[:base]).to include(I18n.t('errors.openai.invalid_api_key'))
+    end
+
     it 'skips validation for disabled hooks' do
       allow(Integrations::Openai::KeyValidator).to receive(:valid?).and_return(true)
       hook = create(:integrations_hook, :openai, account: account, settings: { 'api_key' => 'sk-good' })
