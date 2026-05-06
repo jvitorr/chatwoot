@@ -365,7 +365,19 @@
       "PREVIOUS_CONVERSATION": "以前の会話",
       "MACROS": "マクロ",
       "LINEAR_ISSUES": "Linked Linear Issues",
-      "SHOPIFY_ORDERS": "Shopify Orders"
+      "SHOPIFY_ORDERS": "Shopify Orders",
+      "SHARED_FILES": "Attachments"
+    },
+    "SHARED_FILES": {
+      "EMPTY": "No attachments yet",
+      "DOWNLOAD": "Download file",
+      "DOWNLOAD_ERROR": "Could not download the file. Please try again.",
+      "MEDIA_HEADING": "Media",
+      "FILES_HEADING": "Files",
+      "VIEW_ALL": "すべて表示",
+      "SHOW_LESS": "Show less",
+      "MORE_COUNT": "+{count}",
+      "UNTITLED_FILE": "Untitled file"
     },
     "SHOPIFY": {
       "ORDER_ID": "Order #{id}",
