@@ -39,6 +39,10 @@ class Captain::Llm::HelpCenterCurationService < Captain::BaseTaskService
       Skip marketing/landing pages, blog posts, login, pricing tiers, legal, careers, press, investor pages.
       Group your picks into 3-5 short, reusable categories.
       Use the URL paths and page titles to judge relevance — do not invent URLs.
+
+      Write all category names, category descriptions, and article titles in #{locale_name}.
+      The input page titles and descriptions may be in another language; translate the labels you emit into #{locale_name}.
+      Keep URLs unchanged.
     PROMPT
   end
 
@@ -51,6 +55,11 @@ class Captain::Llm::HelpCenterCurationService < Captain::BaseTaskService
       formatted_links
     ].compact
     parts.join("\n")
+  end
+
+  def locale_name
+    code = account.locale.to_s
+    LANGUAGES_CONFIG.values.find { |v| v[:iso_639_1_code] == code }&.dig(:name) || code.presence || 'English (en)'
   end
 
   def formatted_links

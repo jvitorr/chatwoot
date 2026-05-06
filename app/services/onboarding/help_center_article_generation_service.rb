@@ -1,5 +1,5 @@
 class Onboarding::HelpCenterArticleGenerationService
-  MAP_LIMIT = 100
+  MAP_LIMIT = 200
   SCRAPE_THREAD_POOL = 6
 
   def initialize(account, user, portal)
@@ -96,6 +96,11 @@ class Onboarding::HelpCenterArticleGenerationService
 
     data = response.parsed_response&.dig('data')
     return nil if data.blank?
+
+    # Firecrawl returns API 200 even when the scraped page itself failed —
+    # the target page's real status lives in data.metadata.statusCode.
+    target_status = data.dig('metadata', 'statusCode')
+    return nil if target_status.present? && !(200..299).cover?(target_status)
 
     {
       page_title: data.dig('metadata', 'title').to_s.strip,

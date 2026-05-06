@@ -30,10 +30,10 @@ class Captain::Tools::FirecrawlService
     )
   end
 
-  def map(url, limit: 100)
+  def map(url, limit: 100, include_subdomains: false)
     HTTParty.post(
       "#{BASE_URL}/map",
-      body: { url: url, limit: limit }.to_json,
+      body: { url: url, limit: limit, includeSubdomains: include_subdomains }.to_json,
       headers: headers
     )
   end

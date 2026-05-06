@@ -39,6 +39,10 @@ class Captain::Llm::ArticleWriterService < Captain::BaseTaskService
       Output well-formatted Markdown — use headings, lists, and code fences where appropriate.
       The body must stay under 18000 characters. If the source is longer, trim repetition and tangents before cutting steps or critical detail.
       Never invent content the source does not support.
+
+      Write the title, description, and body in #{locale_name}.
+      If the source page is in another language, translate as you rewrite — do not copy source-language text into the output.
+      Code samples, command-line examples, API field names, and proper nouns stay in their original form.
     PROMPT
   end
 
@@ -50,6 +54,11 @@ class Captain::Llm::ArticleWriterService < Captain::BaseTaskService
       source_markdown.to_s.truncate(SOURCE_MAX_LENGTH, omission: "\n\n[source truncated for length]")
     ].compact
     parts.join("\n\n")
+  end
+
+  def locale_name
+    code = account.locale.to_s
+    LANGUAGES_CONFIG.values.find { |v| v[:iso_639_1_code] == code }&.dig(:name) || code.presence || 'English (en)'
   end
 
   def event_name
