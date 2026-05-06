@@ -95,6 +95,7 @@
       "OPEN": "Nhiều",
       "CLOSE": "Đóng",
       "DETAILS": "chi tiết",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "Snoozed until",
       "SNOOZED_UNTIL_TOMORROW": "Tạm dừng đến ngày mai",
       "SNOOZED_UNTIL_NEXT_WEEK": "Tạm dừng đến tuần sau",
