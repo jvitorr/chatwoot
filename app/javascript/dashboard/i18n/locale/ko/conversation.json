@@ -95,6 +95,7 @@
       "OPEN": "더보기",
       "CLOSE": "닫기",
       "DETAILS": "자세히",
+      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
       "SNOOZED_UNTIL": "다음까지 일시 중지",
       "SNOOZED_UNTIL_TOMORROW": "내일까지 일시 중지",
       "SNOOZED_UNTIL_NEXT_WEEK": "다음 주까지 일시 중지",
