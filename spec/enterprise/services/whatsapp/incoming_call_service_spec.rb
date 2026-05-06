@@ -101,6 +101,17 @@ describe Whatsapp::IncomingCallService do
       described_class.new(inbox: inbox, params: params).perform
       expect(call.reload.status).to eq('no_answer')
     end
+
+    it 'is a no-op when the call is already terminal so retries cannot flip a completed call to no_answer' do
+      call.update!(status: 'completed', duration_seconds: 5, direction: :outgoing, accepted_by_agent: nil)
+      allow(ActionCable.server).to receive(:broadcast)
+      params = call_payload(event: 'terminate', duration: 0, terminate_reason: 'completed_normally')
+
+      described_class.new(inbox: inbox, params: params).perform
+
+      expect(call.reload).to have_attributes(status: 'completed', duration_seconds: 5)
+      expect(ActionCable.server).not_to have_received(:broadcast)
+    end
   end
 
   describe 'duplicate inbound connect' do

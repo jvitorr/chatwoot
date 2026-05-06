@@ -61,8 +61,13 @@ class Voice::InboundCallBuilder
   end
 
   # WhatsApp ContactInbox.source_id must be digits-only (the wa_id); Twilio accepts the +.
+  # Run BR/AR-style wa_id normalization (same path messaging uses) so an inbound call
+  # finds the existing ContactInbox instead of forking a new contact/conversation.
   def source_id_for_provider
-    provider == :whatsapp ? from_number.to_s.delete_prefix('+') : from_number
+    return from_number unless provider == :whatsapp
+
+    digits = from_number.to_s.delete_prefix('+')
+    Whatsapp::PhoneNumberNormalizationService.new(inbox).normalize_and_find_contact_by_provider(digits, :cloud)
   end
 
   def resolve_conversation!(contact, contact_inbox)
