@@ -93,7 +93,7 @@ namespace :onboarding do
       puts "     #{cat[:description]}" if cat[:description].present?
       cat_articles.each do |art|
         puts "     • #{art[:title]}"
-        puts "         #{art[:url]}"
+        Array(art[:urls]).each { |u| puts "         #{u}" }
       end
       puts ''
     end
@@ -105,37 +105,41 @@ namespace :onboarding do
 
     # ── Stage 3: Scrape + LLM rewrite (parallel) ──────────────────────────
     puts ''
-    planned_articles = plan[:articles].uniq { |a| a[:url].to_s }
-    print "→ [3/4] Scraping & rewriting #{planned_articles.size} pages in parallel (3 threads)… "
+    planned_articles = plan[:articles]
+    print "→ [3/4] Scraping & rewriting #{planned_articles.size} articles in parallel (3 threads)… "
     $stdout.flush
     t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    pages = planned_articles.each_slice(3).flat_map do |batch|
-      batch.map do |art|
+    pages = planned_articles.each_with_index.each_slice(3).flat_map do |batch|
+      batch.map do |art, idx|
         Thread.new do
-          url = art[:url].to_s
-          scrape_response = Captain::Tools::FirecrawlService.new.scrape(url)
-          next [url, nil] unless scrape_response.success?
+          urls = Array(art[:urls]).map(&:to_s).reject(&:blank?)
+          source_pages = urls.filter_map do |u|
+            scrape_response = Captain::Tools::FirecrawlService.new.scrape(u)
+            next nil unless scrape_response.success?
 
-          data = scrape_response.parsed_response&.dig('data')
-          next [url, nil] if data.blank? || data['markdown'].to_s.blank?
+            data = scrape_response.parsed_response&.dig('data')
+            next nil if data.blank? || data['markdown'].to_s.blank?
 
-          target_status = data.dig('metadata', 'statusCode')
-          next [url, nil] if target_status.present? && !(200..299).cover?(target_status)
+            target_status = data.dig('metadata', 'statusCode')
+            next nil if target_status.present? && !(200..299).cover?(target_status)
+
+            { url: u, markdown: data['markdown'].to_s, page_title: data.dig('metadata', 'title').to_s }
+          end
+          next [idx, nil] if source_pages.empty?
 
           writer = Captain::Llm::ArticleWriterService.new(
             account: account,
-            source_markdown: data['markdown'].to_s,
-            source_url: url,
-            hint_title: art[:title].presence || data.dig('metadata', 'title').to_s
+            source_pages: source_pages,
+            hint_title: art[:title].presence || source_pages.first[:page_title]
           ).perform
-          next [url, nil] if writer[:error]
+          next [idx, nil] if writer[:error]
 
           payload = writer[:message] || {}
-          next [url, nil] if payload[:content].blank? || payload[:title].blank?
+          next [idx, nil] if payload[:content].blank? || payload[:title].blank?
 
-          [url, payload]
+          [idx, payload.merge(source_urls: source_pages.pluck(:url))]
         rescue StandardError
-          [url, nil]
+          [idx, nil]
         end
       end.map(&:value)
     end.to_h
@@ -163,8 +167,8 @@ namespace :onboarding do
       )
     end
 
-    written = plan[:articles].filter_map do |article|
-      page = pages[article[:url].to_s]
+    written = plan[:articles].each_with_index.filter_map do |article, idx|
+      page = pages[idx]
       next if page.nil? || page[:content].blank? || page[:title].blank?
 
       portal.articles.create!(
@@ -174,7 +178,7 @@ namespace :onboarding do
         author_id: user.id,
         category_id: categories_by_name[article[:category_name].to_s]&.id,
         status: :draft,
-        meta: { source_url: article[:url] }
+        meta: { source_urls: page[:source_urls] }
       )
     end
     puts "wrote #{categories_by_name.size} categories, #{written.size} articles in #{elapsed.call(t0)}s"

@@ -38,12 +38,14 @@ sanitize = lambda do |name|
 end
 
 article_md = lambda do |page, art|
+  source_lines = Array(page[:source_urls]).map { |u| "  - #{u}" }.join("\n")
   <<~MD
     ---
     title: #{page[:title]}
     description: #{page[:description].to_s.tr("\n", ' ')}
     category: #{art[:category_name]}
-    source_url: #{art[:url]}
+    source_urls:
+    #{source_lines}
     ---
 
     #{page[:content]}
@@ -59,19 +61,20 @@ index_md = lambda do |domain, plan, pages, timings|
          "- Scrape + rewrite: #{timings[:rewrite]}s",
          "- Total: #{timings[:total]}s",
          '', '## Articles by category', '']
-  grouped = plan[:articles].group_by { |a| a[:category_name].to_s }
+  indexed = plan[:articles].each_with_index.to_a
+  grouped = indexed.group_by { |art, _| art[:category_name].to_s }
   plan[:categories].each do |cat|
     cat_articles = grouped[cat[:name].to_s] || []
     buf << "### #{cat[:name]} (#{cat_articles.size})"
     buf << cat[:description] if cat[:description].present?
     buf << ''
-    cat_articles.each do |art|
-      page = pages[art[:url].to_s]
+    cat_articles.each do |art, idx|
+      page = pages[idx]
       ok = page && page[:content].present?
       label = page ? page[:title] : art[:title]
       file_path = "#{sanitize.call(cat[:name])}/#{sanitize.call(label)}.md"
       buf << (ok ? "- ✓ [#{label}](#{file_path})" : "- ✗ #{label} (failed)")
-      buf << "    - source: #{art[:url]}"
+      Array(art[:urls]).each { |u| buf << "    - source: #{u}" }
     end
     buf << ''
   end
@@ -133,36 +136,46 @@ options[:domains].each do |raw|
   print '  → Scraping & rewriting… '
   $stdout.flush
   t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-  unique_articles = plan[:articles].uniq { |a| a[:url].to_s }
-  results = unique_articles.each_slice(3).flat_map do |batch|
-    batch.map do |art|
+  results = plan[:articles].each_with_index.each_slice(3).flat_map do |batch|
+    batch.map do |art, idx|
       Thread.new do
-        url = art[:url].to_s
-        scrape = Captain::Tools::FirecrawlService.new.scrape(url)
-        next [url, { _error: "scrape http #{scrape.code}" }] unless scrape.success?
-
-        data = scrape.parsed_response&.dig('data')
-        next [url, { _error: 'scrape returned no data' }] if data.blank?
-        next [url, { _error: 'scrape returned blank markdown' }] if data['markdown'].to_s.blank?
-
-        target_status = data.dig('metadata', 'statusCode')
-        next [url, { _error: "target page status #{target_status}" }] if target_status.present? && !(200..299).cover?(target_status)
+        urls = Array(art[:urls]).map(&:to_s).reject(&:blank?)
+        source_pages = []
+        per_url_errors = []
+        urls.each do |u|
+          scrape = Captain::Tools::FirecrawlService.new.scrape(u)
+          unless scrape.success?
+            per_url_errors << "#{u}: scrape http #{scrape.code}"
+            next
+          end
+          data = scrape.parsed_response&.dig('data')
+          if data.blank? || data['markdown'].to_s.blank?
+            per_url_errors << "#{u}: blank scrape"
+            next
+          end
+          target_status = data.dig('metadata', 'statusCode')
+          if target_status.present? && !(200..299).cover?(target_status)
+            per_url_errors << "#{u}: target page status #{target_status}"
+            next
+          end
+          source_pages << { url: u, markdown: data['markdown'].to_s, page_title: data.dig('metadata', 'title').to_s }
+        end
+        next [idx, { _error: "all urls failed (#{per_url_errors.join('; ')})", urls: urls }] if source_pages.empty?
 
         writer = Captain::Llm::ArticleWriterService.new(
           account: account,
-          source_markdown: data['markdown'].to_s,
-          source_url: url,
-          hint_title: art[:title].presence || data.dig('metadata', 'title').to_s
+          source_pages: source_pages,
+          hint_title: art[:title].presence || source_pages.first[:page_title]
         ).perform
-        next [url, { _error: "writer error: #{writer[:error]}" }] if writer[:error]
+        next [idx, { _error: "writer error: #{writer[:error]}", urls: urls }] if writer[:error]
 
         payload = writer[:message] || {}
-        next [url, { _error: 'writer returned blank content' }] if payload[:content].blank?
-        next [url, { _error: 'writer returned blank title' }] if payload[:title].blank?
+        next [idx, { _error: 'writer returned blank content', urls: urls }] if payload[:content].blank?
+        next [idx, { _error: 'writer returned blank title', urls: urls }] if payload[:title].blank?
 
-        [url, payload]
+        [idx, payload.merge(source_urls: source_pages.pluck(:url))]
       rescue StandardError => e
-        [url, { _error: "exception #{e.class}: #{e.message}" }]
+        [idx, { _error: "exception #{e.class}: #{e.message}", urls: Array(art[:urls]) }]
       end
     end.map(&:value)
   end.to_h
@@ -170,12 +183,12 @@ options[:domains].each do |raw|
   failures = results.select { |_, v| v.is_a?(Hash) && v[:_error] }
   succeeded = pages.values.count { |p| p && p[:content].present? }
   timings[:rewrite] = elapsed.call(t0)
-  puts "succeeded #{succeeded}/#{unique_articles.size} in #{timings[:rewrite]}s"
-  failures.each { |url, info| puts "      ✗ #{url} — #{info[:_error]}" }
+  puts "succeeded #{succeeded}/#{plan[:articles].size} in #{timings[:rewrite]}s"
+  failures.each { |idx, info| puts "      ✗ article ##{idx} (#{Array(info[:urls]).join(', ')}) — #{info[:_error]}" }
 
   # Persist .md files
-  plan[:articles].each do |art|
-    page = pages[art[:url].to_s]
+  plan[:articles].each_with_index do |art, idx|
+    page = pages[idx]
     next if page.nil? || page[:content].blank? || page[:title].blank?
 
     cat_dir = out_dir.join(sanitize.call(art[:category_name].to_s.presence || 'Uncategorized'))
