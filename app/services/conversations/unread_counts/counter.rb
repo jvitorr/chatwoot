@@ -18,7 +18,8 @@ class Conversations::UnreadCounts::Counter
 
     {
       inboxes: unread_inbox_counts,
-      labels: unread_label_counts
+      labels: unread_label_counts,
+      teams: unread_team_counts
     }
   end
 
@@ -47,6 +48,17 @@ class Conversations::UnreadCounts::Counter
     counts_for_grouped_keys(keys_by_id)
   end
 
+  def unread_team_counts
+    keys_by_id = Hash.new { |hash, key| hash[key] = [] }
+    visible_team_ids.each do |team_id|
+      visible_inbox_ids.each do |inbox_id|
+        keys_by_id[team_id].concat(team_inbox_keys_for_mode(team_id, inbox_id))
+      end
+    end
+
+    counts_for_grouped_keys(keys_by_id)
+  end
+
   def inbox_keys_for_mode(inbox_id)
     case permission_mode
     when :base
@@ -69,6 +81,20 @@ class Conversations::UnreadCounts::Counter
       ]
     when :mine
       [store.label_inbox_assignee_key(account.id, label_id, inbox_id, user.id)]
+    end
+  end
+
+  def team_inbox_keys_for_mode(team_id, inbox_id)
+    case permission_mode
+    when :base
+      [store.team_inbox_key(account.id, team_id, inbox_id)]
+    when :unassigned_and_mine
+      [
+        store.team_inbox_unassigned_key(account.id, team_id, inbox_id),
+        store.team_inbox_assignee_key(account.id, team_id, inbox_id, user.id)
+      ]
+    when :mine
+      [store.team_inbox_assignee_key(account.id, team_id, inbox_id, user.id)]
     end
   end
 
@@ -122,8 +148,16 @@ class Conversations::UnreadCounts::Counter
     @sidebar_label_ids ||= account.labels.where(show_on_sidebar: true).pluck(:id)
   end
 
+  def visible_team_ids
+    @visible_team_ids ||= if account_user&.administrator?
+                            account.teams.pluck(:id)
+                          else
+                            user.teams.where(account_id: account.id).pluck(:id)
+                          end
+  end
+
   def empty_counts
-    { inboxes: {}, labels: {} }
+    { inboxes: {}, labels: {}, teams: {} }
   end
 
   def store
