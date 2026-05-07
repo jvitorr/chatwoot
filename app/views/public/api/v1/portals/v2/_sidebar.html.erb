@@ -14,7 +14,7 @@
     </label>
   </div>
 
-  <nav class="px-3 pt-8 md:pt-12 pb-6 space-y-1">
+  <nav class="px-3 pt-6 md:pt-8 pb-6 space-y-1">
     <a href="<%= v2_home_link(@portal.slug, @locale, @design_query_param) %>"
        class="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-md transition <%= current_category_slug.nil? && current_article_slug.nil? ? 'bg-n-portal-soft text-n-portal' : 'text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-2' %>">
       <span class="i-lucide-house size-4" aria-hidden="true"></span>

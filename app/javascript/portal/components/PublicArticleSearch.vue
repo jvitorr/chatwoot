@@ -44,7 +44,12 @@ export default {
     },
   },
 
+  mounted() {
+    document.addEventListener('keydown', this.onKeydown);
+  },
+
   unmounted() {
+    document.removeEventListener('keydown', this.onKeydown);
     clearTimeout(this.typingTimer);
   },
 
@@ -83,6 +88,16 @@ export default {
     clearSearchTerm() {
       this.searchTerm = '';
     },
+    onKeydown(e) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (this.$refs.searchInput) this.$refs.searchInput.focusInput();
+      }
+      if (e.key === 'Escape') {
+        this.closeSearch();
+        if (this.$refs.searchInput) this.$refs.searchInput.blurInput();
+      }
+    },
     async fetchArticlesByQuery() {
       const query = this.normalizedSearchTerm;
       if (!query) {
@@ -112,6 +127,7 @@ export default {
 <template>
   <div v-on-clickaway="closeSearch" class="relative w-full max-w-5xl my-4">
     <PublicSearchInput
+      ref="searchInput"
       :search-term="searchTerm"
       :search-placeholder="searchTranslations.searchPlaceholder"
       @update:search-term="onUpdateSearchTerm"

@@ -15,6 +15,7 @@ defineProps({
 
 const emit = defineEmits(['update:searchTerm', 'focus', 'blur']);
 const isFocused = ref(false);
+const inputRef = ref(null);
 
 const onChange = e => {
   emit('update:searchTerm', e.target.value);
@@ -29,6 +30,16 @@ const onBlur = e => {
   isFocused.value = false;
   emit('blur', e.target.value);
 };
+
+const focusInput = () => {
+  if (inputRef.value) inputRef.value.focus();
+};
+
+const blurInput = () => {
+  if (inputRef.value) inputRef.value.blur();
+};
+
+defineExpose({ focusInput, blurInput });
 </script>
 
 <template>
@@ -41,6 +52,7 @@ const onBlur = e => {
   >
     <FluentIcon icon="search" />
     <input
+      ref="inputRef"
       :value="searchTerm"
       type="text"
       class="w-full focus:outline-none text-base h-full bg-white dark:bg-slate-900 px-2 py-2 text-slate-700 dark:text-slate-100 placeholder-slate-500"

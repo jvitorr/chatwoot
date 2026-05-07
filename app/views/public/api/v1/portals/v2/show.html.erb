@@ -14,8 +14,8 @@
       <section class="relative overflow-hidden">
         <div class="absolute inset-x-0 top-0 -z-10 h-96 bg-gradient-to-b from-n-blue-3 via-n-blue-2 to-n-slate-2"></div>
 
-        <div class="px-6 md:px-10 py-10 md:py-14">
-          <h1 class="text-4xl md:text-5xl leading-tight font-semibold tracking-tight text-n-slate-12 text-balance">
+        <div class="px-6 md:px-10 py-8 md:py-10">
+          <h1 class="text-4xl md:text-5xl leading-tight font-620 tracking-tight text-n-slate-12 text-balance">
             <%= @portal.header_text.presence || 'How can we help?' %>
           </h1>
           <p class="mt-4 text-lg leading-normal text-n-slate-11 text-pretty">
@@ -36,9 +36,9 @@
         </div>
       </section>
 
-      <section class="px-6 md:px-10 py-10 md:py-14">
+      <section class="px-6 md:px-10 py-8 md:py-10">
         <header class="mb-10">
-          <h2 class="text-2xl md:text-3xl font-semibold tracking-tight text-n-slate-12">Browse by topic</h2>
+          <h2 class="text-2xl md:text-3xl font-620 tracking-tight text-n-slate-12">Browse by topic</h2>
           <p class="mt-2 text-base text-n-slate-11">Find guides, tutorials, and answers organised by category.</p>
         </header>
 
@@ -55,7 +55,7 @@
                   <span class="flex-shrink-0 w-12 h-12 flex items-center justify-center text-2xl rounded-xl bg-n-slate-1 border border-n-weak shadow-sm">
                     <%= category.icon.presence || '📁' %>
                   </span>
-                  <h3 class="text-xl font-semibold tracking-tight text-n-slate-12 group-hover:text-n-portal transition truncate"><%= category.name %></h3>
+                  <h3 class="text-xl font-620 tracking-tight text-n-slate-12 group-hover:text-n-portal transition truncate"><%= category.name %></h3>
                 </a>
                 <% if category.description.present? %>
                   <p class="mt-3 text-base leading-relaxed text-n-slate-11 line-clamp-3"><%= category.description %></p>
@@ -77,9 +77,9 @@
       </section>
 
       <% if featured.any? %>
-        <section class="px-6 md:px-10 py-10 md:py-14 border-t border-n-weak">
+        <section class="px-6 md:px-10 py-8 md:py-10 border-t border-n-weak">
           <header class="mb-8">
-            <h2 class="text-2xl md:text-3xl font-semibold tracking-tight text-n-slate-12">Popular articles</h2>
+            <h2 class="text-2xl md:text-3xl font-620 tracking-tight text-n-slate-12">Popular articles</h2>
             <p class="mt-1.5 text-base text-n-slate-11">What other people are reading right now.</p>
           </header>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -89,7 +89,7 @@
                   <span class="i-lucide-file-text size-4" aria-hidden="true"></span>
                 </span>
                 <div class="min-w-0 flex-1">
-                  <h3 class="text-base font-semibold text-n-slate-12 group-hover:text-n-portal transition truncate"><%= article.title %></h3>
+                  <h3 class="text-base font-620 text-n-slate-12 group-hover:text-n-portal transition truncate"><%= article.title %></h3>
                   <% if article.category %>
                     <p class="mt-1 text-sm text-n-slate-10 truncate"><%= article.category.icon.presence %> <%= article.category.name %></p>
                   <% end %>
