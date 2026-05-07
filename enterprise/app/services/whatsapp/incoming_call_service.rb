@@ -5,6 +5,7 @@ class Whatsapp::IncomingCallService
     return unless inbox.channel.voice_enabled?
 
     Array(params[:calls]).each { |c| handle_event(c.with_indifferent_access) }
+    Array(params[:statuses]).each { |s| handle_status(s.with_indifferent_access) }
   end
 
   private
@@ -15,6 +16,32 @@ class Whatsapp::IncomingCallService
     when 'terminate' then handle_terminate(payload)
     else Rails.logger.warn "[WHATSAPP CALL] Unknown call event: #{payload[:event]}"
     end
+  end
+
+  # Meta's `connect` event for outbound calls fires when the WebRTC tunnel is
+  # up — empirically ~20s before the contact actually answers. The real pickup
+  # is reported as a separate webhook with status=ACCEPTED, and is what
+  # `terminate.start_time` aligns to. Treat ACCEPTED as the pickup transition.
+  def handle_status(payload)
+    return unless payload[:type] == 'call'
+
+    call = Call.whatsapp.find_by(provider_call_id: payload[:id])
+    return unless call
+
+    case payload[:status]
+    when 'ACCEPTED' then mark_outbound_accepted(call, payload)
+    when 'RINGING' then nil # informational
+    else Rails.logger.info "[WHATSAPP CALL] Unhandled call status: #{payload[:status]} for #{payload[:id]}"
+    end
+  end
+
+  def mark_outbound_accepted(call, payload)
+    return unless call.outgoing?
+    return if call.in_progress? || call.terminal?
+
+    started_at = Time.zone.at(payload[:timestamp].to_i) if payload[:timestamp].present?
+    update_call!(call, 'in_progress', started_at: started_at || Time.current)
+    broadcast(call, 'voice_call.outbound_accepted')
   end
 
   def handle_connect(payload)
@@ -50,19 +77,23 @@ class Whatsapp::IncomingCallService
     broadcast_incoming(call, sdp_offer)
   end
 
+  # `connect` is the WebRTC tunnel-ready signal, not the pickup signal. Apply
+  # Meta's SDP answer so the handshake completes during ringing; the call
+  # stays in `ringing` until status=ACCEPTED arrives.
   def accept_outbound_call(call, payload)
     return if call.in_progress? || call.terminal?
 
     # Pin setup:active so browsers don't renegotiate when Meta echoes actpass.
     sdp_answer = payload.dig(:session, :sdp)&.gsub('a=setup:actpass', 'a=setup:active')
-    update_call!(call, 'in_progress',
-                 started_at: Time.current,
-                 meta: (call.meta || {}).merge('sdp_answer' => sdp_answer))
+    call.update!(meta: (call.meta || {}).merge('sdp_answer' => sdp_answer))
     broadcast(call, 'voice_call.outbound_connected', sdp_answer: sdp_answer)
   end
 
   def handle_terminate(payload)
-    call = Call.whatsapp.find_by(provider_call_id: payload[:id])
+    # Webhooks can arrive out of order (terminate before connect under tunnel/network
+    # delays). Materialise a missed-call record so the contact's "called and hung up"
+    # still surfaces in the dashboard instead of being silently dropped.
+    call = Call.whatsapp.find_by(provider_call_id: payload[:id]) || build_missed_inbound_call(payload)
     return unless call
     # Webhook retries can re-deliver terminate after we've already finalized the
     # call; don't recompute status or a duration=0 retry can flip a completed
@@ -74,6 +105,18 @@ class Whatsapp::IncomingCallService
     meta = (call.meta || {}).merge('ended_at' => Time.zone.now.to_i)
     update_call!(call, status, duration_seconds: duration, end_reason: payload[:terminate_reason], meta: meta)
     broadcast(call, 'voice_call.ended', status: call.display_status, duration_seconds: call.duration_seconds)
+  end
+
+  # No connect was ever processed (webhook reordering or never delivered) — build a
+  # bare Call+Message for the contact so the UI shows the missed-call bubble.
+  def build_missed_inbound_call(payload)
+    Voice::InboundCallBuilder.perform!(
+      inbox: inbox, from_number: "+#{payload[:from]}", call_sid: payload[:id],
+      provider: :whatsapp,
+      extra_meta: { 'ice_servers' => Call.default_ice_servers }
+    )
+  rescue ActiveRecord::RecordNotUnique
+    Call.whatsapp.find_by(provider_call_id: payload[:id])
   end
 
   # accepted_by_agent_id is the initiating agent on outbound calls, so it only signals "answered" for inbound.
