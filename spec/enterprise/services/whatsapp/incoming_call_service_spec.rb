@@ -114,6 +114,21 @@ describe Whatsapp::IncomingCallService do
     end
   end
 
+  describe 'terminate with no local row yet' do
+    it 'logs and skips instead of materialising an inbound missed-call row' do
+      allow(inbox.channel).to receive(:voice_enabled?).and_return(true)
+      allow(Rails.logger).to receive(:warn)
+      allow(ActionCable.server).to receive(:broadcast)
+
+      params = call_payload(event: 'terminate', duration: 0, terminate_reason: 'no_answer')
+
+      expect { described_class.new(inbox: inbox, params: params).perform }
+        .not_to change(Call, :count)
+      expect(Rails.logger).to have_received(:warn).with(/Terminate for unknown call/)
+      expect(ActionCable.server).not_to have_received(:broadcast)
+    end
+  end
+
   describe 'outbound connect with no local row yet' do
     it 'does not mint an inbound call when sdp_type is answer' do
       allow(inbox.channel).to receive(:voice_enabled?).and_return(true)
