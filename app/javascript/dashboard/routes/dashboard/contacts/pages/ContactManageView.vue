@@ -151,8 +151,8 @@ onMounted(() => {
         :selected-contact="selectedContact"
         @go-to-contacts-list="goToContactsList"
       />
-      <template #sidebar>
-        <div class="px-6">
+      <template #sidebarHeader>
+        <div class="px-6 pt-6 pb-3">
           <TabBar
             :tabs="tabs"
             :initial-active-tab="activeTabIndex"
@@ -160,6 +160,8 @@ onMounted(() => {
             @tab-changed="handleTabChange"
           />
         </div>
+      </template>
+      <template #sidebar>
         <div
           v-if="isFetchingItem"
           class="flex items-center justify-center py-10 text-n-slate-11"

@@ -74,7 +74,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-6">
+  <div class="px-6">
     <div v-if="isFetching" class="flex justify-center p-3">
       <Spinner class="size-5" />
     </div>
