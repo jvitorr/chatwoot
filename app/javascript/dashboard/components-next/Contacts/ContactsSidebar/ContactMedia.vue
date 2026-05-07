@@ -4,8 +4,8 @@ import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import {
-  ATTACHMENT_TYPES,
   MEDIA_TYPES,
+  NON_FILE_TYPES,
 } from 'dashboard/components-next/message/constants';
 
 import GalleryView from 'dashboard/components/widgets/conversation/components/GalleryView.vue';
@@ -31,10 +31,7 @@ const isFetching = computed(() => uiFlags.value.isFetchingAttachments);
 
 const hasContent = computed(() =>
   attachments.value.some(
-    a =>
-      a.data_url &&
-      (MEDIA_TYPES.includes(a.file_type) ||
-        a.file_type === ATTACHMENT_TYPES.FILE)
+    a => a.data_url && !NON_FILE_TYPES.includes(a.file_type)
   )
 );
 

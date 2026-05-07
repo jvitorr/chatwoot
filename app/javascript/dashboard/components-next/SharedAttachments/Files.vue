@@ -5,7 +5,10 @@ import { useAlert } from 'dashboard/composables';
 import { formatBytes } from 'shared/helpers/FileHelper';
 import { dynamicTime, shortTimestamp } from 'shared/helpers/timeHelper';
 import { downloadFile } from '@chatwoot/utils';
-import { ATTACHMENT_TYPES } from 'dashboard/components-next/message/constants';
+import {
+  MEDIA_TYPES,
+  NON_FILE_TYPES,
+} from 'dashboard/components-next/message/constants';
 
 import FileIcon from 'next/icon/FileIcon.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
@@ -22,7 +25,12 @@ const { t } = useI18n();
 
 const fileAttachments = computed(() =>
   [...props.attachments]
-    .filter(a => a.data_url && a.file_type === ATTACHMENT_TYPES.FILE)
+    .filter(
+      a =>
+        a.data_url &&
+        !MEDIA_TYPES.includes(a.file_type) &&
+        !NON_FILE_TYPES.includes(a.file_type)
+    )
     .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
 );
 

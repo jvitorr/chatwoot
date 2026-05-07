@@ -3,8 +3,8 @@ import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMapGetter } from 'dashboard/composables/store';
 import {
-  ATTACHMENT_TYPES,
   MEDIA_TYPES,
+  NON_FILE_TYPES,
 } from 'dashboard/components-next/message/constants';
 
 import GalleryView from 'dashboard/components/widgets/conversation/components/GalleryView.vue';
@@ -27,10 +27,7 @@ const mediaAttachments = computed(() =>
 
 const hasContent = computed(() =>
   allAttachments.value.some(
-    a =>
-      a.data_url &&
-      (MEDIA_TYPES.includes(a.file_type) ||
-        a.file_type === ATTACHMENT_TYPES.FILE)
+    a => a.data_url && !NON_FILE_TYPES.includes(a.file_type)
   )
 );
 
