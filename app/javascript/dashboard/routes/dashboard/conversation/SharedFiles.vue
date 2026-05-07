@@ -20,9 +20,9 @@ const attachmentsLoaded = useMapGetter('getSelectedChatAttachmentsLoaded');
 const { t } = useI18n();
 
 const mediaAttachments = computed(() =>
-  allAttachments.value.filter(
-    a => MEDIA_TYPES.includes(a.file_type) && a.data_url
-  )
+  allAttachments.value
+    .filter(a => MEDIA_TYPES.includes(a.file_type) && a.data_url)
+    .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
 );
 
 const hasContent = computed(() =>

@@ -36,7 +36,9 @@ const hasContent = computed(() =>
 );
 
 const mediaAttachments = computed(() =>
-  attachments.value.filter(a => MEDIA_TYPES.includes(a.file_type) && a.data_url)
+  attachments.value
+    .filter(a => MEDIA_TYPES.includes(a.file_type) && a.data_url)
+    .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
 );
 
 const showGallery = ref(false);
