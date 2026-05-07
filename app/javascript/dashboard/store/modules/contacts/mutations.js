@@ -61,6 +61,11 @@ export const mutations = {
     $state.records[data.id] = data;
   },
 
+  [types.SET_CONTACT_ATTACHMENTS]: ($state, { id, data }) => {
+    if (!$state.records[id]) $state.records[id] = {};
+    $state.records[id].attachments = data;
+  },
+
   [types.DELETE_CONTACT]: ($state, id) => {
     const index = $state.sortOrder.findIndex(item => item === id);
     $state.sortOrder.splice(index, 1);

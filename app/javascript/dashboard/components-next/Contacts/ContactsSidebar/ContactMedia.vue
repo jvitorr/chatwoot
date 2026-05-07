@@ -20,15 +20,13 @@ const route = useRoute();
 const store = useStore();
 const { t } = useI18n();
 
-const attachmentsByContact = useMapGetter(
-  'contactAttachments/getContactAttachments'
-);
-const uiFlags = useMapGetter('contactAttachments/getUIFlags');
+const attachmentsByContact = useMapGetter('contacts/getContactAttachments');
+const uiFlags = useMapGetter('contacts/getUIFlags');
 
 const attachments = computed(() =>
   attachmentsByContact.value(route.params.contactId)
 );
-const isFetching = computed(() => uiFlags.value.isFetching);
+const isFetching = computed(() => uiFlags.value.isFetchingAttachments);
 
 const hasContent = computed(() =>
   attachments.value.some(
@@ -58,7 +56,7 @@ const onFileSelect = attachment => {
 };
 
 onMounted(() => {
-  store.dispatch('contactAttachments/get', route.params.contactId);
+  store.dispatch('contacts/fetchAttachments', route.params.contactId);
 });
 </script>
 

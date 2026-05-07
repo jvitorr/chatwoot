@@ -102,4 +102,33 @@ describe('#mutations', () => {
       expect(state.appliedFilters).toEqual([]);
     });
   });
+
+  describe('#SET_CONTACT_ATTACHMENTS', () => {
+    it('attaches the list to the existing contact record', () => {
+      const state = { records: { 1: { id: 1, name: 'Sivin' } } };
+      const data = [{ id: 11, file_type: 'image' }];
+      mutations[types.SET_CONTACT_ATTACHMENTS](state, { id: 1, data });
+      expect(state.records[1]).toEqual({
+        id: 1,
+        name: 'Sivin',
+        attachments: data,
+      });
+    });
+
+    it('creates a record shell when the contact is not yet loaded', () => {
+      const state = { records: {} };
+      const data = [{ id: 12, file_type: 'file' }];
+      mutations[types.SET_CONTACT_ATTACHMENTS](state, { id: 5, data });
+      expect(state.records[5]).toEqual({ attachments: data });
+    });
+
+    it('replaces an existing attachment list', () => {
+      const state = {
+        records: { 1: { id: 1, attachments: [{ id: 99 }] } },
+      };
+      const data = [{ id: 11 }];
+      mutations[types.SET_CONTACT_ATTACHMENTS](state, { id: 1, data });
+      expect(state.records[1].attachments).toEqual(data);
+    });
+  });
 });
