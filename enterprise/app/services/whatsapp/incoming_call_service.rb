@@ -19,10 +19,24 @@ class Whatsapp::IncomingCallService
 
   def handle_connect(payload)
     call = Call.whatsapp.find_by(provider_call_id: payload[:id])
-    return create_inbound_call(payload) if call.nil?
+    if call.nil?
+      # Only an `offer` payload is a real inbound caller. An `answer` with no
+      # local row means Meta beat our outbound `Call.create!` (tiny window
+      # between initiate API response and DB insert) — do not mint an inbound
+      # row for it; the next status webhook (or a retry) will find it.
+      return create_inbound_call(payload) if inbound_offer?(payload)
+
+      Rails.logger.warn "[WHATSAPP CALL] Outbound connect for unknown call #{payload[:id]}; skipping"
+      return
+    end
+
     return accept_outbound_call(call, payload) if call.outgoing?
 
     Rails.logger.info "[WHATSAPP CALL] Duplicate inbound connect for #{payload[:id]}; ignoring"
+  end
+
+  def inbound_offer?(payload)
+    payload.dig(:session, :sdp_type).to_s.downcase == 'offer'
   end
 
   def create_inbound_call(payload)
