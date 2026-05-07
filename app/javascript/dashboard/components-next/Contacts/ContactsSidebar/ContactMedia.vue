@@ -1,7 +1,8 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useMapGetter } from 'dashboard/composables/store';
+import { useRoute } from 'vue-router';
+import { useStore, useMapGetter } from 'dashboard/composables/store';
 import {
   ATTACHMENT_TYPES,
   MEDIA_TYPES,
@@ -12,26 +13,34 @@ import Media from 'dashboard/components-next/SharedAttachments/Media.vue';
 import Files from 'dashboard/components-next/SharedAttachments/Files.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
-const MEDIA_PEEK_LIMIT = 6;
-const FILES_PEEK_LIMIT = 3;
+const MEDIA_PEEK_LIMIT = 12;
+const FILES_PEEK_LIMIT = 6;
 
-const allAttachments = useMapGetter('getSelectedChatAttachments');
-const attachmentsLoaded = useMapGetter('getSelectedChatAttachmentsLoaded');
+const route = useRoute();
+const store = useStore();
 const { t } = useI18n();
 
-const mediaAttachments = computed(() =>
-  allAttachments.value.filter(
-    a => MEDIA_TYPES.includes(a.file_type) && a.data_url
-  )
+const attachmentsByContact = useMapGetter(
+  'contactAttachments/getContactAttachments'
 );
+const uiFlags = useMapGetter('contactAttachments/getUIFlags');
+
+const attachments = computed(() =>
+  attachmentsByContact.value(route.params.contactId)
+);
+const isFetching = computed(() => uiFlags.value.isFetching);
 
 const hasContent = computed(() =>
-  allAttachments.value.some(
+  attachments.value.some(
     a =>
       a.data_url &&
       (MEDIA_TYPES.includes(a.file_type) ||
         a.file_type === ATTACHMENT_TYPES.FILE)
   )
+);
+
+const mediaAttachments = computed(() =>
+  attachments.value.filter(a => MEDIA_TYPES.includes(a.file_type) && a.data_url)
 );
 
 const showGallery = ref(false);
@@ -47,11 +56,15 @@ const onFileSelect = attachment => {
     window.open(attachment.data_url, '_blank', 'noopener,noreferrer');
   }
 };
+
+onMounted(() => {
+  store.dispatch('contactAttachments/get', route.params.contactId);
+});
 </script>
 
 <template>
-  <div class="p-2">
-    <div v-if="!attachmentsLoaded" class="flex justify-center p-3">
+  <div class="p-6">
+    <div v-if="isFetching" class="flex justify-center p-3">
       <Spinner class="size-5" />
     </div>
     <p v-else-if="!hasContent" class="p-3 text-sm text-center text-n-slate-11">
@@ -59,12 +72,12 @@ const onFileSelect = attachment => {
     </p>
     <div v-else class="flex flex-col gap-5">
       <Media
-        :attachments="allAttachments"
+        :attachments="attachments"
         :peek-limit="MEDIA_PEEK_LIMIT"
         @select="onMediaSelect"
       />
       <Files
-        :attachments="allAttachments"
+        :attachments="attachments"
         :peek-limit="FILES_PEEK_LIMIT"
         @select="onFileSelect"
       />
