@@ -7,6 +7,7 @@ class Public::Api::V1::PortalsController < Public::Api::V1::Portals::BaseControl
 
   def show
     @og_image_url = helpers.set_og_image_url('', @portal.header_text)
+    render template: 'public/api/v1/portals/v2/show' if @design_version == 'docs'
   end
 
   def sitemap

@@ -3,9 +3,12 @@ class Public::Api::V1::Portals::BaseController < PublicController
 
   before_action :show_plain_layout
   before_action :set_color_scheme
+  before_action :set_design_version
   before_action :set_global_config
   around_action :set_locale
   after_action :allow_iframe_requests
+
+  DESIGN_VERSIONS = %w[default docs].freeze
 
   private
 
@@ -15,6 +18,18 @@ class Public::Api::V1::Portals::BaseController < PublicController
 
   def set_color_scheme
     @theme_from_params = params[:theme] if %w[dark light].include?(params[:theme])
+  end
+
+  def set_design_version
+    @portal ||= Portal.find_by(slug: params[:slug], archived: false) if params[:slug].present?
+    candidate = resolve_design_candidate
+    @design_version = DESIGN_VERSIONS.include?(candidate) ? candidate : 'default'
+    @design_query_param = params[:design] if DESIGN_VERSIONS.include?(params[:design].to_s)
+  end
+
+  def resolve_design_candidate
+    persisted = @portal&.config&.dig('theme')
+    params[:design].presence || persisted.presence || 'default'
   end
 
   def portal

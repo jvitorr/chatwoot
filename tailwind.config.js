@@ -48,6 +48,7 @@ const tailwindConfig = {
         440: '440',
         460: '460',
         520: '520',
+        620: '620',
       },
       typography: {
         bubble: {

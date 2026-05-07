@@ -7,6 +7,7 @@ import { isSameHost } from '@chatwoot/utils';
 import slugifyWithCounter from '@sindresorhus/slugify';
 import PublicArticleSearch from './components/PublicArticleSearch.vue';
 import TableOfContents from './components/TableOfContents.vue';
+import V2ThemeToggle from './components/V2ThemeToggle.vue';
 import { initializeTheme } from './portalThemeHelper.js';
 import { getLanguageDirection } from 'dashboard/components/widgets/conversation/advancedFilterItems/languages.js';
 
@@ -109,6 +110,19 @@ export const InitializationHelpers = {
     }
   },
 
+  initializeV2ThemeToggle: () => {
+    const mountPoint = document.querySelector('#v2-theme-toggle');
+    if (mountPoint) {
+      // eslint-disable-next-line vue/one-component-per-file
+      const app = createApp({
+        components: { V2ThemeToggle },
+        template: '<v2-theme-toggle />',
+      });
+      app.directive('on-clickaway', onClickaway);
+      app.mount('#v2-theme-toggle');
+    }
+  },
+
   appendPlainParamToURLs: () => {
     [...document.getElementsByTagName('a')].forEach(aTagElement => {
       if (aTagElement.href && aTagElement.href.includes('/hc/')) {
@@ -143,6 +157,7 @@ export const InitializationHelpers = {
       InitializationHelpers.navigateToLocalePage();
       InitializationHelpers.initializeSearch();
       InitializationHelpers.initializeTableOfContents();
+      InitializationHelpers.initializeV2ThemeToggle();
     }
   },
 

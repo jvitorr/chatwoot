@@ -58,14 +58,14 @@ By default, it renders:
       }
     </script>
   </head>
-  <body>
+  <body class="<%= @design_version == 'docs' ? 'font-inter' : 'font-default' %>">
     <div id="portal" class="antialiased">
       <main class="flex flex-col min-h-screen bg-white main-content dark:bg-slate-900" role="main">
-        <% if !@is_plain_layout_enabled %>
+        <% if !@is_plain_layout_enabled && @design_version != 'docs' %>
           <%= render "public/api/v1/portals/header", portal: @portal %>
         <% end %>
         <%= yield %>
-        <% if !(@is_plain_layout_enabled || @portal.account.feature_enabled?('disable_branding')) %>
+        <% if !(@is_plain_layout_enabled || @design_version == 'docs' || @portal.account.feature_enabled?('disable_branding')) %>
           <%= render "public/api/v1/portals/footer" %>
         <% end %>
       </main>
@@ -100,12 +100,16 @@ By default, it renders:
     --dynamic-portal-bg: <%= generate_portal_bg(@portal.color, 'dark') %>;
     --dynamic-portal-bg-gradient: <%= generate_gradient_to_bottom('dark') %>;
     --dynamic-hover-bg-color: <%= generate_portal_hover_color(@portal.color , 'dark') %>;
+    --dynamic-portal-color: <%= @portal.color %>;
+    --dynamic-portal-color-soft: color-mix(in srgb, <%= @portal.color %> 18%, transparent);
   }
 
   html.light {
     --dynamic-portal-bg: <%= generate_portal_bg(@portal.color, 'light') %>;
     --dynamic-portal-bg-gradient: <%= generate_gradient_to_bottom('light') %>;
     --dynamic-hover-bg-color: <%= generate_portal_hover_color(@portal.color , 'light') %>;
+    --dynamic-portal-color: <%= @portal.color %>;
+    --dynamic-portal-color-soft: color-mix(in srgb, <%= @portal.color %> 12%, transparent);
   }
 
   /* Portal background */

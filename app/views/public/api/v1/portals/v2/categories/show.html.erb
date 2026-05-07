@@ -1,0 +1,95 @@
+<% content_for :head do %>
+  <title><%= @category.name %> | <%= @portal.display_title %></title>
+  <meta name="title" content="<%= @category.name %> | <%= @portal.display_title %>">
+  <% if @category.description.present? %>
+    <meta name="description" content="<%= @category.description %>">
+    <meta property="og:description" content="<%= @category.description %>">
+  <% end %>
+  <% if @og_image_url.present? %>
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="og:image" content="<%= @og_image_url.html_safe %>">
+    <meta property="og:image" content="<%= @og_image_url.html_safe %>">
+  <% end %>
+<% end %>
+
+<% articles = @category.articles.published.order(:position).includes(:author) %>
+<% category_authors = articles.map(&:author).compact.uniq %>
+
+<%= render 'public/api/v1/portals/v2/topbar', current_page: :category %>
+
+<div class="bg-white dark:bg-n-slate-2 flex-1 flex font-inter tracking-normal [font-optical-sizing:auto]">
+  <div class="max-w-screen-2xl w-full mx-auto flex flex-1">
+  <%= render 'public/api/v1/portals/v2/sidebar', current_category_slug: @category.slug, current_article_slug: nil %>
+
+  <main class="flex-1 min-w-0">
+    <div class="px-6 md:px-10 py-10 md:py-14">
+      <nav class="flex items-center gap-2 text-sm text-n-slate-11 mb-8">
+        <a href="<%= v2_home_link(@portal.slug, @locale, @design_query_param) %>" class="inline-flex items-center gap-1.5 hover:text-n-slate-12 transition">
+          <span class="i-lucide-house size-3.5" aria-hidden="true"></span>
+          <%= I18n.t('public_portal.common.home') %>
+        </a>
+        <span class="i-lucide-chevron-right size-3 text-n-slate-9" aria-hidden="true"></span>
+        <span class="text-n-slate-12 font-medium truncate"><%= @category.name %></span>
+      </nav>
+
+      <header class="mb-8">
+        <div class="flex items-center gap-4">
+          <% if @category.icon.present? %>
+            <span class="flex items-center justify-center w-14 h-14 text-3xl rounded-2xl bg-n-slate-1 border border-solid border-n-weak shadow-sm"><%= @category.icon %></span>
+          <% end %>
+          <div class="min-w-0">
+            <h1 class="text-3xl leading-snug font-semibold tracking-tight text-n-slate-12 text-balance"><%= @category.name %></h1>
+            <div class="flex items-center gap-2 text-sm text-n-slate-10 flex-wrap">
+              <span class="tabular-nums"><%= articles.size %> <%= articles.size == 1 ? 'article' : 'articles' %></span>
+              <% if category_authors.any? %>
+                <span aria-hidden="true">·</span>
+                <span class="inline-flex items-center gap-2">
+                  <span class="flex">
+                    <% category_authors.first(3).each_with_index do |author, idx| %>
+                      <% offset_class = idx.positive? ? '-ml-0.5' : '' %>
+                      <% if author.avatar_url.present? %>
+                        <img src="<%= author.avatar_url %>" alt="<%= author.available_name %>" class="w-4 h-4 rounded-full object-cover ring-2 ring-solid ring-white dark:ring-n-slate-2 <%= offset_class %>" />
+                      <% else %>
+                        <span class="w-4 h-4 rounded-full inline-flex items-center justify-center text-[9px] font-semibold text-white ring-2 ring-solid ring-white dark:ring-n-slate-2 <%= offset_class %>" style="background: <%= thumbnail_bg_color(author.available_name) %>;" title="<%= author.available_name %>"><%= author.available_name.first&.upcase %></span>
+                      <% end %>
+                    <% end %>
+                  </span>
+                  <%
+                    shown_names = category_authors.first(3).map(&:available_name)
+                    extra = category_authors.size - shown_names.size
+                    authors_label = extra.positive? ? "#{shown_names.first(2).join(', ')} and #{category_authors.size - 2} others" : shown_names.to_sentence
+                  %>
+                  <span>By <%= authors_label %></span>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <% if @category.description.present? %>
+          <p class="mt-6 text-lg leading-relaxed text-n-slate-11 text-pretty"><%= @category.description %></p>
+        <% end %>
+      </header>
+
+      <% if articles.empty? %>
+        <div class="rounded-xl border border-dashed border-n-weak p-12">
+          <p class="text-base text-n-slate-11"><%= I18n.t('public_portal.common.no_articles') %></p>
+        </div>
+      <% else %>
+        <div class="divide-y divide-n-weak">
+          <% articles.each do |article| %>
+            <a href="<%= v2_article_link(@portal.slug, article.slug, @design_query_param) %>" class="group flex items-start gap-4 py-6 transition">
+              <span class="flex-shrink-0 mt-0.5 w-9 h-9 flex items-center justify-center rounded-lg bg-n-alpha-2 text-n-slate-11 transition">
+                <span class="i-lucide-file-text size-4" aria-hidden="true"></span>
+              </span>
+              <div class="min-w-0 flex-1">
+                <h3 class="text-base font-semibold text-n-slate-12 group-hover:text-n-portal transition"><%= article.title %></h3>
+                <p class="mt-1 text-sm leading-relaxed text-n-slate-11 line-clamp-2"><%= render_category_content(article.content) %></p>
+              </div>
+            </a>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </main>
+  </div>
+</div>
