@@ -13,9 +13,10 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 const props = defineProps({
   attachments: { type: Array, default: () => [] },
   peekLimit: { type: Number, default: 0 },
+  showJumpToMessage: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['select']);
+const emit = defineEmits(['select', 'jumpToMessage']);
 
 const { t } = useI18n();
 
@@ -129,16 +130,32 @@ const onDownloadFile = async attachment => {
             </template>
           </p>
         </div>
-        <NextButton
-          ghost
-          slate
-          sm
-          icon="i-lucide-download"
-          class="opacity-0 group-hover:opacity-100"
-          :is-loading="downloadingId === attachment.id"
-          :aria-label="t('CONVERSATION_SIDEBAR.SHARED_FILES.DOWNLOAD')"
-          @click.stop="onDownloadFile(attachment)"
-        />
+        <div class="flex items-center gap-1">
+          <NextButton
+            v-if="showJumpToMessage && attachment.message_id"
+            v-tooltip.top="{
+              content: t('CONVERSATION_SIDEBAR.SHARED_FILES.JUMP_TO_MESSAGE'),
+              delay: { show: 500, hide: 0 },
+            }"
+            ghost
+            slate
+            sm
+            icon="i-lucide-external-link"
+            class="opacity-0 group-hover:opacity-100"
+            :aria-label="t('CONVERSATION_SIDEBAR.SHARED_FILES.JUMP_TO_MESSAGE')"
+            @click.stop="emit('jumpToMessage', attachment)"
+          />
+          <NextButton
+            ghost
+            slate
+            sm
+            icon="i-lucide-download"
+            class="opacity-0 group-hover:opacity-100"
+            :is-loading="downloadingId === attachment.id"
+            :aria-label="t('CONVERSATION_SIDEBAR.SHARED_FILES.DOWNLOAD')"
+            @click.stop="onDownloadFile(attachment)"
+          />
+        </div>
       </li>
     </ul>
   </section>

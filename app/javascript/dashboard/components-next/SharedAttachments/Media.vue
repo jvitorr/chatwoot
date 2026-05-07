@@ -19,9 +19,10 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 const props = defineProps({
   attachments: { type: Array, default: () => [] },
   peekLimit: { type: Number, default: 0 },
+  showJumpToMessage: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['select']);
+const emit = defineEmits(['select', 'jumpToMessage']);
 
 const { t } = useI18n();
 
@@ -266,6 +267,22 @@ const onDownloadFile = async attachment => {
             @keydown.space.stop
           >
             <Icon icon="i-lucide-download" class="size-3 text-n-black" />
+          </button>
+
+          <button
+            v-if="showJumpToMessage && attachment.message_id"
+            v-tooltip.top="{
+              content: t('CONVERSATION_SIDEBAR.SHARED_FILES.JUMP_TO_MESSAGE'),
+              delay: { show: 500, hide: 0 },
+            }"
+            type="button"
+            class="absolute flex items-center justify-center !p-px transition-all rounded-full opacity-0 top-1.5 ltr:right-1.5 rtl:left-1.5 size-6 bg-white/95 shadow-md group-hover:opacity-100 hover:bg-white"
+            :aria-label="t('CONVERSATION_SIDEBAR.SHARED_FILES.JUMP_TO_MESSAGE')"
+            @click.stop="emit('jumpToMessage', attachment)"
+            @keydown.enter.stop
+            @keydown.space.stop
+          >
+            <Icon icon="i-lucide-external-link" class="size-3 text-n-black" />
           </button>
         </template>
 

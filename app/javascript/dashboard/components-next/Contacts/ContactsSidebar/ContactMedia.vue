@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import {
   ATTACHMENT_TYPES,
@@ -17,6 +17,7 @@ const MEDIA_PEEK_LIMIT = 12;
 const FILES_PEEK_LIMIT = 6;
 
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
 const { t } = useI18n();
 
@@ -55,6 +56,18 @@ const onFileSelect = attachment => {
   }
 };
 
+const onJumpToMessage = attachment => {
+  if (!attachment.conversation_display_id || !attachment.message_id) return;
+  router.push({
+    name: 'inbox_conversation',
+    params: {
+      accountId: route.params.accountId,
+      conversation_id: attachment.conversation_display_id,
+    },
+    query: { messageId: attachment.message_id },
+  });
+};
+
 onMounted(() => {
   store.dispatch('contacts/fetchAttachments', route.params.contactId);
 });
@@ -72,12 +85,16 @@ onMounted(() => {
       <Media
         :attachments="attachments"
         :peek-limit="MEDIA_PEEK_LIMIT"
+        show-jump-to-message
         @select="onMediaSelect"
+        @jump-to-message="onJumpToMessage"
       />
       <Files
         :attachments="attachments"
         :peek-limit="FILES_PEEK_LIMIT"
+        show-jump-to-message
         @select="onFileSelect"
+        @jump-to-message="onJumpToMessage"
       />
     </div>
     <GalleryView
