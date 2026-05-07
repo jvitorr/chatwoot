@@ -63,6 +63,21 @@ describe('#mutations', () => {
         1: { id: 1, name: 'contact2', email: 'contact2@chatwoot.com' },
       });
     });
+
+    it('preserves a cached attachments list across edits', () => {
+      const attachments = [{ id: 11, file_type: 'image' }];
+      const state = {
+        records: {
+          1: { id: 1, name: 'contact1', attachments },
+        },
+      };
+      mutations[types.EDIT_CONTACT](state, { id: 1, name: 'contact2' });
+      expect(state.records[1]).toEqual({
+        id: 1,
+        name: 'contact2',
+        attachments,
+      });
+    });
   });
 
   describe('#SET_CONTACT_FILTERS', () => {
