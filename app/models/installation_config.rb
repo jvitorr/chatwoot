@@ -15,6 +15,12 @@
 #  index_installation_configs_on_name_and_created_at  (name,created_at) UNIQUE
 #
 class InstallationConfig < ApplicationRecord
+  CAPTAIN_LLM_CONFIG_KEYS = %w[
+    CAPTAIN_OPEN_AI_API_KEY
+    CAPTAIN_OPEN_AI_ENDPOINT
+    CAPTAIN_OPEN_AI_MODEL
+  ].freeze
+
   # https://stackoverflow.com/questions/72970170/upgrading-to-rails-6-1-6-1-causes-psychdisallowedclass-tried-to-load-unspecif
   # https://discuss.rubyonrails.org/t/cve-2022-32224-possible-rce-escalation-bug-with-serialized-columns-in-active-record/81017
   # FIX ME : fixes breakage of installation config. we need to migrate.
@@ -31,6 +37,7 @@ class InstallationConfig < ApplicationRecord
   scope :editable, -> { where(locked: false) }
 
   after_commit :clear_cache
+  after_commit :refresh_captain_llm_config, if: :captain_llm_config?
 
   def value
     serialized_value[:value]
@@ -50,6 +57,14 @@ class InstallationConfig < ApplicationRecord
 
   def clear_cache
     GlobalConfig.clear_cache
+  end
+
+  def captain_llm_config?
+    name.in?(CAPTAIN_LLM_CONFIG_KEYS)
+  end
+
+  def refresh_captain_llm_config
+    Llm::Config.refresh!
   end
 
   def saml_sso_users_check
