@@ -4,6 +4,9 @@ class Captain::Documents::ScheduleSyncsJob < ApplicationJob
   PER_ACCOUNT_HOURLY_CAP = 50
   GLOBAL_HOURLY_CAP = 1000
   SYNC_STALE_TIMEOUT = Captain::Document::SYNC_STALE_TIMEOUT
+  DAILY_SYNC_JITTER = 4.hours
+  WEEKLY_SYNC_JITTER = 1.day
+  MONTHLY_SYNC_JITTER = 4.days
 
   def perform
     @remaining_global_capacity = GLOBAL_HOURLY_CAP
@@ -34,24 +37,39 @@ class Captain::Documents::ScheduleSyncsJob < ApplicationJob
     synced = Captain::Document.sync_statuses[:synced]
     failed = Captain::Document.sync_statuses[:failed]
     stale_cutoff = SYNC_STALE_TIMEOUT.ago
+    due_cutoff = (interval + sync_jitter(account, interval)).ago
     per_account_limit = [PER_ACCOUNT_HOURLY_CAP, @remaining_global_capacity].min
     enqueued_count = 0
 
     account.captain_documents.syncable.where(status: :available).where(
       '(sync_status = ? AND last_synced_at < ?) OR (sync_status = ? AND last_sync_attempted_at < ?) OR ' \
       '(sync_status = ? AND last_sync_attempted_at < ?)',
-      synced, interval.ago, failed, interval.ago, syncing, stale_cutoff
+      synced, due_cutoff, failed, due_cutoff, syncing, stale_cutoff
     ).order(Arel.sql('last_sync_attempted_at ASC NULLS FIRST'), :id).limit(per_account_limit).each do |document|
       next unless document.syncable?
 
       # Reserve the sync slot before enqueueing so later scheduler runs skip this document while the job is queued.
       mark_sync_started(document)
-      Captain::Documents::PerformSyncJob.perform_later(document)
+      Captain::Documents::PerformSyncJob.set(queue: :purgable).perform_later(document)
       @remaining_global_capacity -= 1
       enqueued_count += 1
     end
 
     enqueued_count
+  end
+
+  def sync_jitter(account, interval)
+    # Spread recurring refreshes by account so longer cadences do not all become due in the same scheduler run.
+    jitter_window = if interval <= 1.day
+                      DAILY_SYNC_JITTER
+                    elsif interval <= 1.week
+                      WEEKLY_SYNC_JITTER
+                    else
+                      MONTHLY_SYNC_JITTER
+                    end
+    jitter_bucket_count = (jitter_window / 1.hour).to_i + 1
+
+    (account.id % jitter_bucket_count).hours
   end
 
   def log_scheduler_summary(stats)

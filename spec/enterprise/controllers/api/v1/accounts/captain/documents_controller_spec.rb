@@ -281,7 +281,7 @@ RSpec.describe 'Api::V1::Accounts::Captain::Documents', type: :request do
           expect do
             post "/api/v1/accounts/#{account.id}/captain/documents/#{document.id}/sync",
                  headers: admin.create_new_auth_token, as: :json
-          end.to have_enqueued_job(Captain::Documents::PerformSyncJob).with(document)
+          end.to have_enqueued_job(Captain::Documents::PerformSyncJob).with(document).on_queue('low')
 
           expect(document.reload).to have_attributes(
             sync_status: 'syncing',

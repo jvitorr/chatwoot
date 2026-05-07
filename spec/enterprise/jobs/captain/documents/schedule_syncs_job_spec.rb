@@ -59,7 +59,7 @@ RSpec.describe Captain::Documents::ScheduleSyncsJob, type: :job do
       clear_enqueued_jobs
 
       expect { described_class.new.perform }
-        .to have_enqueued_job(Captain::Documents::PerformSyncJob).with(document)
+        .to have_enqueued_job(Captain::Documents::PerformSyncJob).with(document).on_queue('purgable')
     end
 
     it 'marks the due document as syncing before queueing' do
@@ -121,6 +121,32 @@ RSpec.describe Captain::Documents::ScheduleSyncsJob, type: :job do
 
       expect { described_class.new.perform }
         .to have_enqueued_job(Captain::Documents::PerformSyncJob).with(document)
+    end
+  end
+
+  context 'when account jitter delays the next scheduled sync' do
+    before do
+      InstallationConfig.find_by(name: 'CAPTAIN_DOCUMENT_AUTO_SYNC_INTERVALS')
+                        .update!(value: { business: 168, hacker: nil }.to_json)
+    end
+
+    it 'queues synced documents only after the plan cadence plus account jitter' do
+      travel_to Time.zone.local(2026, 4, 27, 10, 0, 0) do
+        interval = 1.week
+        jitter = described_class.new.send(:sync_jitter, account, interval)
+        document = create(:captain_document, assistant: assistant, account: account, status: :available)
+
+        document.update!(sync_status: :synced, last_synced_at: (interval + jitter - 1.minute).ago)
+        clear_enqueued_jobs
+
+        expect { described_class.new.perform }.not_to have_enqueued_job(Captain::Documents::PerformSyncJob)
+
+        document.update!(sync_status: :synced, last_synced_at: (interval + jitter + 1.minute).ago)
+        clear_enqueued_jobs
+
+        expect { described_class.new.perform }
+          .to have_enqueued_job(Captain::Documents::PerformSyncJob).with(document).on_queue('purgable')
+      end
     end
   end
 
