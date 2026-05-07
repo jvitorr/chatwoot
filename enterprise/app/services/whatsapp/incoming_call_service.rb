@@ -23,8 +23,6 @@ class Whatsapp::IncomingCallService
     return accept_outbound_call(call, payload) if call.outgoing?
 
     Rails.logger.info "[WHATSAPP CALL] Duplicate inbound connect for #{payload[:id]}; ignoring"
-  rescue ActiveRecord::RecordNotUnique
-    Rails.logger.warn "[WHATSAPP CALL] Duplicate provider_call_id received: #{payload[:id]}"
   end
 
   def create_inbound_call(payload)
