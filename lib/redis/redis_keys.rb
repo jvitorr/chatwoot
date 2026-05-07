@@ -15,6 +15,8 @@ module Redis::RedisKeys
   UNREAD_CONVERSATIONS_INBOX = 'UNREAD_CONVERSATIONS::V1::ACCOUNT::%<account_id>d::INBOX::%<inbox_id>d'.freeze
   UNREAD_CONVERSATIONS_LABEL_INBOX =
     'UNREAD_CONVERSATIONS::V1::ACCOUNT::%<account_id>d::LABEL::%<label_id>d::INBOX::%<inbox_id>d'.freeze
+  UNREAD_CONVERSATIONS_TEAM_INBOX =
+    'UNREAD_CONVERSATIONS::V1::ACCOUNT::%<account_id>d::TEAM::%<team_id>d::INBOX::%<inbox_id>d'.freeze
   UNREAD_CONVERSATIONS_INBOX_UNASSIGNED =
     'UNREAD_CONVERSATIONS::V1::ACCOUNT::%<account_id>d::INBOX::%<inbox_id>d::UNASSIGNED'.freeze
   UNREAD_CONVERSATIONS_INBOX_ASSIGNEE =
@@ -23,6 +25,10 @@ module Redis::RedisKeys
     'UNREAD_CONVERSATIONS::V1::ACCOUNT::%<account_id>d::LABEL::%<label_id>d::INBOX::%<inbox_id>d::UNASSIGNED'.freeze
   UNREAD_CONVERSATIONS_LABEL_INBOX_ASSIGNEE =
     'UNREAD_CONVERSATIONS::V1::ACCOUNT::%<account_id>d::LABEL::%<label_id>d::INBOX::%<inbox_id>d::ASSIGNEE::%<user_id>d'.freeze
+  UNREAD_CONVERSATIONS_TEAM_INBOX_UNASSIGNED =
+    'UNREAD_CONVERSATIONS::V1::ACCOUNT::%<account_id>d::TEAM::%<team_id>d::INBOX::%<inbox_id>d::UNASSIGNED'.freeze
+  UNREAD_CONVERSATIONS_TEAM_INBOX_ASSIGNEE =
+    'UNREAD_CONVERSATIONS::V1::ACCOUNT::%<account_id>d::TEAM::%<team_id>d::INBOX::%<inbox_id>d::ASSIGNEE::%<user_id>d'.freeze
 
   ## User Keys
   # SSO Auth Tokens
