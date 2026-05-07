@@ -56,12 +56,12 @@ const onFileSelect = attachment => {
 };
 
 const onJumpToMessage = attachment => {
-  if (!attachment.conversation_display_id || !attachment.message_id) return;
+  if (!attachment.conversation_id || !attachment.message_id) return;
   router.push({
     name: 'inbox_conversation',
     params: {
       accountId: route.params.accountId,
-      conversation_id: attachment.conversation_display_id,
+      conversation_id: attachment.conversation_id,
     },
     query: { messageId: attachment.message_id },
   });
