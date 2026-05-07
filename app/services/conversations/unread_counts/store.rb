@@ -24,22 +24,27 @@ class Conversations::UnreadCounts::Store
       assignment_key_patterns(account_id).each { |pattern| delete_matching(pattern) }
     end
 
-    def add_base_membership(account_id:, inbox_id:, label_ids:, conversation_id:)
-      add_to_sets(base_keys(account_id, inbox_id, label_ids), conversation_id)
+    def add_base_membership(account_id:, inbox_id:, label_ids:, conversation_id:, team_id: nil)
+      add_to_sets(base_keys(account_id, inbox_id, label_ids, team_id), conversation_id)
     end
 
-    def remove_base_membership(account_id:, inbox_ids:, label_ids:, conversation_id:)
-      keys = Array(inbox_ids).flat_map { |inbox_id| base_keys(account_id, inbox_id, label_ids) }
+    def remove_base_membership(account_id:, inbox_ids:, label_ids:, conversation_id:, team_ids: [])
+      keys = Array(inbox_ids).flat_map { |inbox_id| removable_base_keys(account_id, inbox_id, label_ids, team_ids) }
       remove_from_sets(keys, conversation_id)
     end
 
-    def add_assignment_membership(account_id:, inbox_id:, label_ids:, assignee_id:, conversation_id:)
-      add_to_sets(assignment_keys(account_id, inbox_id, label_ids, assignee_id), conversation_id)
+    def add_assignment_membership(account_id:, conversation_id:, **membership)
+      add_to_sets(
+        assignment_keys(account_id, membership[:inbox_id], membership[:label_ids], membership[:assignee_id], membership[:team_id]),
+        conversation_id
+      )
     end
 
-    def remove_assignment_membership(account_id:, inbox_ids:, label_ids:, assignee_ids:, conversation_id:)
-      keys = Array(inbox_ids).flat_map do |inbox_id|
-        Array(assignee_ids).flat_map { |assignee_id| assignment_keys(account_id, inbox_id, label_ids, assignee_id) }
+    def remove_assignment_membership(account_id:, conversation_id:, **membership)
+      keys = Array(membership[:inbox_ids]).flat_map do |inbox_id|
+        Array(membership[:assignee_ids]).flat_map do |assignee_id|
+          removable_assignment_keys(account_id, inbox_id, membership[:label_ids], assignee_id, membership[:team_ids])
+        end
       end
       remove_from_sets(keys, conversation_id)
     end
@@ -50,9 +55,9 @@ class Conversations::UnreadCounts::Store
       Redis::Alfred.pipelined do |pipeline|
         memberships.each do |membership|
           keys = if assignment
-                   assignment_keys(account_id, membership[:inbox_id], membership[:label_ids], membership[:assignee_id])
+                   assignment_keys(account_id, membership[:inbox_id], membership[:label_ids], membership[:assignee_id], membership[:team_id])
                  else
-                   base_keys(account_id, membership[:inbox_id], membership[:label_ids])
+                   base_keys(account_id, membership[:inbox_id], membership[:label_ids], membership[:team_id])
                  end
 
           keys.each { |key| pipeline.sadd(key, membership[:conversation_id]) }
@@ -78,6 +83,10 @@ class Conversations::UnreadCounts::Store
       format(Redis::Alfred::UNREAD_CONVERSATIONS_LABEL_INBOX, account_id: account_id, label_id: label_id, inbox_id: inbox_id)
     end
 
+    def team_inbox_key(account_id, team_id, inbox_id)
+      format(Redis::Alfred::UNREAD_CONVERSATIONS_TEAM_INBOX, account_id: account_id, team_id: team_id, inbox_id: inbox_id)
+    end
+
     def inbox_unassigned_key(account_id, inbox_id)
       format(Redis::Alfred::UNREAD_CONVERSATIONS_INBOX_UNASSIGNED, account_id: account_id, inbox_id: inbox_id)
     end
@@ -87,12 +96,7 @@ class Conversations::UnreadCounts::Store
     end
 
     def label_inbox_unassigned_key(account_id, label_id, inbox_id)
-      format(
-        Redis::Alfred::UNREAD_CONVERSATIONS_LABEL_INBOX_UNASSIGNED,
-        account_id: account_id,
-        label_id: label_id,
-        inbox_id: inbox_id
-      )
+      format(Redis::Alfred::UNREAD_CONVERSATIONS_LABEL_INBOX_UNASSIGNED, account_id: account_id, label_id: label_id, inbox_id: inbox_id)
     end
 
     def label_inbox_assignee_key(account_id, label_id, inbox_id, user_id)
@@ -103,6 +107,14 @@ class Conversations::UnreadCounts::Store
         inbox_id: inbox_id,
         user_id: user_id
       )
+    end
+
+    def team_inbox_unassigned_key(account_id, team_id, inbox_id)
+      format(Redis::Alfred::UNREAD_CONVERSATIONS_TEAM_INBOX_UNASSIGNED, account_id: account_id, team_id: team_id, inbox_id: inbox_id)
+    end
+
+    def team_inbox_assignee_key(account_id, team_id, inbox_id, user_id)
+      format(Redis::Alfred::UNREAD_CONVERSATIONS_TEAM_INBOX_ASSIGNEE, account_id: account_id, team_id: team_id, inbox_id: inbox_id, user_id: user_id)
     end
 
     private
@@ -119,18 +131,48 @@ class Conversations::UnreadCounts::Store
       format(Redis::Alfred::UNREAD_CONVERSATIONS_ACCOUNT_PREFIX, account_id: account_id)
     end
 
-    def base_keys(account_id, inbox_id, label_ids)
-      [inbox_key(account_id, inbox_id)] + Array(label_ids).map { |label_id| label_inbox_key(account_id, label_id, inbox_id) }
+    def base_keys(account_id, inbox_id, label_ids, team_id = nil)
+      keys = [inbox_key(account_id, inbox_id)] + Array(label_ids).map { |label_id| label_inbox_key(account_id, label_id, inbox_id) }
+      keys << team_inbox_key(account_id, team_id, inbox_id) if team_id.present?
+      keys
     end
 
-    def assignment_keys(account_id, inbox_id, label_ids, assignee_id)
-      if assignee_id.present?
-        [inbox_assignee_key(account_id, inbox_id, assignee_id)] +
-          Array(label_ids).map { |label_id| label_inbox_assignee_key(account_id, label_id, inbox_id, assignee_id) }
-      else
-        [inbox_unassigned_key(account_id, inbox_id)] +
-          Array(label_ids).map { |label_id| label_inbox_unassigned_key(account_id, label_id, inbox_id) }
-      end
+    def removable_base_keys(account_id, inbox_id, label_ids, team_ids)
+      keys = base_keys(account_id, inbox_id, label_ids)
+      keys.concat(Array(team_ids).compact_blank.map { |team_id| team_inbox_key(account_id, team_id, inbox_id) })
+    end
+
+    def assignment_keys(account_id, inbox_id, label_ids, assignee_id, team_id = nil)
+      keys = assignment_keys_without_team(account_id, inbox_id, label_ids, assignee_id)
+      keys << team_assignment_key(account_id, team_id, inbox_id, assignee_id) if team_id.present?
+      keys
+    end
+
+    def removable_assignment_keys(account_id, inbox_id, label_ids, assignee_id, team_ids)
+      keys = assignment_keys_without_team(account_id, inbox_id, label_ids, assignee_id)
+      keys.concat(Array(team_ids).compact_blank.map { |team_id| team_assignment_key(account_id, team_id, inbox_id, assignee_id) })
+    end
+
+    def assignment_keys_without_team(account_id, inbox_id, label_ids, assignee_id)
+      return assignee_keys(account_id, inbox_id, label_ids, assignee_id) if assignee_id.present?
+
+      unassigned_keys(account_id, inbox_id, label_ids)
+    end
+
+    def assignee_keys(account_id, inbox_id, label_ids, assignee_id)
+      [inbox_assignee_key(account_id, inbox_id, assignee_id)] +
+        Array(label_ids).map { |label_id| label_inbox_assignee_key(account_id, label_id, inbox_id, assignee_id) }
+    end
+
+    def unassigned_keys(account_id, inbox_id, label_ids)
+      [inbox_unassigned_key(account_id, inbox_id)] +
+        Array(label_ids).map { |label_id| label_inbox_unassigned_key(account_id, label_id, inbox_id) }
+    end
+
+    def team_assignment_key(account_id, team_id, inbox_id, assignee_id)
+      return team_inbox_assignee_key(account_id, team_id, inbox_id, assignee_id) if assignee_id.present?
+
+      team_inbox_unassigned_key(account_id, team_id, inbox_id)
     end
 
     def add_to_sets(keys, conversation_id)
@@ -163,7 +205,9 @@ class Conversations::UnreadCounts::Store
         "#{prefix}::INBOX::*::UNASSIGNED",
         "#{prefix}::INBOX::*::ASSIGNEE::*",
         "#{prefix}::LABEL::*::INBOX::*::UNASSIGNED",
-        "#{prefix}::LABEL::*::INBOX::*::ASSIGNEE::*"
+        "#{prefix}::LABEL::*::INBOX::*::ASSIGNEE::*",
+        "#{prefix}::TEAM::*::INBOX::*::UNASSIGNED",
+        "#{prefix}::TEAM::*::INBOX::*::ASSIGNEE::*"
       ]
     end
   end

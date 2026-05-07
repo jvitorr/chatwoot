@@ -28,11 +28,13 @@ class Conversations::UnreadCounts::Builder
 
   def write_memberships(assignment:)
     unread_conversations.in_batches(of: BATCH_SIZE) do |relation|
-      memberships = relation.pluck(:id, :inbox_id, :assignee_id, :cached_label_list).map do |id, inbox_id, assignee_id, cached_label_list|
+      columns = %i[id inbox_id assignee_id cached_label_list team_id]
+      memberships = relation.pluck(*columns).map do |id, inbox_id, assignee_id, cached_label_list, team_id|
         {
           conversation_id: id,
           inbox_id: inbox_id,
           assignee_id: assignee_id,
+          team_id: team_id,
           label_ids: label_ids_for(cached_label_list)
         }
       end
