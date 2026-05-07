@@ -37,7 +37,7 @@ class InstallationConfig < ApplicationRecord
   scope :editable, -> { where(locked: false) }
 
   after_commit :clear_cache
-  after_commit :refresh_captain_llm_config, if: :captain_llm_config?
+  after_commit :refresh_captain_llm_config, if: :captain_llm_config_key?
 
   def value
     serialized_value[:value]
@@ -59,7 +59,7 @@ class InstallationConfig < ApplicationRecord
     GlobalConfig.clear_cache
   end
 
-  def captain_llm_config?
+  def captain_llm_config_key?
     name.in?(CAPTAIN_LLM_CONFIG_KEYS)
   end
 

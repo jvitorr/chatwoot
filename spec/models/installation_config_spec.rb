@@ -20,23 +20,11 @@ RSpec.describe InstallationConfig do
   describe 'Captain LLM configuration' do
     before do
       described_class.where(name: %w[CAPTAIN_OPEN_AI_API_KEY CAPTAIN_OPEN_AI_ENDPOINT CAPTAIN_OPEN_AI_MODEL]).delete_all
-      RubyLLM.configure do |config|
-        config.openai_api_key = nil
-        config.openai_api_base = nil
-      end
-      Agents.configuration.openai_api_key = nil
-      Agents.configuration.openai_api_base = nil
-      Llm::Config.reset!
+      reset_llm_clients!
     end
 
     after do
-      RubyLLM.configure do |config|
-        config.openai_api_key = nil
-        config.openai_api_base = nil
-      end
-      Agents.configuration.openai_api_key = nil
-      Agents.configuration.openai_api_base = nil
-      Llm::Config.reset!
+      reset_llm_clients!
     end
 
     it 'clears stale Captain LLM endpoint when Captain endpoint is saved as blank' do
@@ -53,5 +41,15 @@ RSpec.describe InstallationConfig do
       expect(RubyLLM.config.openai_api_base).to be_nil
       expect(Agents.configuration.openai_api_base).to be_nil
     end
+  end
+
+  def reset_llm_clients!
+    RubyLLM.configure do |config|
+      config.openai_api_key = nil
+      config.openai_api_base = nil
+    end
+    Agents.configuration.openai_api_key = nil
+    Agents.configuration.openai_api_base = nil
+    Llm::Config.reset!
   end
 end

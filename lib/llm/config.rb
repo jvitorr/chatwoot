@@ -20,8 +20,9 @@ module Llm::Config
     end
 
     def refresh!
-      configure_agents
-      configure_ruby_llm
+      settings = resolved_settings
+      configure_agents(settings)
+      configure_ruby_llm(settings)
       @initialized = true
     end
 
@@ -37,23 +38,31 @@ module Llm::Config
 
     private
 
-    def configure_ruby_llm
+    def configure_ruby_llm(settings)
       RubyLLM.configure do |config|
-        config.openai_api_key = system_api_key.presence
-        config.openai_api_base = openai_api_base
-        config.default_model = system_model
+        config.openai_api_key = settings[:api_key]
+        config.openai_api_base = settings[:api_base]
+        config.default_model = settings[:model]
         config.model_registry_file = Rails.root.join('config/llm_models.json').to_s
         config.logger = Rails.logger
       end
     end
 
-    def configure_agents
+    def configure_agents(settings)
       Agents.configure do |config|
-        config.openai_api_key = system_api_key.presence
-        config.openai_api_base = openai_api_base
-        config.default_model = system_model
+        config.openai_api_key = settings[:api_key]
+        config.openai_api_base = settings[:api_base]
+        config.default_model = settings[:model]
         config.debug = false
       end
+    end
+
+    def resolved_settings
+      {
+        api_key: system_api_key.presence,
+        api_base: openai_api_base,
+        model: system_model
+      }
     end
 
     def system_api_key
