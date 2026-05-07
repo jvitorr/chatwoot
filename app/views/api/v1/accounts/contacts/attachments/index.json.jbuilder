@@ -5,8 +5,7 @@ end
 json.payload @attachments do |attachment|
   json.id attachment.push_event_data[:id]
   json.message_id attachment.push_event_data[:message_id]
-  json.conversation_id attachment.message.conversation_id
-  json.conversation_display_id attachment.message.conversation.display_id
+  json.conversation_id attachment.message.conversation.display_id
   json.thumb_url attachment.push_event_data[:thumb_url]
   json.data_url attachment.push_event_data[:data_url]
   json.file_size attachment.push_event_data[:file_size]
