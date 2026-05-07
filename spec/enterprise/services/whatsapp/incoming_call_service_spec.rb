@@ -114,6 +114,21 @@ describe Whatsapp::IncomingCallService do
     end
   end
 
+  describe 'outbound connect with no local row yet' do
+    it 'does not mint an inbound call when sdp_type is answer' do
+      allow(inbox.channel).to receive(:voice_enabled?).and_return(true)
+      allow(Rails.logger).to receive(:warn)
+      allow(ActionCable.server).to receive(:broadcast)
+
+      params = call_payload(event: 'connect', session: { sdp: 'sdp_answer', sdp_type: 'answer' })
+
+      expect { described_class.new(inbox: inbox, params: params).perform }
+        .not_to change(Call, :count)
+      expect(Rails.logger).to have_received(:warn).with(/Outbound connect for unknown call/)
+      expect(ActionCable.server).not_to have_received(:broadcast)
+    end
+  end
+
   describe 'duplicate inbound connect' do
     let!(:call) do
       conversation = create(:conversation, account: account, inbox: inbox)
