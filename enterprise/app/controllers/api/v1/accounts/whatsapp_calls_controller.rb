@@ -59,7 +59,6 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     authorize @conversation, :show?
   end
 
-  # Twilio voice also exposes voice_enabled? but uses a different initiation path.
   def ensure_calling_enabled
     channel = @conversation.inbox.channel
     return if channel.is_a?(Channel::Whatsapp) && channel.voice_enabled?
@@ -98,7 +97,6 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     'uploaded'
   end
 
-  # Browser-built SDP offer is forwarded to Meta; the connect webhook later delivers Meta's answer.
   def create_outbound_call
     contact_phone = @conversation.contact.phone_number.delete('+')
     result = provider_service.initiate_call(contact_phone, params[:sdp_offer])

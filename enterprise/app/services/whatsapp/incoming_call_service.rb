@@ -71,10 +71,6 @@ class Whatsapp::IncomingCallService
     payload.dig(:session, :sdp_type).to_s.downcase == 'offer'
   end
 
-  def inbound_offer?(payload)
-    payload.dig(:session, :sdp_type).to_s.downcase == 'offer'
-  end
-
   def create_inbound_call(payload)
     sdp_offer = payload.dig(:session, :sdp)
     call = Voice::InboundCallBuilder.perform!(

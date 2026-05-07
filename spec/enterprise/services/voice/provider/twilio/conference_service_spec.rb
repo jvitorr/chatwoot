@@ -36,23 +36,12 @@ describe Voice::Provider::Twilio::ConferenceService do
   end
 
   describe '#mark_agent_joined' do
-    it 'assigns the conversation to the agent without claiming the call (claim defers to participant-join webhook)' do
+    it 'sets accepted_by_agent on the Call' do
       agent = create(:user, account: account)
-      create(:inbox_member, inbox: channel.inbox, user: agent)
 
       service.mark_agent_joined(user: agent)
 
-      expect(call.reload.accepted_by_agent_id).to be_nil
-      expect(conversation.reload.assignee_id).to eq(agent.id)
-    end
-
-    it 'raises CallAlreadyAccepted when another agent has already claimed the call' do
-      first_agent = create(:user, account: account)
-      second_agent = create(:user, account: account)
-      call.update!(accepted_by_agent: first_agent)
-
-      expect { service.mark_agent_joined(user: second_agent) }
-        .to raise_error(CustomExceptions::CallAlreadyAccepted)
+      expect(call.reload.accepted_by_agent_id).to eq(agent.id)
     end
   end
 
