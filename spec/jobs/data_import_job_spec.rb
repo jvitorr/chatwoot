@@ -199,18 +199,17 @@ RSpec.describe DataImportJob do
       end
       let(:country_data_import) { create(:data_import, import_file: generate_csv_file(data_with_country)) }
 
-      it 'maps the country column to the standard country_code field' do
+      it 'maps the country column to additional_attributes country' do
         described_class.perform_now(country_data_import)
 
         john = Contact.from_email('john-country@example.com')
-        expect(john.country_code).to eq('United States')
         expect(john.additional_attributes['country']).to eq('United States')
 
         jane = Contact.from_email('jane-country@example.com')
-        expect(jane.country_code).to eq('India')
+        expect(jane.additional_attributes['country']).to eq('India')
 
         bob = Contact.from_email('bob-country@example.com')
-        expect(bob.country_code).to eq('')
+        expect(bob.additional_attributes['country']).to be_nil
       end
     end
 
