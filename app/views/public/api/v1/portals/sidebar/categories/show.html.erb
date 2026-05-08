@@ -24,7 +24,7 @@
   <main class="flex-1 min-w-0">
     <div class="px-6 md:px-10 py-8 md:py-10">
       <nav class="flex items-center gap-2 text-sm text-n-slate-11 mb-8">
-        <a href="<%= sidebar_home_link(@portal.slug, @locale, @design_query_param) %>" class="inline-flex items-center gap-1.5 hover:text-n-slate-12 transition">
+        <a href="<%= public_portal_locale_path(@portal.slug, @locale) %>" class="inline-flex items-center gap-1.5 hover:text-n-slate-12 transition">
           <span class="i-lucide-house size-3.5" aria-hidden="true"></span>
           <%= I18n.t('public_portal.common.home') %>
         </a>
@@ -68,7 +68,7 @@
       <% else %>
         <div class="grid grid-cols-1 gap-4">
           <% articles.each do |article| %>
-            <a href="<%= sidebar_article_link(@portal.slug, article.slug, @design_query_param) %>" class="<%= sidebar_article_card_classes %>">
+            <a href="<%= public_portal_article_path(@portal.slug, article.slug) %>" class="<%= sidebar_article_card_classes %>">
               <h3 class="text-base font-620 text-n-slate-12 group-hover:text-n-portal transition"><%= article.title %></h3>
               <p class="mt-2 text-sm leading-relaxed text-n-slate-11 line-clamp-2"><%= render_category_content(article.content) %></p>
             </a>

@@ -45,25 +45,6 @@ module PortalHelper
     theme.present? && theme != 'system' ? "?theme=#{theme}" : ''
   end
 
-  def append_design_query(url, design)
-    return url if design.blank?
-
-    separator = url.include?('?') ? '&' : '?'
-    "#{url}#{separator}design=#{design}"
-  end
-
-  def sidebar_home_link(portal_slug, locale, design)
-    append_design_query("/hc/#{portal_slug}/#{locale}", design)
-  end
-
-  def sidebar_category_link(portal_slug, category_locale, category_slug, design)
-    append_design_query("/hc/#{portal_slug}/#{category_locale}/categories/#{category_slug}", design)
-  end
-
-  def sidebar_article_link(portal_slug, article_slug, design)
-    append_design_query("/hc/#{portal_slug}/articles/#{article_slug}", design)
-  end
-
   def generate_home_link(portal_slug, portal_locale, theme, is_plain_layout_enabled)
     if is_plain_layout_enabled
       "/hc/#{portal_slug}/#{portal_locale}#{theme_query_string(theme)}"

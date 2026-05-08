@@ -1,5 +1,5 @@
 <% return if @is_plain_layout_enabled %>
-<% home_url = sidebar_home_link(@portal.slug, @locale, @design_query_param) %>
+<% home_url = public_portal_locale_path(@portal.slug, @locale) %>
 <% current = local_assigns[:current_page] || :home %>
 <header class="sticky top-0 z-40 w-full bg-white dark:bg-n-slate-1 border-b border-solid border-n-weak font-inter tracking-normal [font-optical-sizing:auto]">
   <div class="max-w-screen-2xl w-full mx-auto flex items-center h-16 px-4 md:px-6 gap-4">
@@ -52,7 +52,7 @@
             <div class="px-2.5 pt-2 pb-1.5 text-xs font-semibold text-n-slate-10 uppercase tracking-wider"><%= I18n.t('public_portal.sidebar.language') %></div>
             <% @portal.public_locale_codes.each do |locale| %>
               <% is_current = locale == @locale %>
-              <a href="<%= append_design_query("/hc/#{@portal.slug}/#{locale}/", @design_query_param) %>"
+              <a href="/hc/<%= @portal.slug %>/<%= locale %>/"
                  data-turbolinks="false"
                  class="flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-md transition <%= is_current ? 'bg-n-portal-soft text-n-portal' : 'text-n-slate-11 hover:bg-n-alpha-2 hover:text-n-slate-12' %>">
                 <span class="text-xs font-semibold uppercase min-w-9 text-center text-n-slate-11 bg-n-slate-2 border border-solid border-n-weak rounded px-1.5 py-0.5 flex-shrink-0"><%= locale %></span>

@@ -22,14 +22,8 @@ class Public::Api::V1::Portals::BaseController < PublicController
 
   def set_design_version
     @portal ||= Portal.find_by(slug: params[:slug], archived: false) if params[:slug].present?
-    candidate = resolve_design_candidate
-    @design_version = DESIGN_VERSIONS.include?(candidate) ? candidate : 'default'
-    @design_query_param = params[:design] if DESIGN_VERSIONS.include?(params[:design].to_s)
-  end
-
-  def resolve_design_candidate
     persisted = @portal&.config&.dig('theme')
-    params[:design].presence || persisted.presence || 'default'
+    @design_version = DESIGN_VERSIONS.include?(persisted) ? persisted : 'default'
   end
 
   def portal

@@ -7,7 +7,10 @@ class Public::Api::V1::PortalsController < Public::Api::V1::Portals::BaseControl
 
   def show
     @og_image_url = helpers.set_og_image_url('', @portal.header_text)
-    render template: 'public/api/v1/portals/sidebar/show' if @design_version == 'sidebar'
+    return unless @design_version == 'sidebar'
+
+    load_sidebar_home_data
+    render template: 'public/api/v1/portals/sidebar/show'
   end
 
   def sitemap
@@ -28,5 +31,29 @@ class Public::Api::V1::PortalsController < Public::Api::V1::Portals::BaseControl
 
     portal
     redirect_to "/hc/#{@portal.slug}/#{@portal.default_locale}"
+  end
+
+  def load_sidebar_home_data
+    base_articles = @portal.articles.published.where(locale: @locale).includes(:author, :category)
+    @visible_categories = @portal.categories
+                                 .where(locale: @locale)
+                                 .joins(:articles).where(articles: { status: :published })
+                                 .order(position: :asc)
+                                 .group('categories.id')
+    @popular_topics = @visible_categories.first(3)
+    @featured = base_articles.order_by_views.limit(6)
+    @category_contributors = build_category_contributors(@visible_categories)
+  end
+
+  def build_category_contributors(categories)
+    category_ids = categories.map(&:id)
+    return {} if category_ids.empty?
+
+    @portal.articles
+           .published
+           .where(locale: @locale, category_id: category_ids)
+           .includes(:author)
+           .group_by(&:category_id)
+           .transform_values { |articles| articles.filter_map(&:author).uniq.first(3) }
   end
 end

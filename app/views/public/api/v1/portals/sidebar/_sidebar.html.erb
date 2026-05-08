@@ -14,7 +14,7 @@
   </div>
 
   <nav class="px-3 pt-6 md:pt-8 pb-6 space-y-1">
-    <a href="<%= sidebar_home_link(@portal.slug, @locale, @design_query_param) %>"
+    <a href="<%= public_portal_locale_path(@portal.slug, @locale) %>"
        class="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-md transition <%= current_category_slug.nil? && current_article_slug.nil? ? 'bg-n-portal-soft text-n-portal' : 'text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-2' %>">
       <span class="i-lucide-house size-4" aria-hidden="true"></span>
       <%= I18n.t('public_portal.common.home') %>
@@ -26,7 +26,7 @@
       <% category_articles = category.articles.published.order(:position) %>
       <% next if category_articles.empty? %>
       <% is_active = current_category_slug == category.slug || (current_article_slug && category_articles.any? { |a| a.slug == current_article_slug }) %>
-      <% category_url = sidebar_category_link(@portal.slug, category.locale, category.slug, @design_query_param) %>
+      <% category_url = public_portal_category_path(@portal.slug, category.locale, category.slug) %>
       <details class="group" <%= 'open' if is_active %>>
         <summary class="flex items-center gap-2 px-3 py-2 text-sm rounded-md cursor-pointer list-none select-none <%= is_active ? 'text-n-portal font-semibold' : 'text-n-slate-12 font-medium' %> hover:bg-n-alpha-2 transition">
           <% if category.icon.present? %>
@@ -41,7 +41,7 @@
           <% category_articles.each do |article| %>
             <% is_current_article = current_article_slug == article.slug %>
             <li>
-              <a href="<%= sidebar_article_link(@portal.slug, article.slug, @design_query_param) %>"
+              <a href="<%= public_portal_article_path(@portal.slug, article.slug) %>"
                  class="relative -ms-[13px] ps-3 block py-1.5 text-sm leading-snug truncate transition <%= is_current_article ? 'text-n-portal font-medium border-l-2 border-n-portal' : 'text-n-slate-11 hover:text-n-slate-12 border-l-2 border-transparent' %>">
                 <%= article.title %>
               </a>
