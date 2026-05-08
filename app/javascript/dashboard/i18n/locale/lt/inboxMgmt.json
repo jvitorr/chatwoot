@@ -1011,7 +1011,8 @@
         "LABEL": "Slaptažodis",
         "PLACE_HOLDER": "Slaptažodis"
       },
-      "ENABLE_SSL": "Leisti SSL"
+      "ENABLE_SSL": "Leisti SSL",
+      "AUTH_MECHANISM": "Autentifikacija"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
