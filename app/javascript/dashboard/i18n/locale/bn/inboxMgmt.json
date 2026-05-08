@@ -1011,7 +1011,8 @@
         "LABEL": "পাসওয়ার্ড",
         "PLACE_HOLDER": "পাসওয়ার্ড"
       },
-      "ENABLE_SSL": "SSL সক্রিয় করুন"
+      "ENABLE_SSL": "SSL সক্রিয় করুন",
+      "AUTH_MECHANISM": "প্রমাণীকরণ"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
