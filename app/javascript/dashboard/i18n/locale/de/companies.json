@@ -22,6 +22,19 @@
     "LOADING": "Unternehmen werden geladen...",
     "UNNAMED": "Unbenanntes Unternehmen",
     "CONTACTS_COUNT": "{n} Kontakt | {n} Kontakte",
+    "ACTIONS": {
+      "CREATE": "Add company"
+    },
+    "CREATE": {
+      "TITLE": "Add company details",
+      "ACTIONS": {
+        "SAVE": "Add company"
+      },
+      "MESSAGES": {
+        "SUCCESS": "Company created.",
+        "ERROR": "Could not create the company."
+      }
+    },
     "DETAIL": {
       "LOADING": "Loading company details...",
       "EMPTY_STATE": {
