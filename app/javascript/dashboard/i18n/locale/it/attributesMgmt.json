@@ -3,7 +3,7 @@
     "HEADER": "Attributi Personalizzati",
     "HEADER_BTN_TXT": "Aggiungi Attributo Personalizzato",
     "LOADING": "Caricamento attributi personalizzati",
-    "DESCRIPTION": "A custom attribute tracks additional details about your contacts, companies, or conversations—such as the subscription plan or the date of their first purchase. You can add different types of custom attributes, such as text, lists, or numbers, to capture the specific information you need.",
+    "DESCRIPTION": "Un attributo personalizzato traccia ulteriori dettagli sui tuoi contatti, aziende o conversazioni, come il loro piano di abbonamento o la data del loro primo acquisto. È possibile aggiungere diversi tipi di attributi personalizzati, come testi, elenchi o numeri, per salvare le informazioni specifiche di cui hai bisogno.",
     "LEARN_MORE": "Scopri di più sugli attributi personalizzati",
     "COUNT": "{n} attributo | {n} attributi",
     "SEARCH_PLACEHOLDER": "Cerca attributi...",
