@@ -1,3 +1,4 @@
+<% return if @is_plain_layout_enabled %>
 <% home_url = sidebar_home_link(@portal.slug, @locale, @design_query_param) %>
 <% current = local_assigns[:current_page] || :home %>
 <header class="sticky top-0 z-40 w-full bg-white dark:bg-n-slate-1 border-b border-solid border-n-weak font-inter tracking-normal [font-optical-sizing:auto]">
@@ -39,7 +40,7 @@
       <div id="sidebar-theme-toggle"></div>
 
       <% if @portal.public_locale_codes.length > 1 %>
-        <details class="hidden sm:block relative group" data-close-on-clickaway>
+        <details class="relative group" data-close-on-clickaway>
           <summary class="list-none flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-2 transition group-open:bg-n-alpha-2 group-open:text-n-slate-12 [&::-webkit-details-marker]:hidden">
             <span class="i-lucide-languages size-4" aria-hidden="true"></span>
             <span class="hidden lg:inline text-sm font-medium"><%= language_name(@locale) %></span>

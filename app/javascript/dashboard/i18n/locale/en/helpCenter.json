@@ -866,6 +866,21 @@
         },
         "EDIT_CONFIGURATION": "Edit configuration"
       },
+      "LAYOUT_CONTENT": {
+        "HEADER": "Appearance",
+        "DESCRIPTION": "Pick the layout that fits how your visitors read.",
+        "LAYOUT": {
+          "DEFAULT": {
+            "TITLE": "Classic",
+            "DESCRIPTION": "A welcoming home page with search and featured topics."
+          },
+          "SIDEBAR": {
+            "TITLE": "Documentation",
+            "DESCRIPTION": "Side-by-side navigation that keeps every guide a click away."
+          }
+        },
+        "SAVE": "Save changes"
+      },
       "API": {
         "CREATE_PORTAL": {
           "SUCCESS_MESSAGE": "Portal created successfully",

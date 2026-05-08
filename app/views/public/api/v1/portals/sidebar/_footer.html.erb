@@ -1,3 +1,4 @@
+<% return if @is_plain_layout_enabled %>
 <%
   socials = (@portal.config.is_a?(Hash) && @portal.config['social_profiles']) || {}
   social_definitions = [

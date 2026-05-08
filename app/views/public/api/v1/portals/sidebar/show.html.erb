@@ -12,6 +12,7 @@
     <%= render 'public/api/v1/portals/sidebar/sidebar', current_category_slug: nil, current_article_slug: nil %>
 
     <main class="flex-1 min-w-0">
+      <% unless @is_plain_layout_enabled %>
       <section class="relative isolate overflow-hidden border-b border-solid border-n-weak bg-n-slate-1 dark:bg-n-slate-2 min-h-[50vh] flex items-center">
         <div class="absolute inset-0 pointer-events-none text-n-portal-faint [background-image:linear-gradient(to_right,currentColor_1px,transparent_1px),linear-gradient(to_bottom,currentColor_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_50%_30%,black_35%,transparent_80%)] [-webkit-mask-image:radial-gradient(ellipse_at_50%_30%,black_35%,transparent_80%)]" aria-hidden="true"></div>
 
@@ -43,6 +44,7 @@
           </div>
         </div>
       </section>
+      <% end %>
 
       <section class="px-6 md:px-10 py-8 md:py-10">
         <%= render 'public/api/v1/portals/sidebar/section_header',

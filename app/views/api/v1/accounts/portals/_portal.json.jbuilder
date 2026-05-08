@@ -15,6 +15,8 @@ json.config do
       json.partial! 'api/v1/models/portal_config', formats: [:json], locale: locale, portal: portal
     end
   end
+  json.default_locale portal.default_locale
+  json.theme portal.config['theme'] if portal.config.is_a?(Hash)
 end
 
 if portal.channel_web_widget
