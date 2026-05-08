@@ -115,22 +115,22 @@ const sortOptions = computed(() => [
   },
 ]);
 
-const selectedSourceLabel = computed(
+const selectedSourceOption = computed(
   () =>
-    sourceOptions.value.find(item => item.value === props.activeSourceFilter)
-      ?.label || t('CAPTAIN.DOCUMENTS.FILTERS.SOURCE.ALL')
+    sourceOptions.value.find(item => item.value === props.activeSourceFilter) ||
+    sourceOptions.value[0]
 );
 
-const selectedStatusLabel = computed(
+const selectedStatusOption = computed(
   () =>
-    statusOptions.value.find(item => item.value === props.activeStatusFilter)
-      ?.label || t('CAPTAIN.DOCUMENTS.FILTERS.STATUS.ANY')
+    statusOptions.value.find(item => item.value === props.activeStatusFilter) ||
+    statusOptions.value[0]
 );
 
-const selectedSortLabel = computed(
+const selectedSortOption = computed(
   () =>
-    sortOptions.value.find(item => item.value === props.activeSort)?.label ||
-    t('CAPTAIN.DOCUMENTS.FILTERS.SORT.RECENTLY_UPDATED')
+    sortOptions.value.find(item => item.value === props.activeSort) ||
+    sortOptions.value[0]
 );
 
 const closeMenu = () => {
@@ -161,9 +161,8 @@ const handleMenuAction = ({ action, value }) => {
     <div class="flex flex-wrap items-center gap-2">
       <div class="relative">
         <Button
-          :label="selectedSourceLabel"
-          icon="i-lucide-files"
-          trailing-icon
+          :label="selectedSourceOption.label"
+          :icon="selectedSourceOption.icon"
           slate
           outline
           size="md"
@@ -171,7 +170,9 @@ const handleMenuAction = ({ action, value }) => {
           @click="toggleMenu('source')"
         >
           <template #default>
-            <span class="min-w-0 truncate">{{ selectedSourceLabel }}</span>
+            <span class="min-w-0 truncate">
+              {{ selectedSourceOption.label }}
+            </span>
             <Icon icon="i-lucide-chevron-down" class="shrink-0 size-4" />
           </template>
         </Button>
@@ -185,8 +186,8 @@ const handleMenuAction = ({ action, value }) => {
 
       <div class="relative">
         <Button
-          :label="selectedStatusLabel"
-          icon="i-lucide-circle-dashed"
+          :label="selectedStatusOption.label"
+          :icon="selectedStatusOption.icon"
           slate
           outline
           size="md"
@@ -194,7 +195,9 @@ const handleMenuAction = ({ action, value }) => {
           @click="toggleMenu('status')"
         >
           <template #default>
-            <span class="min-w-0 truncate">{{ selectedStatusLabel }}</span>
+            <span class="min-w-0 truncate">
+              {{ selectedStatusOption.label }}
+            </span>
             <Icon icon="i-lucide-chevron-down" class="shrink-0 size-4" />
           </template>
         </Button>
@@ -208,8 +211,8 @@ const handleMenuAction = ({ action, value }) => {
 
       <div class="relative">
         <Button
-          :label="selectedSortLabel"
-          icon="i-lucide-arrow-down-up"
+          :label="selectedSortOption.label"
+          :icon="selectedSortOption.icon"
           slate
           outline
           size="md"
@@ -217,7 +220,7 @@ const handleMenuAction = ({ action, value }) => {
           @click="toggleMenu('sort')"
         >
           <template #default>
-            <span class="min-w-0 truncate">{{ selectedSortLabel }}</span>
+            <span class="min-w-0 truncate">{{ selectedSortOption.label }}</span>
             <Icon icon="i-lucide-chevron-down" class="shrink-0 size-4" />
           </template>
         </Button>
