@@ -1011,7 +1011,8 @@
         "LABEL": "Lozinka",
         "PLACE_HOLDER": "Lozinka"
       },
-      "ENABLE_SSL": "Omogući SSL"
+      "ENABLE_SSL": "Omogući SSL",
+      "AUTH_MECHANISM": "Autentifikacija"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
