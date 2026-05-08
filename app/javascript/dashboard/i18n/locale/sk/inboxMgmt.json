@@ -1011,7 +1011,8 @@
         "LABEL": "Heslo",
         "PLACE_HOLDER": "Heslo"
       },
-      "ENABLE_SSL": "Povoliť SSL"
+      "ENABLE_SSL": "Povoliť SSL",
+      "AUTH_MECHANISM": "Authentication"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
