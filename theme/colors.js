@@ -229,6 +229,7 @@ export const colors = {
     brand: '#2781F6',
     portal: 'var(--dynamic-portal-color)',
     'portal-soft': 'var(--dynamic-portal-color-soft)',
+    'portal-faint': 'var(--dynamic-portal-color-faint)',
     background: 'rgb(var(--background-color) / <alpha-value>)',
     'input-background': 'rgba(var(--background-input-box))',
     surface: {

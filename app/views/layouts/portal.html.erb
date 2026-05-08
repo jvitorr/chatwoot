@@ -18,8 +18,8 @@ By default, it renders:
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="initial-scale=1">
-    <meta name= "turbolinks-cache-control" content= "no-cache">
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="turbolinks-cache-control" content="no-cache">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <%= vite_client_tag %>
     <%= vite_javascript_tag 'portal' %>
@@ -36,7 +36,7 @@ By default, it renders:
     <% else %>
       <title><%= @portal.display_title %></title>
     <% end %>
-    
+
     <% if @portal.logo.present? %>
       <link rel="icon" href="<%= url_for(@portal.logo) %>">
     <% end %>
@@ -81,7 +81,7 @@ By default, it renders:
             img.src = '<%= request.base_url %>/hc/<%= @portal.slug %>/articles/<%= @article.slug %>.png';
           }
         };
-        
+
         const addTrackingListeners = function() {
           const events = ['mouseenter', 'touchstart', 'focus'];
           events.forEach(event => {
@@ -102,6 +102,7 @@ By default, it renders:
     --dynamic-hover-bg-color: <%= generate_portal_hover_color(@portal.color , 'dark') %>;
     --dynamic-portal-color: <%= @portal.color %>;
     --dynamic-portal-color-soft: color-mix(in srgb, <%= @portal.color %> 18%, transparent);
+    --dynamic-portal-color-faint: color-mix(in srgb, <%= @portal.color %> 6%, transparent);
   }
 
   html.light {
@@ -110,6 +111,7 @@ By default, it renders:
     --dynamic-hover-bg-color: <%= generate_portal_hover_color(@portal.color , 'light') %>;
     --dynamic-portal-color: <%= @portal.color %>;
     --dynamic-portal-color-soft: color-mix(in srgb, <%= @portal.color %> 12%, transparent);
+    --dynamic-portal-color-faint: color-mix(in srgb, <%= @portal.color %> 5%, transparent);
   }
 
   /* Portal background */
