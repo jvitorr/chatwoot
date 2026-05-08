@@ -1,0 +1,15 @@
+<nav class="flex items-center gap-2 text-sm text-n-slate-11 mb-8 flex-wrap">
+  <a href="<%= public_portal_locale_path(@portal.slug, @article.category&.locale || @locale) %>" class="inline-flex items-center gap-1.5 hover:text-n-slate-12 transition">
+    <span class="i-lucide-house size-3.5" aria-hidden="true"></span>
+    <%= I18n.t('public_portal.common.home') %>
+  </a>
+  <span class="i-lucide-chevron-right size-3 text-n-slate-9" aria-hidden="true"></span>
+  <% if @article.category %>
+    <a href="<%= public_portal_category_path(@portal.slug, @article.category.locale, @article.category.slug) %>" class="hover:text-n-slate-12 transition inline-flex items-center gap-1.5">
+      <% if @article.category.icon.present? %><span><%= @article.category.icon %></span><% end %>
+      <%= @article.category.name %>
+    </a>
+    <span class="i-lucide-chevron-right size-3 text-n-slate-9" aria-hidden="true"></span>
+  <% end %>
+  <span class="text-n-slate-12 font-medium truncate"><%= @article.title %></span>
+</nav>
