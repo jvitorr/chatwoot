@@ -40,7 +40,7 @@
           <div class="min-w-0">
             <h1 class="text-3xl leading-snug font-620 tracking-tight text-n-slate-12 text-balance"><%= @category.name %></h1>
             <div class="flex items-center gap-2 text-sm text-n-slate-10 flex-wrap">
-              <span class="tabular-nums"><%= articles.size %> <%= articles.size == 1 ? 'article' : 'articles' %></span>
+              <span class="tabular-nums"><%= articles.size %> <%= I18n.t(articles.size == 1 ? 'public_portal.common.article' : 'public_portal.common.articles') %></span>
               <% if category_authors.any? %>
                 <span aria-hidden="true">·</span>
                 <span class="inline-flex items-center gap-2">

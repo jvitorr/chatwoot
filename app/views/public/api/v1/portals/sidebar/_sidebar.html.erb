@@ -5,10 +5,9 @@
   uncategorized_count = @portal.articles.where(status: :published, category_id: nil, locale: @locale).count
 %>
 <input type="checkbox" id="sidebar-drawer-checkbox" class="peer/sb hidden" />
-<label for="sidebar-drawer-checkbox" class="md:hidden fixed inset-0 bg-n-alpha-3 backdrop-blur-sm z-20 hidden peer-checked/sb:block cursor-pointer" aria-hidden="true"></label>
-<aside class="fixed md:sticky inset-y-0 md:inset-y-auto md:top-16 left-0 z-30 w-72 md:w-64 lg:w-72 shrink-0 h-[100dvh] md:h-[calc(100dvh-4rem)] overflow-y-auto bg-white dark:bg-n-slate-2 border-r border-solid border-n-weak -translate-x-full md:translate-x-0 transition-transform duration-200 peer-checked/sb:translate-x-0">
-  <div class="md:hidden flex items-center justify-between px-4 h-14 border-b border-n-weak">
-    <span class="text-base font-semibold tracking-tight text-n-slate-12"><%= I18n.t('public_portal.sidebar.documentation') %></span>
+<label for="sidebar-drawer-checkbox" class="md:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40 hidden peer-checked/sb:block cursor-pointer" aria-hidden="true"></label>
+<aside class="fixed md:sticky inset-y-0 md:inset-y-auto md:top-16 ltr:left-0 rtl:right-0 max-md:z-50 md:z-30 w-72 md:w-64 lg:w-72 shrink-0 h-[100dvh] md:h-[calc(100dvh-4rem)] overflow-y-auto bg-white dark:bg-n-slate-2 ltr:border-r rtl:border-l border-solid border-n-weak max-md:ltr:-translate-x-full max-md:rtl:translate-x-full md:translate-x-0 transition-transform duration-200 peer-checked/sb:translate-x-0">
+  <div class="md:hidden flex items-center justify-end px-4 h-14">
     <label for="sidebar-drawer-checkbox" class="p-1.5 rounded-md text-n-slate-11 hover:bg-n-alpha-2 cursor-pointer" aria-label="<%= I18n.t('public_portal.sidebar.close_sidebar') %>">
       <span class="i-lucide-x size-5 block" aria-hidden="true"></span>
     </label>
