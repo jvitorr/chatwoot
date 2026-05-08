@@ -1011,7 +1011,8 @@
         "LABEL": "Parola",
         "PLACE_HOLDER": "Parola"
       },
-      "ENABLE_SSL": "Activare SSL"
+      "ENABLE_SSL": "Activare SSL",
+      "AUTH_MECHANISM": "Autentificare"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
