@@ -1011,7 +1011,8 @@
         "LABEL": "Salasana",
         "PLACE_HOLDER": "Salasana"
       },
-      "ENABLE_SSL": "Enable SSL"
+      "ENABLE_SSL": "Enable SSL",
+      "AUTH_MECHANISM": "Authentication"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
