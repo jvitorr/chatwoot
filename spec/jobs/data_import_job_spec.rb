@@ -188,28 +188,31 @@ RSpec.describe DataImportJob do
       end
     end
 
-    context 'when the data contains country column' do
+    context 'when the data contains country and country_code columns' do
       let(:data_with_country) do
         [
-          %w[id name email phone_number country],
-          ['1', 'John Doe', 'john-country@example.com', '+918080808081', 'United States'],
-          ['2', 'Jane Smith', 'jane-country@example.com', '+918080808082', 'India'],
-          ['3', 'Bob Wilson', 'bob-country@example.com', '+918080808083', '']
+          %w[id name email phone_number country country_code],
+          ['1', 'John Doe', 'john-country@example.com', '+918080808081', 'United States', 'US'],
+          ['2', 'Jane Smith', 'jane-country@example.com', '+918080808082', 'India', 'IN'],
+          ['3', 'Bob Wilson', 'bob-country@example.com', '+918080808083', '', '']
         ]
       end
       let(:country_data_import) { create(:data_import, import_file: generate_csv_file(data_with_country)) }
 
-      it 'maps the country column to additional_attributes country' do
+      it 'maps the country and country_code columns into additional_attributes' do
         described_class.perform_now(country_data_import)
 
         john = Contact.from_email('john-country@example.com')
         expect(john.additional_attributes['country']).to eq('United States')
+        expect(john.additional_attributes['country_code']).to eq('US')
 
         jane = Contact.from_email('jane-country@example.com')
         expect(jane.additional_attributes['country']).to eq('India')
+        expect(jane.additional_attributes['country_code']).to eq('IN')
 
         bob = Contact.from_email('bob-country@example.com')
         expect(bob.additional_attributes['country']).to be_nil
+        expect(bob.additional_attributes['country_code']).to be_nil
       end
     end
 
