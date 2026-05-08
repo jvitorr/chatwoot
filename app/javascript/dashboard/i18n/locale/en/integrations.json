@@ -742,7 +742,7 @@
       "SELECT_ALL": "Select all ({count})",
       "UNSELECT_ALL": "Unselect all ({count})",
       "BULK_DELETE_BUTTON": "Delete",
-      "BULK_SYNC_BUTTON": "Sync",
+      "BULK_SYNC_BUTTON": "Refresh",
       "BULK_DELETE": {
         "TITLE": "Delete documents?",
         "DESCRIPTION": "Are you sure you want to delete the selected documents? This action cannot be undone.",
@@ -751,14 +751,14 @@
         "ERROR_MESSAGE": "There was an error deleting the documents, please try again."
       },
       "BULK_SYNC": {
-        "SUCCESS_MESSAGE_ONE": "Sync queued for 1 document",
-        "SUCCESS_MESSAGE": "Sync queued for {count} documents",
-        "ZERO_MESSAGE": "No documents marked for sync.",
-        "ERROR_MESSAGE": "There was an error queuing the sync, please try again."
+        "SUCCESS_MESSAGE_ONE": "Refresh queued for 1 document",
+        "SUCCESS_MESSAGE": "Refresh queued for {count} documents",
+        "ZERO_MESSAGE": "No documents marked for refresh.",
+        "ERROR_MESSAGE": "There was an error queuing the refresh, please try again."
       },
       "SYNC": {
-        "QUEUED_MESSAGE": "Sync queued. We'll refresh the document shortly.",
-        "ERROR_MESSAGE": "Could not queue sync, please try again."
+        "QUEUED_MESSAGE": "Refresh queued. We'll update the document shortly.",
+        "ERROR_MESSAGE": "Could not queue refresh, please try again."
       },
       "STATS": {
         "TOTAL": "Web pages",
@@ -856,8 +856,8 @@
 
       "OPTIONS": {
         "VIEW_RELATED_RESPONSES": "View Related Responses",
-        "SYNC_NOW": "Sync now",
-        "RETRY_SYNC": "Retry sync",
+        "SYNC_NOW": "Refresh now",
+        "RETRY_SYNC": "Retry refresh",
         "DELETE_DOCUMENT": "Delete Document"
       },
       "EMPTY_STATE": {
