@@ -55,16 +55,21 @@ const createNewArticle = async ({ title, content }) => {
   isUpdating.value = true;
   try {
     const { locale } = route.params;
+    const resolvedCategoryId = selectedCategoryId.value || categoryId.value;
     const articleId = await store.dispatch('articles/create', {
       portalSlug,
       content: article.value.content,
       title: article.value.title,
       locale: locale,
       authorId: selectedAuthorId.value || currentUserId.value,
-      categoryId: selectedCategoryId.value || categoryId.value,
+      categoryId: resolvedCategoryId,
     });
 
     useTrack(PORTALS_EVENTS.CREATE_ARTICLE, { locale });
+
+    const resolvedSlug = categories.value?.find(
+      c => c.id === resolvedCategoryId
+    )?.slug;
 
     router.replace({
       name: isCategoryArticles.value
@@ -74,7 +79,7 @@ const createNewArticle = async ({ title, content }) => {
         articleSlug: articleId,
         portalSlug,
         locale,
-        categorySlug: route.params.categorySlug,
+        categorySlug: resolvedSlug,
       },
     });
   } catch (error) {
