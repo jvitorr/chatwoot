@@ -1,162 +1,249 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import Icon from 'dashboard/components-next/icon/Icon.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
+import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 
 const props = defineProps({
-  stats: {
-    type: Object,
-    default: null,
+  activeSourceFilter: {
+    type: String,
+    default: 'all',
   },
-  activeFilter: {
+  activeStatusFilter: {
     type: String,
     default: null,
   },
-  isLoading: {
-    type: Boolean,
-    default: false,
+  activeSort: {
+    type: String,
+    default: 'recently_updated',
   },
-  syncFrequencyLabel: {
+  searchQuery: {
     type: String,
     default: '',
   },
-  isAutoSyncEligible: {
-    type: Boolean,
-    default: false,
-  },
-  isAutoSyncEnabled: {
-    type: Boolean,
-    default: false,
-  },
 });
 
-const emit = defineEmits(['select']);
+const emit = defineEmits([
+  'selectSource',
+  'selectStatus',
+  'selectSort',
+  'search',
+]);
 
 const { t } = useI18n();
 
-const items = computed(() => {
-  const {
-    total = 0,
-    stale = 0,
-    syncing = 0,
-    synced_recently: syncedRecently = 0,
-  } = props.stats ?? {};
-  return [
-    {
-      key: 'total',
-      filterKey: null,
-      label: t('CAPTAIN.DOCUMENTS.STATS.TOTAL'),
-      value: total,
-      icon: 'i-lucide-file',
-      tone: 'slate',
-    },
-    {
-      key: 'stale',
-      filterKey: 'stale',
-      label: t('CAPTAIN.DOCUMENTS.STATS.STALE'),
-      value: stale,
-      icon: 'i-lucide-alert-triangle',
-      tone: stale > 0 ? 'amber' : 'slate',
-    },
-    {
-      key: 'syncing',
-      filterKey: 'syncing',
-      label: t('CAPTAIN.DOCUMENTS.STATS.SYNCING'),
-      value: syncing,
-      icon: 'i-lucide-refresh-cw',
-      tone: syncing > 0 ? 'amber' : 'slate',
-    },
-    {
-      key: 'synced_recently',
-      filterKey: 'synced_recently',
-      label: t('CAPTAIN.DOCUMENTS.STATS.SYNCED_RECENTLY'),
-      value: syncedRecently,
-      icon: 'i-lucide-check-circle',
-      tone: 'teal',
-    },
-  ];
-});
+const openMenu = ref(null);
 
-const showPlaceholder = computed(() => props.isLoading || !props.stats);
+const sourceOptions = computed(() => [
+  {
+    label: t('CAPTAIN.DOCUMENTS.FILTERS.SOURCE.ALL'),
+    value: 'all',
+    action: 'source',
+    icon: 'i-lucide-files',
+    isSelected: props.activeSourceFilter === 'all',
+  },
+  {
+    label: t('CAPTAIN.DOCUMENTS.FILTERS.SOURCE.WEB'),
+    value: 'web',
+    action: 'source',
+    icon: 'i-lucide-link',
+    isSelected: props.activeSourceFilter === 'web',
+  },
+  {
+    label: t('CAPTAIN.DOCUMENTS.FILTERS.SOURCE.PDF'),
+    value: 'pdf',
+    action: 'source',
+    icon: 'i-lucide-file-text',
+    isSelected: props.activeSourceFilter === 'pdf',
+  },
+]);
 
-const caption = computed(() => {
-  if (props.syncFrequencyLabel) {
-    return t('CAPTAIN.DOCUMENTS.STATS.CAPTION_AUTO', {
-      frequency: props.syncFrequencyLabel,
-    });
-  }
+const statusOptions = computed(() => [
+  {
+    label: t('CAPTAIN.DOCUMENTS.FILTERS.STATUS.ANY'),
+    value: null,
+    action: 'status',
+    icon: 'i-lucide-circle-dashed',
+    isSelected: !props.activeStatusFilter,
+  },
+  {
+    label: t('CAPTAIN.DOCUMENTS.FILTERS.STATUS.UPDATED'),
+    value: 'synced',
+    action: 'status',
+    icon: 'i-lucide-check-circle',
+    isSelected: props.activeStatusFilter === 'synced',
+  },
+  {
+    label: t('CAPTAIN.DOCUMENTS.FILTERS.STATUS.NEEDS_UPDATE'),
+    value: 'stale',
+    action: 'status',
+    icon: 'i-lucide-clock',
+    isSelected: props.activeStatusFilter === 'stale',
+  },
+  {
+    label: t('CAPTAIN.DOCUMENTS.FILTERS.STATUS.UPDATING'),
+    value: 'syncing',
+    action: 'status',
+    icon: 'i-lucide-refresh-cw',
+    isSelected: props.activeStatusFilter === 'syncing',
+  },
+  {
+    label: t('CAPTAIN.DOCUMENTS.FILTERS.STATUS.FAILED'),
+    value: 'failed',
+    action: 'status',
+    icon: 'i-lucide-circle-x',
+    isSelected: props.activeStatusFilter === 'failed',
+  },
+]);
 
-  if (props.isAutoSyncEligible && !props.isAutoSyncEnabled) {
-    return t('CAPTAIN.DOCUMENTS.STATS.CAPTION_DISABLED');
-  }
+const sortOptions = computed(() => [
+  {
+    label: t('CAPTAIN.DOCUMENTS.FILTERS.SORT.RECENTLY_UPDATED'),
+    value: 'recently_updated',
+    action: 'sort',
+    icon: 'i-lucide-arrow-down-up',
+    isSelected: props.activeSort === 'recently_updated',
+  },
+  {
+    label: t('CAPTAIN.DOCUMENTS.FILTERS.SORT.RECENTLY_CREATED'),
+    value: 'recently_created',
+    action: 'sort',
+    icon: 'i-lucide-clock',
+    isSelected: props.activeSort === 'recently_created',
+  },
+]);
 
-  return t('CAPTAIN.DOCUMENTS.STATS.CAPTION_PLAN_UNAVAILABLE');
-});
+const selectedSourceLabel = computed(
+  () =>
+    sourceOptions.value.find(item => item.value === props.activeSourceFilter)
+      ?.label || t('CAPTAIN.DOCUMENTS.FILTERS.SOURCE.ALL')
+);
 
-const isActive = item => props.activeFilter === item.filterKey;
+const selectedStatusLabel = computed(
+  () =>
+    statusOptions.value.find(item => item.value === props.activeStatusFilter)
+      ?.label || t('CAPTAIN.DOCUMENTS.FILTERS.STATUS.ANY')
+);
 
-const isDisabled = item =>
-  showPlaceholder.value ||
-  (item.filterKey !== null && item.value === 0 && !isActive(item));
+const selectedSortLabel = computed(
+  () =>
+    sortOptions.value.find(item => item.value === props.activeSort)?.label ||
+    t('CAPTAIN.DOCUMENTS.FILTERS.SORT.RECENTLY_UPDATED')
+);
 
-const iconClass = (tone, active) => {
-  if (active) return 'text-n-brand';
-  if (tone === 'amber') return 'text-n-amber-11';
-  if (tone === 'teal') return 'text-n-teal-11';
-  return 'text-n-slate-11';
+const closeMenu = () => {
+  openMenu.value = null;
 };
 
-const handleSelect = item => {
-  if (isDisabled(item)) return;
-  emit('select', isActive(item) ? null : item.filterKey);
+const toggleMenu = menu => {
+  openMenu.value = openMenu.value === menu ? null : menu;
+};
+
+const handleMenuAction = ({ action, value }) => {
+  closeMenu();
+  if (action === 'source') {
+    emit('selectSource', value);
+  } else if (action === 'status') {
+    emit('selectStatus', value);
+  } else if (action === 'sort') {
+    emit('selectSort', value);
+  }
 };
 </script>
 
 <template>
-  <div class="flex flex-col gap-2 w-full">
-    <div class="grid grid-cols-2 gap-3 w-full lg:grid-cols-4">
-      <button
-        v-for="item in items"
-        :key="item.key"
-        type="button"
-        :disabled="isDisabled(item)"
-        class="flex flex-col gap-2 px-4 py-3 rounded-xl outline -outline-offset-1 text-left transition-colors"
-        :class="[
-          isActive(item)
-            ? 'outline-1 outline-n-brand bg-n-alpha-1'
-            : 'outline-1 outline-n-container bg-n-solid-2',
-          isDisabled(item)
-            ? 'cursor-not-allowed opacity-60'
-            : 'cursor-pointer hover:bg-n-alpha-2',
-        ]"
-        @click="handleSelect(item)"
-      >
-        <div class="flex gap-1.5 items-center">
-          <Icon
-            class="shrink-0 size-3"
-            :icon="item.icon"
-            :class="iconClass(item.tone, isActive(item))"
-          />
-          <span
-            class="text-xs font-medium tracking-wide uppercase truncate text-n-slate-11"
-          >
-            {{ item.label }}
-          </span>
-        </div>
-        <span
-          class="text-2xl font-medium leading-none tabular-nums text-n-slate-12"
+  <div
+    v-on-clickaway="closeMenu"
+    class="flex flex-col gap-3 w-full lg:flex-row lg:items-center lg:justify-between"
+  >
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="relative">
+        <Button
+          :label="selectedSourceLabel"
+          icon="i-lucide-files"
+          trailing-icon
+          slate
+          outline
+          size="md"
+          class="min-w-[10rem] !justify-between bg-n-solid-1"
+          @click="toggleMenu('source')"
         >
-          {{
-            showPlaceholder
-              ? t('CAPTAIN.DOCUMENTS.STATS.PLACEHOLDER')
-              : item.value
-          }}
-        </span>
-      </button>
+          <template #default>
+            <span class="min-w-0 truncate">{{ selectedSourceLabel }}</span>
+            <Icon icon="i-lucide-chevron-down" class="shrink-0 size-4" />
+          </template>
+        </Button>
+        <DropdownMenu
+          v-if="openMenu === 'source'"
+          :menu-items="sourceOptions"
+          class="top-full mt-2 ltr:left-0 rtl:right-0 min-w-48"
+          @action="handleMenuAction"
+        />
+      </div>
+
+      <div class="relative">
+        <Button
+          :label="selectedStatusLabel"
+          icon="i-lucide-circle-dashed"
+          slate
+          outline
+          size="md"
+          class="min-w-[10rem] !justify-between bg-n-solid-1"
+          @click="toggleMenu('status')"
+        >
+          <template #default>
+            <span class="min-w-0 truncate">{{ selectedStatusLabel }}</span>
+            <Icon icon="i-lucide-chevron-down" class="shrink-0 size-4" />
+          </template>
+        </Button>
+        <DropdownMenu
+          v-if="openMenu === 'status'"
+          :menu-items="statusOptions"
+          class="top-full mt-2 ltr:left-0 rtl:right-0 min-w-52"
+          @action="handleMenuAction"
+        />
+      </div>
+
+      <div class="relative">
+        <Button
+          :label="selectedSortLabel"
+          icon="i-lucide-arrow-down-up"
+          slate
+          outline
+          size="md"
+          class="min-w-[12rem] !justify-between bg-n-solid-1"
+          @click="toggleMenu('sort')"
+        >
+          <template #default>
+            <span class="min-w-0 truncate">{{ selectedSortLabel }}</span>
+            <Icon icon="i-lucide-chevron-down" class="shrink-0 size-4" />
+          </template>
+        </Button>
+        <DropdownMenu
+          v-if="openMenu === 'sort'"
+          :menu-items="sortOptions"
+          class="top-full mt-2 ltr:left-0 rtl:right-0 min-w-56"
+          @action="handleMenuAction"
+        />
+      </div>
     </div>
-    <p class="text-xs text-n-slate-10">
-      {{ caption }}
-    </p>
+
+    <label
+      class="relative flex items-center w-full h-10 rounded-lg outline outline-1 outline-n-container bg-n-solid-1 lg:max-w-72"
+    >
+      <Icon
+        icon="i-lucide-search"
+        class="absolute size-4 text-n-slate-11 ltr:left-3 rtl:right-3"
+      />
+      <input
+        :value="searchQuery"
+        type="search"
+        :placeholder="t('CAPTAIN.DOCUMENTS.FILTERS.SEARCH_PLACEHOLDER')"
+        class="w-full h-full py-0 text-sm border-0 reset-base bg-transparent text-n-slate-12 placeholder:text-n-slate-10 focus:outline-none ltr:pl-9 ltr:pr-3 rtl:pr-9 rtl:pl-3"
+        @input="emit('search', $event.target.value)"
+      />
+    </label>
   </div>
 </template>

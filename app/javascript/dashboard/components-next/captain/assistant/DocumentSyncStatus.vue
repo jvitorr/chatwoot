@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { dynamicTime } from 'shared/helpers/timeHelper';
+import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
@@ -85,10 +86,7 @@ const errorLabel = computed(() =>
 const label = computed(() => {
   if (isSyncing.value) return t('CAPTAIN.DOCUMENTS.SYNC_STATUS.SYNCING');
   if (isStaleSync.value) return t('CAPTAIN.DOCUMENTS.SYNC_STATUS.STALE_SYNC');
-  if (isFailed.value)
-    return t('CAPTAIN.DOCUMENTS.SYNC_STATUS.FAILED', {
-      error: errorLabel.value,
-    });
+  if (isFailed.value) return t('CAPTAIN.DOCUMENTS.SYNC_STATUS.FAILED');
   if (hasBeenSynced.value)
     return t('CAPTAIN.DOCUMENTS.SYNC_STATUS.SYNCED', {
       time: dynamicTime(props.lastSyncedAt),
@@ -114,38 +112,32 @@ const tone = computed(() => {
   if (isSyncing.value) return 'amber';
   if (isStaleSync.value) return 'amber';
   if (isFailed.value) return 'ruby';
-  if (!hasBeenSynced.value) return 'slate';
   if (isStale.value) return 'amber';
-  return 'emerald';
-});
-
-const dotClass = computed(() => {
-  if (tone.value === 'amber') return 'bg-n-amber-9';
-  if (tone.value === 'ruby') return 'bg-n-ruby-9';
-  if (tone.value === 'emerald') return 'bg-n-teal-9';
-  return 'bg-n-slate-9';
+  return 'slate';
 });
 
 const textClass = computed(() => {
   if (tone.value === 'amber') return 'text-n-amber-11';
   if (tone.value === 'ruby') return 'text-n-ruby-11';
-  if (tone.value === 'emerald') return 'text-n-teal-11';
   return 'text-n-slate-11';
+});
+
+const statusIcon = computed(() => {
+  if (isFailed.value || isStale.value || isStaleSync.value) {
+    return 'i-lucide-circle-alert';
+  }
+  return 'i-lucide-refresh-cw';
 });
 </script>
 
 <template>
   <span
-    class="flex gap-1.5 items-center text-xs truncate shrink-0 tabular-nums"
+    class="flex gap-1.5 items-center text-sm truncate shrink-0 tabular-nums"
     :class="textClass"
     :title="fullLabel"
   >
     <Spinner v-if="isSyncing" class="text-n-amber-11 size-3" />
-    <span
-      v-else
-      class="inline-block size-2 rounded-full shrink-0"
-      :class="dotClass"
-    />
+    <Icon v-else :icon="statusIcon" class="shrink-0 size-3.5" />
     <span class="truncate">{{ label }}</span>
     <Button
       v-if="showRetry && canRetry"
