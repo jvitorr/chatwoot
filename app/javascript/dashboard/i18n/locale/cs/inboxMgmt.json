@@ -1011,7 +1011,8 @@
         "LABEL": "Heslo",
         "PLACE_HOLDER": "Heslo"
       },
-      "ENABLE_SSL": "Enable SSL"
+      "ENABLE_SSL": "Enable SSL",
+      "AUTH_MECHANISM": "Authentication"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
