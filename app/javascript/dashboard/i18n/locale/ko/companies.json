@@ -22,6 +22,19 @@
     "LOADING": "회사 로딩 중...",
     "UNNAMED": "이름 없는 회사",
     "CONTACTS_COUNT": "{n} 연락처 | {n} 연락처",
+    "ACTIONS": {
+      "CREATE": "Add company"
+    },
+    "CREATE": {
+      "TITLE": "Add company details",
+      "ACTIONS": {
+        "SAVE": "Add company"
+      },
+      "MESSAGES": {
+        "SUCCESS": "Company created.",
+        "ERROR": "Could not create the company."
+      }
+    },
     "DETAIL": {
       "LOADING": "Loading company details...",
       "EMPTY_STATE": {
