@@ -1011,7 +1011,8 @@
         "LABEL": "Mot de passe",
         "PLACE_HOLDER": "Mot de passe"
       },
-      "ENABLE_SSL": "Activer SSL"
+      "ENABLE_SSL": "Activer SSL",
+      "AUTH_MECHANISM": "Identification"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
