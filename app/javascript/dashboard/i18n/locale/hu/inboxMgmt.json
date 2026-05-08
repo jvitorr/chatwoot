@@ -1011,7 +1011,8 @@
         "LABEL": "Jelszó",
         "PLACE_HOLDER": "Jelszó"
       },
-      "ENABLE_SSL": "SSL engedélyezése"
+      "ENABLE_SSL": "SSL engedélyezése",
+      "AUTH_MECHANISM": "Autentikáció"
     },
     "MICROSOFT": {
       "TITLE": "360Dialog",
