@@ -1011,7 +1011,8 @@
         "LABEL": "Lykilorð",
         "PLACE_HOLDER": "Lykilorð"
       },
-      "ENABLE_SSL": "Virkja SSL"
+      "ENABLE_SSL": "Virkja SSL",
+      "AUTH_MECHANISM": "Auðkenning"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
