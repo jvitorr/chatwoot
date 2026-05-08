@@ -225,10 +225,12 @@ async function pollSyncDocuments() {
   }
 }
 
-function scheduleSyncPoll() {
-  if (syncPollingControls.isActive.value) return;
+function scheduleSyncPoll({ extendWindow = false } = {}) {
+  if (extendWindow || !syncPollStartedAt.value) {
+    syncPollStartedAt.value = Date.now();
+  }
 
-  syncPollStartedAt.value ||= Date.now();
+  if (syncPollingControls.isActive.value) return;
   syncPollingControls.resume();
 }
 
@@ -246,7 +248,7 @@ const handleSync = async id => {
   try {
     await store.dispatch('captainDocuments/sync', id);
     useAlert(t('CAPTAIN.DOCUMENTS.SYNC.QUEUED_MESSAGE'));
-    scheduleSyncPoll();
+    scheduleSyncPoll({ extendWindow: true });
   } catch (error) {
     useAlert(t('CAPTAIN.DOCUMENTS.SYNC.ERROR_MESSAGE'));
   }
@@ -377,7 +379,7 @@ const handleBulkSync = async () => {
     useAlert(message);
     bulkSelectedIds.value = new Set();
     if (queuedCount > 0) {
-      scheduleSyncPoll();
+      scheduleSyncPoll({ extendWindow: true });
     }
   } catch (error) {
     useAlert(t('CAPTAIN.DOCUMENTS.BULK_SYNC.ERROR_MESSAGE'));
