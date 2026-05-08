@@ -449,7 +449,7 @@ onUnmounted(() => {
           :class="{ 'mb-2': bulkSelectedIds.size > 0 }"
           @bulk-delete="bulkDeleteDialog.dialogRef.open()"
         >
-          <template v-if="hasSyncableSelection" #secondary-actions>
+          <template v-if="hasSyncableSelection" #secondaryActions>
             <Button
               :label="$t('CAPTAIN.DOCUMENTS.BULK_SYNC_BUTTON')"
               sm
