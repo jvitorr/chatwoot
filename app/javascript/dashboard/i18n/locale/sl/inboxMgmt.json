@@ -1011,7 +1011,8 @@
         "LABEL": "Geslo",
         "PLACE_HOLDER": "Geslo"
       },
-      "ENABLE_SSL": "Omogoči SSL"
+      "ENABLE_SSL": "Omogoči SSL",
+      "AUTH_MECHANISM": "Authentication"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
