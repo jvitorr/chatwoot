@@ -21,7 +21,7 @@ class Public::Api::V1::Portals::ArticlesController < Public::Api::V1::Portals::B
 
   def show
     @og_image_url = helpers.set_og_image_url(@portal.name, @article.title)
-    render template: 'public/api/v1/portals/sidebar/articles/show' if @portal_layout == 'sidebar'
+    render template: 'public/api/v1/portals/documentation_layout/articles/show' if @portal_layout == 'documentation'
   end
 
   def tracking_pixel

@@ -5,7 +5,7 @@
   </h1>
   <% if @article.author.present? %>
     <div class="mt-6 flex items-center gap-3">
-      <%= render 'public/api/v1/portals/sidebar/user_avatar',
+      <%= render 'public/api/v1/portals/documentation_layout/user_avatar',
                  user: @article.author,
                  size: :lg,
                  border: 'border border-solid border-n-weak' %>

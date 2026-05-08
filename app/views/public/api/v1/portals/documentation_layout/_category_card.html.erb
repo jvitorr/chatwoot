@@ -12,7 +12,7 @@
     <% if contributors.any? %>
       <span class="flex">
         <% contributors.each_with_index do |author, idx| %>
-          <%= render 'public/api/v1/portals/sidebar/user_avatar',
+          <%= render 'public/api/v1/portals/documentation_layout/user_avatar',
                      user: author,
                      size: :sm,
                      extra_class: idx.positive? ? '-ml-1.5' : '' %>

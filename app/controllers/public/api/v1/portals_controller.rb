@@ -7,10 +7,10 @@ class Public::Api::V1::PortalsController < Public::Api::V1::Portals::BaseControl
 
   def show
     @og_image_url = helpers.set_og_image_url('', @portal.header_text)
-    return unless @portal_layout == 'sidebar'
+    return unless @portal_layout == 'documentation'
 
-    load_sidebar_home_data
-    render template: 'public/api/v1/portals/sidebar/show'
+    load_documentation_layout_home_data
+    render template: 'public/api/v1/portals/documentation_layout/show'
   end
 
   def sitemap
@@ -33,7 +33,7 @@ class Public::Api::V1::PortalsController < Public::Api::V1::Portals::BaseControl
     redirect_to "/hc/#{@portal.slug}/#{@portal.default_locale}"
   end
 
-  def load_sidebar_home_data
+  def load_documentation_layout_home_data
     base_articles = @portal.articles.published.where(locale: @locale).includes(:author, :category)
     @visible_categories = @portal.categories
                                  .where(locale: @locale)

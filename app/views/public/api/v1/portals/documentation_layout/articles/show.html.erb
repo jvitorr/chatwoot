@@ -1,12 +1,12 @@
 <% content_for :head do %>
-  <%= render 'public/api/v1/portals/sidebar/articles/meta_head' %>
+  <%= render 'public/api/v1/portals/documentation_layout/articles/meta_head' %>
 <% end %>
 
-<%= render 'public/api/v1/portals/sidebar/topbar', current_page: :article %>
+<%= render 'public/api/v1/portals/documentation_layout/topbar', current_page: :article %>
 
 <div class="bg-white dark:bg-n-slate-2 flex-1 flex font-inter tracking-normal [font-optical-sizing:auto]">
   <div class="max-w-screen-2xl w-full mx-auto flex flex-1">
-    <%= render 'public/api/v1/portals/sidebar/sidebar',
+    <%= render 'public/api/v1/portals/documentation_layout/sidebar',
                current_category_slug: @article.category&.slug,
                current_article_slug: @article.slug %>
 
@@ -14,8 +14,8 @@
       <div class="px-6 md:px-10 py-8 md:py-10">
         <div class="flex gap-10">
           <article class="flex-1 min-w-0">
-            <%= render 'public/api/v1/portals/sidebar/articles/breadcrumb' %>
-            <%= render 'public/api/v1/portals/sidebar/articles/header' %>
+            <%= render 'public/api/v1/portals/documentation_layout/articles/breadcrumb' %>
+            <%= render 'public/api/v1/portals/documentation_layout/articles/header' %>
 
             <div id="cw-article-content"
                  class="prose dark:prose-invert max-w-none break-words
@@ -43,7 +43,7 @@
         </div>
       </div>
 
-      <%= render 'public/api/v1/portals/sidebar/footer' %>
+      <%= render 'public/api/v1/portals/documentation_layout/footer' %>
     </main>
   </div>
 </div>
