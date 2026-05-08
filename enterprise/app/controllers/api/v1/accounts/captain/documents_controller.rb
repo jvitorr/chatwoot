@@ -17,20 +17,8 @@ class Api::V1::Accounts::Captain::DocumentsController < Api::V1::Accounts::BaseC
     base_query = apply_sort(base_query, permitted_params[:sort])
 
     @documents_count = base_query.count
+    @sync_interval_hours = current_sync_interval&.in_hours&.to_i
     @documents = base_query.page(@current_page).per(RESULTS_PER_PAGE)
-  end
-
-  def stats
-    base_query = @documents.syncable
-    base_query = base_query.where(assistant_id: permitted_params[:assistant_id]) if permitted_params[:assistant_id].present?
-
-    @stats = {
-      total: base_query.count,
-      stale: stale_documents(base_query).count,
-      syncing: base_query.sync_in_progress.count,
-      synced_recently: synced_recently_documents(base_query).count,
-      sync_interval_hours: current_sync_interval&.in_hours&.to_i
-    }
   end
 
   def show; end
@@ -102,7 +90,6 @@ class Api::V1::Accounts::Captain::DocumentsController < Api::V1::Accounts::BaseC
     when 'synced' then up_to_date_documents(scope.syncable)
     when 'syncing' then scope.syncable.sync_in_progress
     when 'failed' then scope.syncable.sync_failed
-    when 'synced_recently' then synced_recently_documents(scope.syncable)
     else scope
     end
   end
@@ -132,12 +119,6 @@ class Api::V1::Accounts::Captain::DocumentsController < Api::V1::Accounts::BaseC
     return documents unless current_sync_interval
 
     documents.where(Captain::Document.arel_table[:last_synced_at].gteq(current_sync_interval.ago))
-  end
-
-  def synced_recently_documents(scope)
-    return scope.none unless current_sync_interval
-
-    scope.synced_since(current_sync_interval.ago)
   end
 
   def current_sync_interval

@@ -10,7 +10,7 @@ import { usePolicy } from 'dashboard/composables/usePolicy';
 
 import DeleteDialog from 'dashboard/components-next/captain/pageComponents/DeleteDialog.vue';
 import DocumentCard from 'dashboard/components-next/captain/assistant/DocumentCard.vue';
-import DocumentSyncStatsBar from 'dashboard/components-next/captain/assistant/DocumentSyncStatsBar.vue';
+import DocumentFiltersBar from 'dashboard/components-next/captain/assistant/DocumentFiltersBar.vue';
 import BulkSelectBar from 'dashboard/components-next/captain/assistant/BulkSelectBar.vue';
 import BulkDeleteDialog from 'dashboard/components-next/captain/pageComponents/BulkDeleteDialog.vue';
 import Policy from 'dashboard/components/policy.vue';
@@ -74,12 +74,11 @@ const handleCreateDialogClose = () => {
   showCreateDialog.value = false;
 };
 
-const stats = ref(null);
 const activeStatusFilter = ref(null);
 const activeSourceFilter = ref('all');
 const activeSort = ref('recently_updated');
 const searchQuery = ref('');
-let statsRequestId = 0;
+const syncIntervalHours = ref(null);
 let documentsRequestId = 0;
 
 const currentAssistantId = () =>
@@ -119,25 +118,6 @@ const isCurrentDocumentRequest = (requestId, filterParams) => {
   );
 };
 
-const fetchStats = async () => {
-  statsRequestId += 1;
-  const requestId = statsRequestId;
-  const assistantId = currentAssistantId();
-
-  try {
-    const { data } = await CaptainDocumentAPI.getStats({
-      assistantId,
-    });
-    if (requestId === statsRequestId && assistantId === currentAssistantId()) {
-      stats.value = data;
-    }
-    return data;
-  } catch (error) {
-    // non-blocking: keep last known stats
-    return null;
-  }
-};
-
 const fetchDocuments = async (page = 1, { showLoader = true } = {}) => {
   documentsRequestId += 1;
   const requestId = documentsRequestId;
@@ -148,10 +128,7 @@ const fetchDocuments = async (page = 1, { showLoader = true } = {}) => {
   }
 
   try {
-    const [, response] = await Promise.all([
-      fetchStats(),
-      CaptainDocumentAPI.get(filterParams),
-    ]);
+    const response = await CaptainDocumentAPI.get(filterParams);
 
     if (!isCurrentDocumentRequest(requestId, filterParams)) {
       return [];
@@ -159,6 +136,7 @@ const fetchDocuments = async (page = 1, { showLoader = true } = {}) => {
 
     const { payload, meta } = response.data;
     store.dispatch('captainDocuments/setRecords', { records: payload, meta });
+    syncIntervalHours.value = Number(meta?.sync_interval_hours) || null;
     return payload;
   } catch (error) {
     if (isCurrentDocumentRequest(requestId, filterParams)) {
@@ -406,10 +384,6 @@ const handleBulkSync = async () => {
   }
 };
 
-const syncIntervalHours = computed(() =>
-  Number(stats.value?.sync_interval_hours)
-);
-
 const hasActiveDocumentFilters = computed(
   () =>
     activeSourceFilter.value !== 'all' ||
@@ -423,7 +397,7 @@ watch(selectedAssistantId, async () => {
   activeSort.value = 'recently_updated';
   searchQuery.value = '';
   bulkSelectedIds.value = new Set();
-  stats.value = null;
+  syncIntervalHours.value = null;
   stopSyncPolling();
   await fetchDocuments(1);
   if (hasSyncingDocuments.value) {
@@ -440,7 +414,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopSyncPolling();
-  statsRequestId += 1;
   documentsRequestId += 1;
 });
 </script>
@@ -487,7 +460,7 @@ onUnmounted(() => {
     </template>
 
     <template #controls>
-      <DocumentSyncStatsBar
+      <DocumentFiltersBar
         :active-source-filter="activeSourceFilter"
         :active-status-filter="activeStatusFilter"
         :active-sort="activeSort"

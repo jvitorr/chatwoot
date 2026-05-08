@@ -22,12 +22,6 @@ class CaptainDocument extends ApiClient {
   sync(id) {
     return axios.post(`${this.url}/${id}/sync`);
   }
-
-  getStats({ assistantId } = {}) {
-    return axios.get(`${this.url}/stats`, {
-      params: { assistant_id: assistantId },
-    });
-  }
 }
 
 export default new CaptainDocument();
