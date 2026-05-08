@@ -1011,7 +1011,8 @@
         "LABEL": "Κωδικός",
         "PLACE_HOLDER": "Κωδικός"
       },
-      "ENABLE_SSL": "Ενεργοποίηση SSL"
+      "ENABLE_SSL": "Ενεργοποίηση SSL",
+      "AUTH_MECHANISM": "Πιστοποίηση"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
