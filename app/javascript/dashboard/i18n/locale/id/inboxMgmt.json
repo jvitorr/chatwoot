@@ -1011,7 +1011,8 @@
         "LABEL": "Kata Sandi",
         "PLACE_HOLDER": "Kata Sandi"
       },
-      "ENABLE_SSL": "Aktifkan SSL"
+      "ENABLE_SSL": "Aktifkan SSL",
+      "AUTH_MECHANISM": "Autentikasi"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
