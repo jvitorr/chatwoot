@@ -80,6 +80,7 @@ const activeSort = ref('recently_updated');
 const searchQuery = ref('');
 const syncIntervalHours = ref(null);
 let documentsRequestId = 0;
+let fetchingListRequestId = null;
 
 const currentAssistantId = () =>
   Number.isFinite(selectedAssistantId.value) ? selectedAssistantId.value : null;
@@ -124,6 +125,7 @@ const fetchDocuments = async (page = 1, { showLoader = true } = {}) => {
   const filterParams = buildDocumentFilterParams(page);
 
   if (showLoader) {
+    fetchingListRequestId = requestId;
     store.dispatch('captainDocuments/setFetchingList', true);
   }
 
@@ -144,7 +146,8 @@ const fetchDocuments = async (page = 1, { showLoader = true } = {}) => {
     }
     return [];
   } finally {
-    if (showLoader && requestId === documentsRequestId) {
+    if (showLoader && fetchingListRequestId === requestId) {
+      fetchingListRequestId = null;
       store.dispatch('captainDocuments/setFetchingList', false);
     }
   }
