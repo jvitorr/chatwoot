@@ -1011,7 +1011,8 @@
         "LABEL": "Contrasenya",
         "PLACE_HOLDER": "Contrasenya"
       },
-      "ENABLE_SSL": "Habilita SSL"
+      "ENABLE_SSL": "Habilita SSL",
+      "AUTH_MECHANISM": "Autenticació"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
