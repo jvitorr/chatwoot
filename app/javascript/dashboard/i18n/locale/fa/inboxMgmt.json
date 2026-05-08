@@ -1011,7 +1011,8 @@
         "LABEL": "رمز عبور",
         "PLACE_HOLDER": "رمز عبور"
       },
-      "ENABLE_SSL": "فعال کردن SSL"
+      "ENABLE_SSL": "فعال کردن SSL",
+      "AUTH_MECHANISM": "احراز هویت"
     },
     "MICROSOFT": {
       "TITLE": "مایکروسافت",
