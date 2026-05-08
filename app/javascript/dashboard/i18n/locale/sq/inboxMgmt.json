@@ -1011,7 +1011,8 @@
         "LABEL": "Fjalëkalimi",
         "PLACE_HOLDER": "Fjalëkalimi"
       },
-      "ENABLE_SSL": "Aktivizo SSL"
+      "ENABLE_SSL": "Aktivizo SSL",
+      "AUTH_MECHANISM": "Authentication"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
