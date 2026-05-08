@@ -1011,7 +1011,8 @@
         "LABEL": "የይለፍ ቃል",
         "PLACE_HOLDER": "የይለፍ ቃል"
       },
-      "ENABLE_SSL": "SSL አንቀሳቅስ"
+      "ENABLE_SSL": "SSL አንቀሳቅስ",
+      "AUTH_MECHANISM": "ማረጋገጫ"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
