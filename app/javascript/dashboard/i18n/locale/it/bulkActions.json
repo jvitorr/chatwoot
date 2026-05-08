@@ -3,8 +3,8 @@
     "CONVERSATIONS_SELECTED": "{conversationCount} selezionate",
     "NONE": "Nessuno",
     "CLEAR_SELECTION": "Rimuovi",
-    "ASSIGN_AGENT_CONFIRMATION_LABEL": "Are you sure you want to assign {n} conversation to {agentName}? | Are you sure you want to assign {n} conversations to {agentName}?",
-    "UNASSIGN_AGENT_CONFIRMATION_LABEL": "Are you sure you want to unassign {n} conversation? | Are you sure you want to unassign {n} conversations?",
+    "ASSIGN_AGENT_CONFIRMATION_LABEL": "Sei sicuro di voler assegnare {n} conversazione a {agentName}? | Sei sicuro di voler assegnare {n} conversazioni a {agentName}?",
+    "UNASSIGN_AGENT_CONFIRMATION_LABEL": "Sei sicuro di voler disassegnare {n} conversazione? | Sei sicuro di voler disassegnare {n} conversazioni?",
     "YES": "Sì",
     "CANCEL": "Annulla",
     "SEARCH_INPUT_PLACEHOLDER": "Cerca",
@@ -33,8 +33,8 @@
     },
     "TEAMS": {
       "NONE": "Nessuno",
-      "ASSIGN_TEAM_CONFIRMATION_LABEL": "Are you sure you want to assign {n} conversation to {teamName}? | Are you sure you want to assign {n} conversations to {teamName}?",
-      "UNASSIGN_TEAM_CONFIRMATION_LABEL": "Are you sure you want to unassign {n} conversation? | Are you sure you want to unassign {n} conversations?",
+      "ASSIGN_TEAM_CONFIRMATION_LABEL": "Sei sicuro di voler assegnare {n} conversazione a {teamName}? | Sei sicuro di voler assegnare {n} conversazioni a {teamName}?",
+      "UNASSIGN_TEAM_CONFIRMATION_LABEL": "Sei sicuro di voler disassegnare {n} conversazione? | Sei sicuro di voler disassegnare {n} conversazioni?",
       "ASSIGN_SUCCESFUL": "Team assegnati con successo.",
       "ASSIGN_FAILED": "Impossibile assegnare il team. Riprova."
     }
