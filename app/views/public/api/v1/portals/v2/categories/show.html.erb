@@ -57,9 +57,9 @@
                   <%
                     shown_names = category_authors.first(3).map(&:available_name)
                     extra = category_authors.size - shown_names.size
-                    authors_label = extra.positive? ? "#{shown_names.first(2).join(', ')} and #{category_authors.size - 2} others" : shown_names.to_sentence
+                    authors_label = extra.positive? ? I18n.t('public_portal.docs.authors_others', names: shown_names.first(2).join(', '), count: category_authors.size - 2) : shown_names.to_sentence
                   %>
-                  <span>By <%= authors_label %></span>
+                  <span><%= I18n.t('public_portal.common.by') %> <%= authors_label %></span>
                 </span>
               <% end %>
             </div>
@@ -75,21 +75,18 @@
           <p class="text-base text-n-slate-11"><%= I18n.t('public_portal.common.no_articles') %></p>
         </div>
       <% else %>
-        <div class="divide-y divide-n-weak">
+        <div class="grid grid-cols-1 gap-4">
           <% articles.each do |article| %>
-            <a href="<%= v2_article_link(@portal.slug, article.slug, @design_query_param) %>" class="group flex items-start gap-4 py-6 transition">
-              <span class="flex-shrink-0 mt-0.5 w-9 h-9 flex items-center justify-center rounded-lg bg-n-alpha-2 text-n-slate-11 transition">
-                <span class="i-lucide-file-text size-4" aria-hidden="true"></span>
-              </span>
-              <div class="min-w-0 flex-1">
-                <h3 class="text-base font-620 text-n-slate-12 group-hover:text-n-portal transition"><%= article.title %></h3>
-                <p class="mt-1 text-sm leading-relaxed text-n-slate-11 line-clamp-2"><%= render_category_content(article.content) %></p>
-              </div>
+            <a href="<%= v2_article_link(@portal.slug, article.slug, @design_query_param) %>" class="group flex flex-col p-5 rounded-xl border border-solid border-n-weak hover:border-n-portal hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              <h3 class="text-base font-620 text-n-slate-12 group-hover:text-n-portal transition"><%= article.title %></h3>
+              <p class="mt-2 text-sm leading-relaxed text-n-slate-11 line-clamp-2"><%= render_category_content(article.content) %></p>
             </a>
           <% end %>
         </div>
       <% end %>
     </div>
+
+    <%= render 'public/api/v1/portals/v2/footer' %>
   </main>
   </div>
 </div>

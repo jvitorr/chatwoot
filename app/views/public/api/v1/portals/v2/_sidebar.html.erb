@@ -8,8 +8,8 @@
 <label for="v2-sidebar-checkbox" class="md:hidden fixed inset-0 bg-n-alpha-3 backdrop-blur-sm z-20 hidden peer-checked/sb:block cursor-pointer" aria-hidden="true"></label>
 <aside class="fixed md:sticky inset-y-0 md:inset-y-auto md:top-16 left-0 z-30 w-72 md:w-64 lg:w-72 shrink-0 h-[100dvh] md:h-[calc(100dvh-4rem)] overflow-y-auto bg-white dark:bg-n-slate-2 border-r border-solid border-n-weak -translate-x-full md:translate-x-0 transition-transform duration-200 peer-checked/sb:translate-x-0">
   <div class="md:hidden flex items-center justify-between px-4 h-14 border-b border-n-weak">
-    <span class="text-base font-semibold tracking-tight text-n-slate-12">Documentation</span>
-    <label for="v2-sidebar-checkbox" class="p-1.5 rounded-md text-n-slate-11 hover:bg-n-alpha-2 cursor-pointer" aria-label="Close sidebar">
+    <span class="text-base font-semibold tracking-tight text-n-slate-12"><%= I18n.t('public_portal.docs.documentation') %></span>
+    <label for="v2-sidebar-checkbox" class="p-1.5 rounded-md text-n-slate-11 hover:bg-n-alpha-2 cursor-pointer" aria-label="<%= I18n.t('public_portal.docs.close_sidebar') %>">
       <span class="i-lucide-x size-5 block" aria-hidden="true"></span>
     </label>
   </div>
@@ -21,7 +21,7 @@
       <%= I18n.t('public_portal.common.home') %>
     </a>
 
-    <div class="pt-6 pb-2 px-3 text-xs font-semibold tracking-wider text-n-slate-10 uppercase">Categories</div>
+    <div class="pt-6 pb-2 px-3 text-xs font-semibold tracking-wider text-n-slate-10 uppercase"><%= I18n.t('public_portal.docs.categories') %></div>
 
     <% sidebar_categories.each do |category| %>
       <% category_articles = category.articles.published.order(:position) %>

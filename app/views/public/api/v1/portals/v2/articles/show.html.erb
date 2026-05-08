@@ -81,7 +81,7 @@
               <% if @article.category %>
                 <a href="<%= v2_category_link(@portal.slug, @article.category.locale, @article.category.slug, @design_query_param) %>" class="group inline-flex items-center gap-2 px-3 py-2 -ml-3 text-sm font-medium text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-2 rounded-md transition">
                   <span class="i-lucide-arrow-left size-3.5 transition-transform group-hover:-translate-x-0.5" aria-hidden="true"></span>
-                  Back to <%= @article.category.name %>
+                  <%= I18n.t('public_portal.docs.back_to_category', name: @article.category.name) %>
                 </a>
               <% end %>
             </footer>
@@ -92,6 +92,8 @@
           </aside>
         </div>
       </div>
+
+      <%= render 'public/api/v1/portals/v2/footer' %>
     </main>
   </div>
 </div>

@@ -79,18 +79,23 @@ export const InitializationHelpers = {
   },
 
   initializeSearch: () => {
-    const isSearchContainerAvailable = document.querySelector('#search-wrap');
-    if (isSearchContainerAvailable) {
+    ['#search-wrap', '#search-wrap-hero'].forEach(selector => {
+      const mountPoint = document.querySelector(selector);
+      if (!mountPoint) return;
+      const size = mountPoint.dataset.size || 'default';
+      const kbd = mountPoint.dataset.kbd || '';
       // eslint-disable-next-line vue/one-component-per-file
       const app = createApp({
         components: { PublicArticleSearch },
-        template: '<PublicArticleSearch />',
+        data() {
+          return { size, kbd };
+        },
+        template: '<PublicArticleSearch :size="size" :kbd="kbd" />',
       });
-
       app.use(VueDOMPurifyHTML, domPurifyConfig);
       app.directive('on-clickaway', onClickaway);
-      app.mount('#search-wrap');
-    }
+      app.mount(selector);
+    });
   },
 
   initializeTableOfContents: () => {

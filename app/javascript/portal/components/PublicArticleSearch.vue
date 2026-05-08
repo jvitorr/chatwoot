@@ -9,6 +9,17 @@ export default {
     PublicSearchInput,
     SearchSuggestions,
   },
+  props: {
+    size: {
+      type: String,
+      default: 'default',
+      validator: value => ['small', 'default'].includes(value),
+    },
+    kbd: {
+      type: String,
+      default: '',
+    },
+  },
   emits: ['input', 'blur'],
   data() {
     return {
@@ -45,11 +56,11 @@ export default {
   },
 
   mounted() {
-    document.addEventListener('keydown', this.onKeydown);
+    if (this.kbd) document.addEventListener('keydown', this.onKeydown);
   },
 
   unmounted() {
-    document.removeEventListener('keydown', this.onKeydown);
+    if (this.kbd) document.removeEventListener('keydown', this.onKeydown);
     clearTimeout(this.typingTimer);
   },
 
@@ -130,6 +141,8 @@ export default {
       ref="searchInput"
       :search-term="searchTerm"
       :search-placeholder="searchTranslations.searchPlaceholder"
+      :size="size"
+      :kbd="kbd"
       @update:search-term="onUpdateSearchTerm"
       @focus="openSearch"
     />

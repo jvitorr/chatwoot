@@ -79,7 +79,7 @@ export default {
 <template>
   <div
     ref="portalSearchSuggestionsRef"
-    class="mt-2 overflow-y-auto bg-n-slate-1 border border-solid border-n-weak rounded-xl shadow-2xl max-h-96 p-2"
+    class="mt-2 overflow-y-auto bg-white dark:bg-n-slate-2 border border-solid border-n-weak rounded-xl shadow-2xl max-h-96 p-2"
   >
     <div v-if="isLoading" class="px-3 py-6 text-sm text-n-slate-11 text-center">
       {{ loadingPlaceholder }}
@@ -102,13 +102,15 @@ export default {
             class="i-lucide-file-text size-4 mt-0.5 flex-shrink-0 text-n-slate-10 group-hover:text-n-slate-11"
             aria-hidden="true"
           />
-          <span class="min-w-0 flex-1 flex flex-col gap-0.5">
-            <span class="block text-sm font-520 text-n-slate-12 truncate">{{
-              getPlainText(article.title)
-            }}</span>
-            <span class="block text-xs text-n-slate-11 line-clamp-1">{{
-              getPlainText(article.content)
-            }}</span>
+          <span class="min-w-0 flex-1 flex flex-col gap-1">
+            <span
+              v-dompurify-html="prepareContent(getPlainText(article.title))"
+              class="block text-base font-520 text-n-slate-12 truncate"
+            />
+            <span
+              v-dompurify-html="prepareContent(getPlainText(article.content))"
+              class="block text-sm text-n-slate-11 line-clamp-1"
+            />
           </span>
         </a>
       </li>

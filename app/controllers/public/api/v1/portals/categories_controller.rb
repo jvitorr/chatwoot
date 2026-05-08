@@ -6,7 +6,9 @@ class Public::Api::V1::Portals::CategoriesController < Public::Api::V1::Portals:
   layout 'portal'
 
   def index
-    @categories = @portal.categories.order(position: :asc)
+    locale = params[:locale].presence || @portal.default_locale
+    target = helpers.append_design_query("/hc/#{@portal.slug}/#{locale}", @design_query_param)
+    redirect_to target, status: :moved_permanently
   end
 
   def show
