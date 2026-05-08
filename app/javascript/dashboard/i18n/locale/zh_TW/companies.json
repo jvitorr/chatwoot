@@ -22,6 +22,19 @@
     "LOADING": "正在載入公司...",
     "UNNAMED": "未命名公司",
     "CONTACTS_COUNT": "{n} 位聯絡人 | {n} 位聯絡人",
+    "ACTIONS": {
+      "CREATE": "Add company"
+    },
+    "CREATE": {
+      "TITLE": "Add company details",
+      "ACTIONS": {
+        "SAVE": "Add company"
+      },
+      "MESSAGES": {
+        "SUCCESS": "Company created.",
+        "ERROR": "Could not create the company."
+      }
+    },
     "DETAIL": {
       "LOADING": "Loading company details...",
       "EMPTY_STATE": {
