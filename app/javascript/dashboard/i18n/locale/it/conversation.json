@@ -84,7 +84,7 @@
       "NOT_ANSWERED_YET": "Non ancora risposta",
       "THEY_ANSWERED": "Hanno risposto",
       "YOU_ANSWERED": "Hai risposto",
-      "AGENT_ANSWERED": "{agentName} answered",
+      "AGENT_ANSWERED": "{agentName} ha risposto",
       "JOIN_CALL": "Entra nella chiamata"
     },
     "HEADER": {
@@ -95,7 +95,7 @@
       "OPEN": "Altro",
       "CLOSE": "Chiudi",
       "DETAILS": "dettagli",
-      "COPY_ID_SUCCESS": "Conversation ID copied to clipboard",
+      "COPY_ID_SUCCESS": "ID conversazione copiato negli appunti",
       "SNOOZED_UNTIL": "Posticipata fino a",
       "SNOOZED_UNTIL_TOMORROW": "Posticipata fino a domani",
       "SNOOZED_UNTIL_NEXT_WEEK": "Posticipata fino alla prossima settimana",
@@ -367,18 +367,18 @@
       "MACROS": "Macro",
       "LINEAR_ISSUES": "Issue Linear Connessi",
       "SHOPIFY_ORDERS": "Ordini Shopify",
-      "SHARED_FILES": "Attachments"
+      "SHARED_FILES": "Allegati"
     },
     "SHARED_FILES": {
-      "EMPTY": "No attachments yet",
-      "DOWNLOAD": "Download file",
-      "DOWNLOAD_ERROR": "Could not download the file. Please try again.",
+      "EMPTY": "Nessun allegato",
+      "DOWNLOAD": "Scarica file",
+      "DOWNLOAD_ERROR": "Impossibile scaricare il file. Riprova.",
       "MEDIA_HEADING": "Media",
-      "FILES_HEADING": "Files",
+      "FILES_HEADING": "File",
       "VIEW_ALL": "Vedi tutti",
-      "SHOW_LESS": "Show less",
+      "SHOW_LESS": "Mostra meno",
       "MORE_COUNT": "+{count}",
-      "UNTITLED_FILE": "Untitled file"
+      "UNTITLED_FILE": "File senza titolo"
     },
     "SHOPIFY": {
       "ORDER_ID": "Ordine #{id}",
