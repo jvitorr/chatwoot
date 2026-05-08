@@ -57,6 +57,8 @@ RSpec.describe Conversations::UnreadCounts::Store do
 
       expect(described_class.base_ready?(account_id)).to be(true)
       expect(described_class.assignment_ready?(account_id)).to be(true)
+      expect(ttl_for('UNREAD_CONVERSATIONS::V1::ACCOUNT::1::READY::BASE')).to be_within(5).of(Conversations::UnreadCounts::READY_TTL)
+      expect(ttl_for('UNREAD_CONVERSATIONS::V1::ACCOUNT::1::READY::ASSIGNMENT')).to be_within(5).of(Conversations::UnreadCounts::READY_TTL)
     end
   end
 
@@ -75,6 +77,7 @@ RSpec.describe Conversations::UnreadCounts::Store do
         described_class.label_inbox_key(account_id, label_id, inbox_id) => 1,
         described_class.team_inbox_key(account_id, team_id, inbox_id) => 1
       )
+      expect(base_keys.map { |key| ttl_for(key) }).to all(be_within(5).of(Conversations::UnreadCounts::SET_TTL))
 
       described_class.remove_base_membership(
         account_id: account_id,
@@ -119,6 +122,7 @@ RSpec.describe Conversations::UnreadCounts::Store do
         described_class.label_inbox_assignee_key(account_id, label_id, inbox_id, user_id) => 1,
         described_class.team_inbox_assignee_key(account_id, team_id, inbox_id, user_id) => 1
       )
+      expect(assignment_keys.map { |key| ttl_for(key) }).to all(be_within(5).of(Conversations::UnreadCounts::SET_TTL))
 
       described_class.remove_assignment_membership(
         account_id: account_id,
@@ -130,6 +134,20 @@ RSpec.describe Conversations::UnreadCounts::Store do
       )
 
       expect(described_class.counts_for_keys(assignment_keys).values).to all(eq(0))
+    end
+
+    it 'sets expiry on bulk membership writes' do
+      described_class.add_memberships(
+        account_id: account_id,
+        memberships: [{
+          inbox_id: inbox_id,
+          label_ids: [label_id],
+          team_id: team_id,
+          conversation_id: conversation_id
+        }]
+      )
+
+      expect(base_keys.map { |key| ttl_for(key) }).to all(be_within(5).of(Conversations::UnreadCounts::SET_TTL))
     end
   end
 
@@ -147,5 +165,9 @@ RSpec.describe Conversations::UnreadCounts::Store do
       described_class.label_inbox_assignee_key(account_id, label_id, inbox_id, user_id),
       described_class.team_inbox_assignee_key(account_id, team_id, inbox_id, user_id)
     ]
+  end
+
+  def ttl_for(key)
+    Redis::Alfred.ttl(key)
   end
 end

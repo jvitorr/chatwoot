@@ -1,3 +1,8 @@
+module Conversations::UnreadCounts
+  READY_TTL = 24.hours.to_i
+  SET_TTL = 25.hours.to_i
+end
+
 class Conversations::UnreadCounts::Store
   extend ::Conversations::UnreadCounts::StoreKeys
 
@@ -11,11 +16,11 @@ class Conversations::UnreadCounts::Store
     end
 
     def mark_base_ready!(account_id)
-      Redis::Alfred.set(base_ready_key(account_id), Time.current.to_i)
+      Redis::Alfred.set(base_ready_key(account_id), Time.current.to_i, ex: Conversations::UnreadCounts::READY_TTL)
     end
 
     def mark_assignment_ready!(account_id)
-      Redis::Alfred.set(assignment_ready_key(account_id), Time.current.to_i)
+      Redis::Alfred.set(assignment_ready_key(account_id), Time.current.to_i, ex: Conversations::UnreadCounts::READY_TTL)
     end
 
     def clear_account!(account_id)
@@ -62,7 +67,10 @@ class Conversations::UnreadCounts::Store
                    base_keys(account_id, membership[:inbox_id], membership[:label_ids], membership[:team_id])
                  end
 
-          keys.each { |key| pipeline.sadd(key, membership[:conversation_id]) }
+          keys.each do |key|
+            pipeline.sadd(key, membership[:conversation_id])
+            pipeline.expire(key, Conversations::UnreadCounts::SET_TTL)
+          end
         end
       end
     end
@@ -158,7 +166,10 @@ class Conversations::UnreadCounts::Store
       return if keys.blank?
 
       Redis::Alfred.pipelined do |pipeline|
-        keys.each { |key| yield(pipeline, key) }
+        keys.each do |key|
+          yield(pipeline, key)
+          pipeline.expire(key, Conversations::UnreadCounts::SET_TTL)
+        end
       end
     end
 
