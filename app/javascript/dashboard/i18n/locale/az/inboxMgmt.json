@@ -1011,7 +1011,8 @@
         "LABEL": "Şifrə",
         "PLACE_HOLDER": "Şifrə"
       },
-      "ENABLE_SSL": "SSL-i aktiv et"
+      "ENABLE_SSL": "SSL-i aktiv et",
+      "AUTH_MECHANISM": "Avtorizasiya"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
