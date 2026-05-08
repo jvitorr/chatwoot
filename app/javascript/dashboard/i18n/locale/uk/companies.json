@@ -22,6 +22,19 @@
     "LOADING": "Завантаження компаній...",
     "UNNAMED": "Компанія без назви",
     "CONTACTS_COUNT": "{n} контакт | {n} контактів",
+    "ACTIONS": {
+      "CREATE": "Add company"
+    },
+    "CREATE": {
+      "TITLE": "Add company details",
+      "ACTIONS": {
+        "SAVE": "Add company"
+      },
+      "MESSAGES": {
+        "SUCCESS": "Company created.",
+        "ERROR": "Could not create the company."
+      }
+    },
     "DETAIL": {
       "LOADING": "Loading company details...",
       "EMPTY_STATE": {
