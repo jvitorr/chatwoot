@@ -22,6 +22,19 @@
     "LOADING": "Загрузка компаний...",
     "UNNAMED": "Безымянная компания",
     "CONTACTS_COUNT": "{n} Контакт | {n} Контакта | Контактов",
+    "ACTIONS": {
+      "CREATE": "Add company"
+    },
+    "CREATE": {
+      "TITLE": "Add company details",
+      "ACTIONS": {
+        "SAVE": "Add company"
+      },
+      "MESSAGES": {
+        "SUCCESS": "Company created.",
+        "ERROR": "Could not create the company."
+      }
+    },
     "DETAIL": {
       "LOADING": "Loading company details...",
       "EMPTY_STATE": {
