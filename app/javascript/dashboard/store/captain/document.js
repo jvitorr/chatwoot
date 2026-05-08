@@ -22,6 +22,9 @@ const markRecordsSyncing = (records, ids) => {
 export default createStore({
   name: 'CaptainDocument',
   API: CaptainDocumentAPI,
+  getters: {
+    getRecords: state => state.records,
+  },
   actions: mutations => ({
     setFetchingList({ commit }, isFetching) {
       commit(mutations.SET_UI_FLAG, { fetchingList: isFetching });
