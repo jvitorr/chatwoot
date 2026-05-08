@@ -1011,7 +1011,8 @@
         "LABEL": "Contraseña",
         "PLACE_HOLDER": "Contraseña"
       },
-      "ENABLE_SSL": "Activar SSL"
+      "ENABLE_SSL": "Activar SSL",
+      "AUTH_MECHANISM": "Autenticación"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
