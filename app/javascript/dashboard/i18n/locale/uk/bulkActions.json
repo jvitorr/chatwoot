@@ -1,10 +1,10 @@
 {
   "BULK_ACTION": {
     "CONVERSATIONS_SELECTED": "{conversationCount} selected",
-    "NONE": "Нiчого",
+    "NONE": "Нічого",
     "CLEAR_SELECTION": "Очистити",
-    "ASSIGN_AGENT_CONFIRMATION_LABEL": "Are you sure you want to assign {n} conversation to {agentName}? | Are you sure you want to assign {n} conversations to {agentName}?",
-    "UNASSIGN_AGENT_CONFIRMATION_LABEL": "Are you sure you want to unassign {n} conversation? | Are you sure you want to unassign {n} conversations?",
+    "ASSIGN_AGENT_CONFIRMATION_LABEL": "Ви впевнені, що хочете призначити {n} діалог агенту {agentName}? | Ви впевнені, що хочете призначити {n} діалогів агенту {agentName}?",
+    "UNASSIGN_AGENT_CONFIRMATION_LABEL": "Ви впевнені, що хочете відкріпити {n} діалог? | Ви впевнені, що хочете відкріпити {n} діалогів?",
     "YES": "Так",
     "CANCEL": "Скасувати",
     "SEARCH_INPUT_PLACEHOLDER": "Пошук",
@@ -33,8 +33,8 @@
     },
     "TEAMS": {
       "NONE": "Нiчого",
-      "ASSIGN_TEAM_CONFIRMATION_LABEL": "Are you sure you want to assign {n} conversation to {teamName}? | Are you sure you want to assign {n} conversations to {teamName}?",
-      "UNASSIGN_TEAM_CONFIRMATION_LABEL": "Are you sure you want to unassign {n} conversation? | Are you sure you want to unassign {n} conversations?",
+      "ASSIGN_TEAM_CONFIRMATION_LABEL": "Ви впевнені, що хочете призначити {n} діалог команді {teamName}? | Ви впевнені, що хочете призначити {n} діалогів команді {teamName}?",
+      "UNASSIGN_TEAM_CONFIRMATION_LABEL": "Ви впевнені, що хочете відкріпити {n} діалог? | Ви впевнені, що хочете відкріпити {n} діалогів?",
       "ASSIGN_SUCCESFUL": "Teams assigned successfully.",
       "ASSIGN_FAILED": "Не вдалося призначити команду, будь ласка, спробуйте ще раз."
     }
