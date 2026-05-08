@@ -1011,7 +1011,8 @@
         "LABEL": "비밀번호",
         "PLACE_HOLDER": "비밀번호"
       },
-      "ENABLE_SSL": "SSL 사용"
+      "ENABLE_SSL": "SSL 사용",
+      "AUTH_MECHANISM": "인증"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
