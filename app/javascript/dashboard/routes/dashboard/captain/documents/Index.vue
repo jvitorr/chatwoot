@@ -138,12 +138,15 @@ const fetchStats = async () => {
   }
 };
 
-const fetchDocuments = async (page = 1) => {
+const fetchDocuments = async (page = 1, { showLoader = true } = {}) => {
   documentsRequestId += 1;
   const requestId = documentsRequestId;
   const filterParams = buildDocumentFilterParams(page);
 
-  store.dispatch('captainDocuments/setFetchingList', true);
+  if (showLoader) {
+    store.dispatch('captainDocuments/setFetchingList', true);
+  }
+
   try {
     const [, response] = await Promise.all([
       fetchStats(),
@@ -163,14 +166,17 @@ const fetchDocuments = async (page = 1) => {
     }
     return [];
   } finally {
-    if (requestId === documentsRequestId) {
+    if (showLoader && requestId === documentsRequestId) {
       store.dispatch('captainDocuments/setFetchingList', false);
     }
   }
 };
 
-const refreshDocumentsPage = (page = documentsMeta.value?.page || 1) => {
-  return fetchDocuments(page).catch(() => {});
+const refreshDocumentsPage = (
+  page = documentsMeta.value?.page || 1,
+  { showLoader = false } = {}
+) => {
+  return fetchDocuments(page, { showLoader }).catch(() => {});
 };
 
 const handleSourceFilterSelect = sourceKey => {
@@ -231,7 +237,7 @@ function stopSyncPolling() {
 
 async function pollSyncDocuments() {
   try {
-    await fetchDocuments(documentsMeta.value?.page || 1);
+    await refreshDocumentsPage();
   } catch (error) {
     // Keep the existing polling decision based on the last known sync state.
   }
@@ -262,7 +268,6 @@ const handleSync = async id => {
   try {
     await store.dispatch('captainDocuments/sync', id);
     useAlert(t('CAPTAIN.DOCUMENTS.SYNC.QUEUED_MESSAGE'));
-    await refreshDocumentsPage();
     scheduleSyncPoll();
   } catch (error) {
     useAlert(t('CAPTAIN.DOCUMENTS.SYNC.ERROR_MESSAGE'));
@@ -393,7 +398,6 @@ const handleBulkSync = async () => {
 
     useAlert(message);
     bulkSelectedIds.value = new Set();
-    await refreshDocumentsPage();
     if (queuedCount > 0) {
       scheduleSyncPoll();
     }
