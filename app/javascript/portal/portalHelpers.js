@@ -128,6 +128,18 @@ export const InitializationHelpers = {
     }
   },
 
+  initializeDetailsClickAway: () => {
+    document.addEventListener('click', event => {
+      document
+        .querySelectorAll('details[data-close-on-clickaway][open]')
+        .forEach(details => {
+          if (!details.contains(event.target)) {
+            details.removeAttribute('open');
+          }
+        });
+    });
+  },
+
   appendPlainParamToURLs: () => {
     [...document.getElementsByTagName('a')].forEach(aTagElement => {
       if (aTagElement.href && aTagElement.href.includes('/hc/')) {
@@ -163,6 +175,7 @@ export const InitializationHelpers = {
       InitializationHelpers.initializeSearch();
       InitializationHelpers.initializeTableOfContents();
       InitializationHelpers.initializeSidebarThemeToggle();
+      InitializationHelpers.initializeDetailsClickAway();
     }
   },
 
