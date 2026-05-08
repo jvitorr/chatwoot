@@ -1011,7 +1011,8 @@
         "LABEL": "Parola",
         "PLACE_HOLDER": "Parola"
       },
-      "ENABLE_SSL": "SSL'yi Etkinleştir"
+      "ENABLE_SSL": "SSL'yi Etkinleştir",
+      "AUTH_MECHANISM": "Kimlik Doğrulama"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
