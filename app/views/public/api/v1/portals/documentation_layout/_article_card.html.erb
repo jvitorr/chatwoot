@@ -1,5 +1,6 @@
+<% show_category = local_assigns.fetch(:show_category, true) %>
 <a href="<%= public_portal_article_path(@portal.slug, article.slug) %>" class="<%= sidebar_article_card_classes %>">
-  <% if article.category %>
+  <% if show_category && article.category %>
     <span class="inline-flex items-center gap-1 self-start text-xs font-medium text-n-slate-11 mb-3">
       <% if article.category.icon.present? %><span><%= article.category.icon %></span><% end %>
       <%= article.category.name %>

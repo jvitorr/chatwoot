@@ -14,7 +14,7 @@
 %>
 
 <% if show_branding || active_socials.any? %>
-  <footer class="px-6 md:px-10 py-6 border-t border-solid border-n-weak flex items-center justify-between gap-4 flex-wrap">
+  <footer class="mt-auto px-6 md:px-10 py-6 border-t border-solid border-n-weak flex items-center justify-between gap-4 flex-wrap">
     <% if show_branding %>
       <a href="<%= generate_portal_brand_url(@global_config['BRAND_URL'], request.referer) %>"
          target="_blank"

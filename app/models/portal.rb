@@ -95,7 +95,7 @@ class Portal < ApplicationRecord
   end
 
   def layout
-    config_value('layout')
+    config_value('layout').presence || 'classic'
   end
 
   private

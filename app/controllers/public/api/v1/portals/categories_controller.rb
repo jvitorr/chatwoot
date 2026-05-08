@@ -12,7 +12,10 @@ class Public::Api::V1::Portals::CategoriesController < Public::Api::V1::Portals:
 
   def show
     @og_image_url = helpers.set_og_image_url(@portal.name, @category.name)
-    render template: 'public/api/v1/portals/documentation_layout/categories/show' if @portal_layout == 'documentation'
+    return unless @portal_layout == 'documentation'
+
+    load_category_articles
+    render template: 'public/api/v1/portals/documentation_layout/categories/show'
   end
 
   private
@@ -22,5 +25,10 @@ class Public::Api::V1::Portals::CategoriesController < Public::Api::V1::Portals:
 
     Rails.logger.info "Category: not found for slug: #{params[:category_slug]}"
     render_404 && return if @category.blank?
+  end
+
+  def load_category_articles
+    @articles = @category.articles.published.order(:position).includes(:author)
+    @category_authors = @articles.filter_map(&:author).uniq
   end
 end

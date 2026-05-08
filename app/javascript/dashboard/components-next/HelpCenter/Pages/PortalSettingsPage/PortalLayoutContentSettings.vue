@@ -16,18 +16,18 @@ const { t } = useI18n();
 
 const portalConfig = computed(() => props.activePortal?.config || {});
 
-const layout = ref(portalConfig.value.layout || 'default');
+const layout = ref(portalConfig.value.layout || 'classic');
 
 watch(
   () => props.activePortal,
   () => {
-    layout.value = portalConfig.value.layout || 'default';
+    layout.value = portalConfig.value.layout || 'classic';
   },
   { deep: true }
 );
 
 const hasChanges = computed(
-  () => layout.value !== (portalConfig.value.layout || 'default')
+  () => layout.value !== (portalConfig.value.layout || 'classic')
 );
 
 const handleSave = () => {
@@ -56,14 +56,14 @@ const handleSave = () => {
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-n-slate-11">
         <LayoutPreviewCard
           name="portal-layout"
-          value="default"
-          :active="layout === 'default'"
+          value="classic"
+          :active="layout === 'classic'"
           :title="
-            t('HELP_CENTER.PORTAL_SETTINGS.LAYOUT_CONTENT.LAYOUT.DEFAULT.TITLE')
+            t('HELP_CENTER.PORTAL_SETTINGS.LAYOUT_CONTENT.LAYOUT.CLASSIC.TITLE')
           "
           :description="
             t(
-              'HELP_CENTER.PORTAL_SETTINGS.LAYOUT_CONTENT.LAYOUT.DEFAULT.DESCRIPTION'
+              'HELP_CENTER.PORTAL_SETTINGS.LAYOUT_CONTENT.LAYOUT.CLASSIC.DESCRIPTION'
             )
           "
           @select="value => (layout = value)"
