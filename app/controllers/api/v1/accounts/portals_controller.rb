@@ -83,7 +83,7 @@ class Api::V1::Accounts::PortalsController < Api::V1::Accounts::BaseController
     params.require(:portal).permit(
       :id, :color, :custom_domain, :header_text, :homepage_link,
       :name, :page_title, :slug, :archived,
-      { config: [:default_locale, :theme, { allowed_locales: [] }, { draft_locales: [] }] }
+      { config: [:default_locale, :layout, { allowed_locales: [] }, { draft_locales: [] }] }
     )
   end
 

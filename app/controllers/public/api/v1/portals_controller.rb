@@ -7,7 +7,7 @@ class Public::Api::V1::PortalsController < Public::Api::V1::Portals::BaseControl
 
   def show
     @og_image_url = helpers.set_og_image_url('', @portal.header_text)
-    return unless @design_version == 'sidebar'
+    return unless @portal_layout == 'sidebar'
 
     load_sidebar_home_data
     render template: 'public/api/v1/portals/sidebar/show'

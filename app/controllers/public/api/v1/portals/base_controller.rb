@@ -3,12 +3,12 @@ class Public::Api::V1::Portals::BaseController < PublicController
 
   before_action :show_plain_layout
   before_action :set_color_scheme
-  before_action :set_design_version
+  before_action :set_portal_layout
   before_action :set_global_config
   around_action :set_locale
   after_action :allow_iframe_requests
 
-  DESIGN_VERSIONS = %w[default sidebar].freeze
+  PORTAL_LAYOUTS = %w[default sidebar].freeze
 
   private
 
@@ -20,10 +20,10 @@ class Public::Api::V1::Portals::BaseController < PublicController
     @theme_from_params = params[:theme] if %w[dark light].include?(params[:theme])
   end
 
-  def set_design_version
+  def set_portal_layout
     @portal ||= Portal.find_by(slug: params[:slug], archived: false) if params[:slug].present?
-    persisted = @portal&.config&.dig('theme')
-    @design_version = DESIGN_VERSIONS.include?(persisted) ? persisted : 'default'
+    persisted = @portal&.layout
+    @portal_layout = PORTAL_LAYOUTS.include?(persisted) ? persisted : 'default'
   end
 
   def portal

@@ -16,18 +16,18 @@ const { t } = useI18n();
 
 const portalConfig = computed(() => props.activePortal?.config || {});
 
-const theme = ref(portalConfig.value.theme || 'default');
+const layout = ref(portalConfig.value.layout || 'default');
 
 watch(
   () => props.activePortal,
   () => {
-    theme.value = portalConfig.value.theme || 'default';
+    layout.value = portalConfig.value.layout || 'default';
   },
   { deep: true }
 );
 
 const hasChanges = computed(
-  () => theme.value !== (portalConfig.value.theme || 'default')
+  () => layout.value !== (portalConfig.value.layout || 'default')
 );
 
 const handleSave = () => {
@@ -35,7 +35,7 @@ const handleSave = () => {
     id: props.activePortal.id,
     slug: props.activePortal.slug,
     config: {
-      theme: theme.value,
+      layout: layout.value,
     },
   });
 };
@@ -57,7 +57,7 @@ const handleSave = () => {
         <LayoutPreviewCard
           name="portal-layout"
           value="default"
-          :active="theme === 'default'"
+          :active="layout === 'default'"
           :title="
             t('HELP_CENTER.PORTAL_SETTINGS.LAYOUT_CONTENT.LAYOUT.DEFAULT.TITLE')
           "
@@ -66,7 +66,7 @@ const handleSave = () => {
               'HELP_CENTER.PORTAL_SETTINGS.LAYOUT_CONTENT.LAYOUT.DEFAULT.DESCRIPTION'
             )
           "
-          @select="value => (theme = value)"
+          @select="value => (layout = value)"
         >
           <svg
             viewBox="0 0 200 120"
@@ -154,7 +154,7 @@ const handleSave = () => {
         <LayoutPreviewCard
           name="portal-layout"
           value="sidebar"
-          :active="theme === 'sidebar'"
+          :active="layout === 'sidebar'"
           :title="
             t('HELP_CENTER.PORTAL_SETTINGS.LAYOUT_CONTENT.LAYOUT.SIDEBAR.TITLE')
           "
@@ -163,7 +163,7 @@ const handleSave = () => {
               'HELP_CENTER.PORTAL_SETTINGS.LAYOUT_CONTENT.LAYOUT.SIDEBAR.DESCRIPTION'
             )
           "
-          @select="value => (theme = value)"
+          @select="value => (layout = value)"
         >
           <svg
             viewBox="0 0 200 120"

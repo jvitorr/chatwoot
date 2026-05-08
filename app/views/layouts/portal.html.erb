@@ -58,14 +58,14 @@ By default, it renders:
       }
     </script>
   </head>
-  <body class="<%= @design_version == 'sidebar' ? 'font-inter' : 'font-default' %>">
+  <body class="<%= @portal_layout == 'sidebar' ? 'font-inter' : 'font-default' %>">
     <div id="portal" class="antialiased">
       <main class="flex flex-col min-h-screen bg-white main-content dark:bg-slate-900" role="main">
-        <% if !@is_plain_layout_enabled && @design_version != 'sidebar' %>
+        <% if !@is_plain_layout_enabled && @portal_layout != 'sidebar' %>
           <%= render "public/api/v1/portals/header", portal: @portal %>
         <% end %>
         <%= yield %>
-        <% if !(@is_plain_layout_enabled || @design_version == 'sidebar' || @portal.account.feature_enabled?('disable_branding')) %>
+        <% if !(@is_plain_layout_enabled || @portal_layout == 'sidebar' || @portal.account.feature_enabled?('disable_branding')) %>
           <%= render "public/api/v1/portals/footer" %>
         <% end %>
       </main>
