@@ -411,7 +411,7 @@ en:
       loading_placeholder: Searching...
       results_title: Search results
     toc_header: 'On this page'
-    docs:
+    sidebar:
       help_center: Help Center
       documentation: Documentation
       categories: Categories

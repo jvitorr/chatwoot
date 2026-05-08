@@ -13,7 +13,7 @@ class Public::Api::V1::Portals::CategoriesController < Public::Api::V1::Portals:
 
   def show
     @og_image_url = helpers.set_og_image_url(@portal.name, @category.name)
-    render template: 'public/api/v1/portals/v2/categories/show' if @design_version == 'docs'
+    render template: 'public/api/v1/portals/sidebar/categories/show' if @design_version == 'sidebar'
   end
 
   private

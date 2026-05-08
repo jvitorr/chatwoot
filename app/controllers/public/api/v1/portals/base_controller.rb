@@ -8,7 +8,7 @@ class Public::Api::V1::Portals::BaseController < PublicController
   around_action :set_locale
   after_action :allow_iframe_requests
 
-  DESIGN_VERSIONS = %w[default docs].freeze
+  DESIGN_VERSIONS = %w[default sidebar].freeze
 
   private
 

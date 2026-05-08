@@ -5,11 +5,11 @@
   popular_topics = visible_categories.first(3)
 %>
 
-<%= render 'public/api/v1/portals/v2/topbar', current_page: :home %>
+<%= render 'public/api/v1/portals/sidebar/topbar', current_page: :home %>
 
 <div class="bg-white dark:bg-n-slate-2 flex-1 flex font-inter tracking-normal [font-optical-sizing:auto]">
   <div class="max-w-screen-2xl w-full mx-auto flex flex-1">
-    <%= render 'public/api/v1/portals/v2/sidebar', current_category_slug: nil, current_article_slug: nil %>
+    <%= render 'public/api/v1/portals/sidebar/sidebar', current_category_slug: nil, current_article_slug: nil %>
 
     <main class="flex-1 min-w-0">
       <section class="relative">
@@ -34,9 +34,9 @@
 
             <% if popular_topics.any? %>
               <div class="mt-4 flex items-center gap-2 flex-wrap text-sm">
-                <span class="text-n-slate-10"><%= I18n.t('public_portal.docs.popular_label') %></span>
+                <span class="text-n-slate-10"><%= I18n.t('public_portal.sidebar.popular_label') %></span>
                 <% popular_topics.each_with_index do |category, idx| %>
-                  <a href="<%= v2_category_link(@portal.slug, category.locale, category.slug, @design_query_param) %>"
+                  <a href="<%= sidebar_category_link(@portal.slug, category.locale, category.slug, @design_query_param) %>"
                      class="text-n-slate-11 hover:text-n-portal transition truncate max-w-[14rem]"><%= category.name %></a>
                   <% if idx < popular_topics.size - 1 %><span class="text-n-slate-9" aria-hidden="true">·</span><% end %>
                 <% end %>
@@ -49,8 +49,8 @@
 
       <section class="px-6 md:px-10 py-8 md:py-10">
         <header class="mb-8">
-          <h2 class="text-2xl md:text-3xl font-620 tracking-tight text-n-slate-12"><%= I18n.t('public_portal.docs.browse_by_topic') %></h2>
-          <p class="mt-2 text-base text-n-slate-11"><%= I18n.t('public_portal.docs.browse_by_topic_subtitle') %></p>
+          <h2 class="text-2xl md:text-3xl font-620 tracking-tight text-n-slate-12"><%= I18n.t('public_portal.sidebar.browse_by_topic') %></h2>
+          <p class="mt-2 text-base text-n-slate-11"><%= I18n.t('public_portal.sidebar.browse_by_topic_subtitle') %></p>
         </header>
 
         <% if visible_categories.empty? %>
@@ -64,7 +64,7 @@
                 cat_articles = category.articles.published.includes(:author)
                 contributor_avatars = cat_articles.map(&:author).compact.uniq.first(3)
               %>
-              <a href="<%= v2_category_link(@portal.slug, category.locale, category.slug, @design_query_param) %>"
+              <a href="<%= sidebar_category_link(@portal.slug, category.locale, category.slug, @design_query_param) %>"
                  class="group relative flex flex-col p-5 rounded-xl border border-solid border-n-weak hover:border-n-portal hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
                 <span class="flex-shrink-0 w-11 h-11 flex items-center justify-center text-2xl rounded-xl bg-n-slate-2 border border-solid border-n-weak">
                   <%= category.icon.presence || '📁' %>
@@ -89,7 +89,7 @@
                     <span></span>
                   <% end %>
                   <span class="inline-flex items-center gap-1 text-sm font-medium text-n-slate-11 group-hover:text-n-portal transition">
-                    <%= I18n.t('public_portal.docs.browse') %>
+                    <%= I18n.t('public_portal.sidebar.browse') %>
                     <span class="i-lucide-arrow-right size-3.5 group-hover:translate-x-0.5 transition-transform" aria-hidden="true"></span>
                   </span>
                 </div>
@@ -102,12 +102,12 @@
       <% if featured.size > 1 %>
         <section class="px-6 md:px-10 py-8 md:py-10 border-t border-n-weak">
           <header class="mb-8">
-            <h2 class="text-2xl md:text-3xl font-620 tracking-tight text-n-slate-12"><%= I18n.t('public_portal.docs.popular_articles') %></h2>
-            <p class="mt-1.5 text-base text-n-slate-11"><%= I18n.t('public_portal.docs.popular_articles_subtitle') %></p>
+            <h2 class="text-2xl md:text-3xl font-620 tracking-tight text-n-slate-12"><%= I18n.t('public_portal.sidebar.popular_articles') %></h2>
+            <p class="mt-1.5 text-base text-n-slate-11"><%= I18n.t('public_portal.sidebar.popular_articles_subtitle') %></p>
           </header>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <% featured.each do |article| %>
-              <a href="<%= v2_article_link(@portal.slug, article.slug, @design_query_param) %>" class="group flex flex-col p-5 rounded-xl border border-solid border-n-weak hover:border-n-portal hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              <a href="<%= sidebar_article_link(@portal.slug, article.slug, @design_query_param) %>" class="group flex flex-col p-5 rounded-xl border border-solid border-n-weak hover:border-n-portal hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
                 <% if article.category %>
                   <span class="inline-flex items-center gap-1 self-start text-xs font-medium text-n-slate-11 mb-3">
                     <% if article.category.icon.present? %><span><%= article.category.icon %></span><% end %>
@@ -122,7 +122,7 @@
         </section>
       <% end %>
 
-      <%= render 'public/api/v1/portals/v2/footer' %>
+      <%= render 'public/api/v1/portals/sidebar/footer' %>
     </main>
   </div>
 </div>

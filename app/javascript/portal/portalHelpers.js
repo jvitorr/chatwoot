@@ -7,7 +7,7 @@ import { isSameHost } from '@chatwoot/utils';
 import slugifyWithCounter from '@sindresorhus/slugify';
 import PublicArticleSearch from './components/PublicArticleSearch.vue';
 import TableOfContents from './components/TableOfContents.vue';
-import V2ThemeToggle from './components/V2ThemeToggle.vue';
+import SidebarThemeToggle from './components/SidebarThemeToggle.vue';
 import { initializeTheme } from './portalThemeHelper.js';
 import { getLanguageDirection } from 'dashboard/components/widgets/conversation/advancedFilterItems/languages.js';
 
@@ -115,16 +115,16 @@ export const InitializationHelpers = {
     }
   },
 
-  initializeV2ThemeToggle: () => {
-    const mountPoint = document.querySelector('#v2-theme-toggle');
+  initializeSidebarThemeToggle: () => {
+    const mountPoint = document.querySelector('#sidebar-theme-toggle');
     if (mountPoint) {
       // eslint-disable-next-line vue/one-component-per-file
       const app = createApp({
-        components: { V2ThemeToggle },
-        template: '<v2-theme-toggle />',
+        components: { SidebarThemeToggle },
+        template: '<sidebar-theme-toggle />',
       });
       app.directive('on-clickaway', onClickaway);
-      app.mount('#v2-theme-toggle');
+      app.mount('#sidebar-theme-toggle');
     }
   },
 
@@ -162,7 +162,7 @@ export const InitializationHelpers = {
       InitializationHelpers.navigateToLocalePage();
       InitializationHelpers.initializeSearch();
       InitializationHelpers.initializeTableOfContents();
-      InitializationHelpers.initializeV2ThemeToggle();
+      InitializationHelpers.initializeSidebarThemeToggle();
     }
   },
 

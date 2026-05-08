@@ -15,16 +15,16 @@
 <% articles = @category.articles.published.order(:position).includes(:author) %>
 <% category_authors = articles.map(&:author).compact.uniq %>
 
-<%= render 'public/api/v1/portals/v2/topbar', current_page: :category %>
+<%= render 'public/api/v1/portals/sidebar/topbar', current_page: :category %>
 
 <div class="bg-white dark:bg-n-slate-2 flex-1 flex font-inter tracking-normal [font-optical-sizing:auto]">
   <div class="max-w-screen-2xl w-full mx-auto flex flex-1">
-  <%= render 'public/api/v1/portals/v2/sidebar', current_category_slug: @category.slug, current_article_slug: nil %>
+  <%= render 'public/api/v1/portals/sidebar/sidebar', current_category_slug: @category.slug, current_article_slug: nil %>
 
   <main class="flex-1 min-w-0">
     <div class="px-6 md:px-10 py-8 md:py-10">
       <nav class="flex items-center gap-2 text-sm text-n-slate-11 mb-8">
-        <a href="<%= v2_home_link(@portal.slug, @locale, @design_query_param) %>" class="inline-flex items-center gap-1.5 hover:text-n-slate-12 transition">
+        <a href="<%= sidebar_home_link(@portal.slug, @locale, @design_query_param) %>" class="inline-flex items-center gap-1.5 hover:text-n-slate-12 transition">
           <span class="i-lucide-house size-3.5" aria-hidden="true"></span>
           <%= I18n.t('public_portal.common.home') %>
         </a>
@@ -57,7 +57,7 @@
                   <%
                     shown_names = category_authors.first(3).map(&:available_name)
                     extra = category_authors.size - shown_names.size
-                    authors_label = extra.positive? ? I18n.t('public_portal.docs.authors_others', names: shown_names.first(2).join(', '), count: category_authors.size - 2) : shown_names.to_sentence
+                    authors_label = extra.positive? ? I18n.t('public_portal.sidebar.authors_others', names: shown_names.first(2).join(', '), count: category_authors.size - 2) : shown_names.to_sentence
                   %>
                   <span><%= I18n.t('public_portal.common.by') %> <%= authors_label %></span>
                 </span>
@@ -77,7 +77,7 @@
       <% else %>
         <div class="grid grid-cols-1 gap-4">
           <% articles.each do |article| %>
-            <a href="<%= v2_article_link(@portal.slug, article.slug, @design_query_param) %>" class="group flex flex-col p-5 rounded-xl border border-solid border-n-weak hover:border-n-portal hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+            <a href="<%= sidebar_article_link(@portal.slug, article.slug, @design_query_param) %>" class="group flex flex-col p-5 rounded-xl border border-solid border-n-weak hover:border-n-portal hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
               <h3 class="text-base font-620 text-n-slate-12 group-hover:text-n-portal transition"><%= article.title %></h3>
               <p class="mt-2 text-sm leading-relaxed text-n-slate-11 line-clamp-2"><%= render_category_content(article.content) %></p>
             </a>
@@ -86,7 +86,7 @@
       <% end %>
     </div>
 
-    <%= render 'public/api/v1/portals/v2/footer' %>
+    <%= render 'public/api/v1/portals/sidebar/footer' %>
   </main>
   </div>
 </div>
