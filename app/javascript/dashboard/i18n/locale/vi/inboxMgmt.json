@@ -1011,7 +1011,8 @@
         "LABEL": "Mật khẩu",
         "PLACE_HOLDER": "Mật khẩu"
       },
-      "ENABLE_SSL": "Kích hoạt SSL"
+      "ENABLE_SSL": "Kích hoạt SSL",
+      "AUTH_MECHANISM": "Xác minh"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
