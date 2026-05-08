@@ -1011,7 +1011,8 @@
         "LABEL": "密码",
         "PLACE_HOLDER": "密码"
       },
-      "ENABLE_SSL": "启用SSL"
+      "ENABLE_SSL": "启用SSL",
+      "AUTH_MECHANISM": "认证机制"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
