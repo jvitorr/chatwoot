@@ -1011,7 +1011,8 @@
         "LABEL": "Գաղտնաբառ",
         "PLACE_HOLDER": "Գաղտնաբառ"
       },
-      "ENABLE_SSL": "Միացնել SSL"
+      "ENABLE_SSL": "Միացնել SSL",
+      "AUTH_MECHANISM": "Հավաստագրում"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
