@@ -21,7 +21,18 @@ const selectedCategoryId = ref(null);
 const currentUserId = useMapGetter('getCurrentUserID');
 const categories = useMapGetter('categories/allCategories');
 
-const categoryId = computed(() => categories.value[0]?.id || null);
+const categoryId = computed(() => {
+  const { categorySlug } = route.params;
+  if (categorySlug) {
+    const matched = categories.value?.find(c => c.slug === categorySlug);
+    if (matched) return matched.id;
+  }
+  return categories.value[0]?.id || null;
+});
+
+const isCategoryArticles = computed(
+  () => route.name === 'portals_categories_articles_new'
+);
 
 const article = ref({});
 const isUpdating = ref(false);
@@ -56,11 +67,14 @@ const createNewArticle = async ({ title, content }) => {
     useTrack(PORTALS_EVENTS.CREATE_ARTICLE, { locale });
 
     router.replace({
-      name: 'portals_articles_edit',
+      name: isCategoryArticles.value
+        ? 'portals_categories_articles_edit'
+        : 'portals_articles_edit',
       params: {
         articleSlug: articleId,
         portalSlug,
         locale,
+        categorySlug: route.params.categorySlug,
       },
     });
   } catch (error) {
@@ -74,10 +88,17 @@ const createNewArticle = async ({ title, content }) => {
 
 const goBackToArticles = () => {
   const { tab, categorySlug, locale } = route.params;
-  router.push({
-    name: 'portals_articles_index',
-    params: { tab, categorySlug, locale },
-  });
+  if (isCategoryArticles.value) {
+    router.push({
+      name: 'portals_categories_articles_index',
+      params: { categorySlug, locale },
+    });
+  } else {
+    router.push({
+      name: 'portals_articles_index',
+      params: { tab, categorySlug, locale },
+    });
+  }
 };
 </script>
 
