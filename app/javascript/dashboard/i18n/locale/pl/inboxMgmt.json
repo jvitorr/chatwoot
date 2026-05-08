@@ -1011,7 +1011,8 @@
         "LABEL": "Hasło",
         "PLACE_HOLDER": "Hasło"
       },
-      "ENABLE_SSL": "Włącz SSL"
+      "ENABLE_SSL": "Włącz SSL",
+      "AUTH_MECHANISM": "Uwierzytelnianie"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
