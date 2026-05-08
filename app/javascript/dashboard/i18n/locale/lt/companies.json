@@ -22,6 +22,19 @@
     "LOADING": "Užkraunamas įmonių sąrašas...",
     "UNNAMED": "Įmonė be pavadinimo",
     "CONTACTS_COUNT": "{n} kontaktas | {n} kontaktai",
+    "ACTIONS": {
+      "CREATE": "Add company"
+    },
+    "CREATE": {
+      "TITLE": "Add company details",
+      "ACTIONS": {
+        "SAVE": "Add company"
+      },
+      "MESSAGES": {
+        "SUCCESS": "Company created.",
+        "ERROR": "Could not create the company."
+      }
+    },
     "DETAIL": {
       "LOADING": "Loading company details...",
       "EMPTY_STATE": {
