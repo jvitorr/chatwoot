@@ -70,6 +70,7 @@ const createNewArticle = async ({ title, content }) => {
     const resolvedSlug = categories.value?.find(
       c => c.id === resolvedCategoryId
     )?.slug;
+    const startedFromCategorySlug = route.params.categorySlug;
 
     router.replace({
       name: isCategoryArticles.value
@@ -79,7 +80,9 @@ const createNewArticle = async ({ title, content }) => {
         articleSlug: articleId,
         portalSlug,
         locale,
-        categorySlug: resolvedSlug,
+        ...(startedFromCategorySlug
+          ? { categorySlug: resolvedSlug || startedFromCategorySlug }
+          : {}),
       },
     });
   } catch (error) {
