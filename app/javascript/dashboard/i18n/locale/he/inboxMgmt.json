@@ -1011,7 +1011,8 @@
         "LABEL": "סיסמה",
         "PLACE_HOLDER": "סיסמה"
       },
-      "ENABLE_SSL": "הפעל SSL"
+      "ENABLE_SSL": "הפעל SSL",
+      "AUTH_MECHANISM": "אימות"
     },
     "MICROSOFT": {
       "TITLE": "מיקרוסופט",
