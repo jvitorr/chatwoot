@@ -46,20 +46,13 @@
                 <span class="inline-flex items-center gap-2">
                   <span class="flex">
                     <% category_authors.first(3).each_with_index do |author, idx| %>
-                      <% offset_class = idx.positive? ? '-ml-0.5' : '' %>
-                      <% if author.avatar_url.present? %>
-                        <img src="<%= author.avatar_url %>" alt="<%= author.available_name %>" class="w-4 h-4 rounded-full object-cover ring-2 ring-solid ring-white dark:ring-n-slate-2 <%= offset_class %>" />
-                      <% else %>
-                        <span class="w-4 h-4 rounded-full inline-flex items-center justify-center text-xs font-semibold text-white ring-2 ring-solid ring-white dark:ring-n-slate-2 <%= offset_class %>" style="background: <%= thumbnail_bg_color(author.available_name) %>;" title="<%= author.available_name %>"><%= author.available_name.first&.upcase %></span>
-                      <% end %>
+                      <%= render 'public/api/v1/portals/sidebar/user_avatar',
+                                 user: author,
+                                 size: :xs,
+                                 extra_class: idx.positive? ? '-ml-0.5' : '' %>
                     <% end %>
                   </span>
-                  <%
-                    shown_names = category_authors.first(3).map(&:available_name)
-                    extra = category_authors.size - shown_names.size
-                    authors_label = extra.positive? ? I18n.t('public_portal.sidebar.authors_others', names: shown_names.first(2).join(', '), count: category_authors.size - 2) : shown_names.to_sentence
-                  %>
-                  <span><%= I18n.t('public_portal.common.by') %> <%= authors_label %></span>
+                  <span><%= I18n.t('public_portal.common.by') %> <%= format_authors_label(category_authors) %></span>
                 </span>
               <% end %>
             </div>
@@ -71,13 +64,11 @@
       </header>
 
       <% if articles.empty? %>
-        <div class="rounded-xl border border-dashed border-n-weak p-12">
-          <p class="text-base text-n-slate-11"><%= I18n.t('public_portal.common.no_articles') %></p>
-        </div>
+        <%= render 'public/api/v1/portals/sidebar/empty_state' %>
       <% else %>
         <div class="grid grid-cols-1 gap-4">
           <% articles.each do |article| %>
-            <a href="<%= sidebar_article_link(@portal.slug, article.slug, @design_query_param) %>" class="group flex flex-col p-5 rounded-xl border border-solid border-n-weak hover:border-n-portal hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+            <a href="<%= sidebar_article_link(@portal.slug, article.slug, @design_query_param) %>" class="<%= sidebar_article_card_classes %>">
               <h3 class="text-base font-620 text-n-slate-12 group-hover:text-n-portal transition"><%= article.title %></h3>
               <p class="mt-2 text-sm leading-relaxed text-n-slate-11 line-clamp-2"><%= render_category_content(article.content) %></p>
             </a>

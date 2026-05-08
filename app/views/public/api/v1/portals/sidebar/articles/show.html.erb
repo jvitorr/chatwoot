@@ -50,11 +50,10 @@
               </h1>
               <% if @article.author.present? %>
                 <div class="mt-6 flex items-center gap-3">
-                  <% if @article.author.avatar_url.present? %>
-                    <img src="<%= @article.author.avatar_url %>" alt="" class="w-10 h-10 rounded-full object-cover border border-solid border-n-weak" />
-                  <% else %>
-                    <span class="w-10 h-10 rounded-full inline-flex items-center justify-center text-sm font-semibold text-white border border-solid border-n-weak" style="background: <%= thumbnail_bg_color(@article.author.available_name) %>;"><%= @article.author.available_name.first&.upcase %></span>
-                  <% end %>
+                  <%= render 'public/api/v1/portals/sidebar/user_avatar',
+                             user: @article.author,
+                             size: :lg,
+                             border: 'border border-solid border-n-weak' %>
                   <div>
                     <p class="text-sm font-medium text-n-slate-12"><%= @article.author.available_name %></p>
                     <p class="mt-0.5 text-xs text-n-slate-11"><%= I18n.t('public_portal.common.last_updated_on', last_updated_on: @article.updated_at.strftime("%b %-d, %Y")) %></p>

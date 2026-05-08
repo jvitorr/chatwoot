@@ -115,4 +115,21 @@ module PortalHelper
 
     colors[username.length % colors.size]
   end
+
+  def format_authors_label(authors)
+    return if authors.blank?
+
+    names = authors.map(&:available_name)
+    return names.to_sentence if names.size <= 3
+
+    I18n.t('public_portal.sidebar.authors_others',
+           names: names.first(2).join(', '),
+           count: authors.size - 2)
+  end
+
+  def sidebar_article_card_classes
+    'group flex flex-col p-5 rounded-xl border border-solid border-n-weak ' \
+      'hover:border-n-portal hover:shadow-md hover:-translate-y-0.5 ' \
+      'transition-all duration-200'
+  end
 end
