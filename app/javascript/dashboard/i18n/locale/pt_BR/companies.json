@@ -23,16 +23,16 @@
     "UNNAMED": "Empresa sem nome",
     "CONTACTS_COUNT": "{n} contato | {n} contatos",
     "ACTIONS": {
-      "CREATE": "Add company"
+      "CREATE": "Adicionar empresa"
     },
     "CREATE": {
-      "TITLE": "Add company details",
+      "TITLE": "Adicionar detalhes da empresa",
       "ACTIONS": {
-        "SAVE": "Add company"
+        "SAVE": "Adicionar empresa"
       },
       "MESSAGES": {
-        "SUCCESS": "Company created.",
-        "ERROR": "Could not create the company."
+        "SUCCESS": "Empresa criada.",
+        "ERROR": "Não foi possível criar a empresa."
       }
     },
     "DETAIL": {
