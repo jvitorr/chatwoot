@@ -1011,7 +1011,8 @@
         "LABEL": "Adgangskode",
         "PLACE_HOLDER": "Adgangskode"
       },
-      "ENABLE_SSL": "Aktiver SSL"
+      "ENABLE_SSL": "Aktiver SSL",
+      "AUTH_MECHANISM": "Godkendelse"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
