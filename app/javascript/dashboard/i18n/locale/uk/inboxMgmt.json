@@ -1011,7 +1011,8 @@
         "LABEL": "Пароль",
         "PLACE_HOLDER": "Пароль"
       },
-      "ENABLE_SSL": "Увімкнути SSL"
+      "ENABLE_SSL": "Увімкнути SSL",
+      "AUTH_MECHANISM": "Автентифікація"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
