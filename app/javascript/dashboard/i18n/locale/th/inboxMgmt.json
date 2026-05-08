@@ -1011,7 +1011,8 @@
         "LABEL": "หรัสผ่าน",
         "PLACE_HOLDER": "หรัสผ่าน"
       },
-      "ENABLE_SSL": "เปิดใช้ SSL"
+      "ENABLE_SSL": "เปิดใช้ SSL",
+      "AUTH_MECHANISM": "การตรวจสอบสิทธิ์"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
