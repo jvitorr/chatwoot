@@ -1011,7 +1011,8 @@
         "LABEL": "პაროლი",
         "PLACE_HOLDER": "პაროლი"
       },
-      "ENABLE_SSL": "SSL-ის ჩართვა"
+      "ENABLE_SSL": "SSL-ის ჩართვა",
+      "AUTH_MECHANISM": "ავტორიზაცია"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
