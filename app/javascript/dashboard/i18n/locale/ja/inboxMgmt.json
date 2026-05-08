@@ -1011,7 +1011,8 @@
         "LABEL": "パスワード",
         "PLACE_HOLDER": "パスワード"
       },
-      "ENABLE_SSL": "SSLを有効にする"
+      "ENABLE_SSL": "SSLを有効にする",
+      "AUTH_MECHANISM": "認証"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
