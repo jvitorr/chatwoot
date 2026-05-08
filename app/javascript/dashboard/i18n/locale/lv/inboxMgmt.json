@@ -1011,7 +1011,8 @@
         "LABEL": "Parole",
         "PLACE_HOLDER": "Parole"
       },
-      "ENABLE_SSL": "Iespējot SSL"
+      "ENABLE_SSL": "Iespējot SSL",
+      "AUTH_MECHANISM": "Autentifikācija"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
