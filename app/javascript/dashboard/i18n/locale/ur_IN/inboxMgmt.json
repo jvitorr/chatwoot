@@ -1011,7 +1011,8 @@
         "LABEL": "پاس ورڈ",
         "PLACE_HOLDER": "پاس ورڈ"
       },
-      "ENABLE_SSL": "SSL کو فعال کریں"
+      "ENABLE_SSL": "SSL کو فعال کریں",
+      "AUTH_MECHANISM": "تصدیق"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
