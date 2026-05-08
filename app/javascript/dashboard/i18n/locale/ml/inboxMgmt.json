@@ -1011,7 +1011,8 @@
         "LABEL": "പാസ്‌വേഡ്",
         "PLACE_HOLDER": "പാസ്‌വേഡ്"
       },
-      "ENABLE_SSL": "SSL സജീവമാക്കുക"
+      "ENABLE_SSL": "SSL സജീവമാക്കുക",
+      "AUTH_MECHANISM": "പ്രാമാണീകരണം"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
