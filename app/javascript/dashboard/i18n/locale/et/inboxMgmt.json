@@ -1011,7 +1011,8 @@
         "LABEL": "Parool",
         "PLACE_HOLDER": "Parool"
       },
-      "ENABLE_SSL": "Luba SSL"
+      "ENABLE_SSL": "Luba SSL",
+      "AUTH_MECHANISM": "Autentimine"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
