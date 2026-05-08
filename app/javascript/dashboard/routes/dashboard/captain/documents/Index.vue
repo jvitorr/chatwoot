@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, nextTick, watch } from 'vue';
-import { useTimeoutPoll } from '@vueuse/core';
+import { useDebounceFn, useTimeoutPoll } from '@vueuse/core';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useRoute } from 'vue-router';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
@@ -10,7 +10,7 @@ import { usePolicy } from 'dashboard/composables/usePolicy';
 
 import DeleteDialog from 'dashboard/components-next/captain/pageComponents/DeleteDialog.vue';
 import DocumentCard from 'dashboard/components-next/captain/assistant/DocumentCard.vue';
-import DocumentSyncStatsBar from 'dashboard/components-next/captain/assistant/DocumentSyncStatsBar.vue';
+import DocumentFiltersBar from 'dashboard/components-next/captain/assistant/DocumentFiltersBar.vue';
 import BulkSelectBar from 'dashboard/components-next/captain/assistant/BulkSelectBar.vue';
 import BulkDeleteDialog from 'dashboard/components-next/captain/pageComponents/BulkDeleteDialog.vue';
 import Policy from 'dashboard/components/policy.vue';
@@ -33,7 +33,7 @@ const { checkPermissions } = usePolicy();
 const SYNC_POLL_INTERVAL_MS = 5000;
 const SYNC_POLL_MAX_DURATION_MS = 15 * 60 * 1000;
 
-const { isOnChatwootCloud, currentAccount } = useAccount();
+const { isOnChatwootCloud } = useAccount();
 const uiFlags = useMapGetter('captainDocuments/getUIFlags');
 const documents = useMapGetter('captainDocuments/getRecords');
 const isFetching = computed(() => uiFlags.value.fetchingList);
@@ -74,10 +74,13 @@ const handleCreateDialogClose = () => {
   showCreateDialog.value = false;
 };
 
-const stats = ref(null);
-const activeFilter = ref(null);
-let statsRequestId = 0;
+const activeStatusFilter = ref(null);
+const activeSourceFilter = ref('all');
+const activeSort = ref('recently_updated');
+const searchQuery = ref('');
+const syncIntervalHours = ref(null);
 let documentsRequestId = 0;
+let fetchingListRequestId = null;
 
 const currentAssistantId = () =>
   Number.isFinite(selectedAssistantId.value) ? selectedAssistantId.value : null;
@@ -89,8 +92,17 @@ const buildDocumentFilterParams = (page = 1) => {
   if (assistantId) {
     filterParams.assistantId = assistantId;
   }
-  if (activeFilter.value) {
-    filterParams.filter = activeFilter.value;
+  if (activeSourceFilter.value !== 'all') {
+    filterParams.source = activeSourceFilter.value;
+  }
+  if (activeStatusFilter.value) {
+    filterParams.filter = activeStatusFilter.value;
+  }
+  if (activeSort.value) {
+    filterParams.sort = activeSort.value;
+  }
+  if (searchQuery.value.trim()) {
+    filterParams.searchKey = searchQuery.value.trim();
   }
 
   return filterParams;
@@ -100,40 +112,25 @@ const isCurrentDocumentRequest = (requestId, filterParams) => {
   return (
     requestId === documentsRequestId &&
     (filterParams.assistantId || null) === currentAssistantId() &&
-    (filterParams.filter || null) === (activeFilter.value || null)
+    (filterParams.source || 'all') === activeSourceFilter.value &&
+    (filterParams.filter || null) === (activeStatusFilter.value || null) &&
+    (filterParams.sort || null) === (activeSort.value || null) &&
+    (filterParams.searchKey || '') === searchQuery.value.trim()
   );
 };
 
-const fetchStats = async () => {
-  statsRequestId += 1;
-  const requestId = statsRequestId;
-  const assistantId = currentAssistantId();
-
-  try {
-    const { data } = await CaptainDocumentAPI.getStats({
-      assistantId,
-    });
-    if (requestId === statsRequestId && assistantId === currentAssistantId()) {
-      stats.value = data;
-    }
-    return data;
-  } catch (error) {
-    // non-blocking: keep last known stats
-    return null;
-  }
-};
-
-const fetchDocuments = async (page = 1) => {
+const fetchDocuments = async (page = 1, { showLoader = true } = {}) => {
   documentsRequestId += 1;
   const requestId = documentsRequestId;
   const filterParams = buildDocumentFilterParams(page);
 
-  store.dispatch('captainDocuments/setFetchingList', true);
+  if (showLoader) {
+    fetchingListRequestId = requestId;
+    store.dispatch('captainDocuments/setFetchingList', true);
+  }
+
   try {
-    const [, response] = await Promise.all([
-      fetchStats(),
-      CaptainDocumentAPI.get(filterParams),
-    ]);
+    const response = await CaptainDocumentAPI.get(filterParams);
 
     if (!isCurrentDocumentRequest(requestId, filterParams)) {
       return [];
@@ -141,6 +138,7 @@ const fetchDocuments = async (page = 1) => {
 
     const { payload, meta } = response.data;
     store.dispatch('captainDocuments/setRecords', { records: payload, meta });
+    syncIntervalHours.value = Number(meta?.sync_interval_hours) || null;
     return payload;
   } catch (error) {
     if (isCurrentDocumentRequest(requestId, filterParams)) {
@@ -148,20 +146,52 @@ const fetchDocuments = async (page = 1) => {
     }
     return [];
   } finally {
-    if (requestId === documentsRequestId) {
+    if (showLoader && fetchingListRequestId === requestId) {
+      fetchingListRequestId = null;
       store.dispatch('captainDocuments/setFetchingList', false);
     }
   }
 };
 
-const refreshDocumentsPage = (page = documentsMeta.value?.page || 1) => {
-  return fetchDocuments(page).catch(() => {});
+const refreshDocumentsPage = (
+  page = documentsMeta.value?.page || 1,
+  { showLoader = false } = {}
+) => {
+  return fetchDocuments(page, { showLoader }).catch(() => {});
 };
 
-const handleFilterSelect = filterKey => {
-  activeFilter.value = filterKey;
+const handleSourceFilterSelect = sourceKey => {
+  activeSourceFilter.value = sourceKey;
+  if (sourceKey !== 'web') {
+    activeStatusFilter.value = null;
+  }
   bulkSelectedIds.value = new Set();
   fetchDocuments(1);
+};
+
+const handleStatusFilterSelect = filterKey => {
+  activeStatusFilter.value = filterKey;
+  if (filterKey) {
+    activeSourceFilter.value = 'web';
+  }
+  bulkSelectedIds.value = new Set();
+  fetchDocuments(1);
+};
+
+const handleSortSelect = sortKey => {
+  activeSort.value = sortKey;
+  bulkSelectedIds.value = new Set();
+  fetchDocuments(1);
+};
+
+const fetchDocumentsForSearch = useDebounceFn(() => {
+  bulkSelectedIds.value = new Set();
+  fetchDocuments(1);
+}, 300);
+
+const handleSearch = value => {
+  searchQuery.value = value;
+  fetchDocumentsForSearch();
 };
 
 const syncPollStartedAt = ref(null);
@@ -170,9 +200,7 @@ const hasDocumentsSyncing = computed(() =>
   (documents.value || []).some(doc => doc.sync_in_progress)
 );
 
-const hasSyncingDocuments = computed(
-  () => hasDocumentsSyncing.value || Number(stats.value?.syncing) > 0
-);
+const hasSyncingDocuments = computed(() => hasDocumentsSyncing.value);
 
 const isWithinSyncPollWindow = () =>
   syncPollStartedAt.value &&
@@ -190,7 +218,7 @@ function stopSyncPolling() {
 
 async function pollSyncDocuments() {
   try {
-    await fetchDocuments(documentsMeta.value?.page || 1);
+    await refreshDocumentsPage();
   } catch (error) {
     // Keep the existing polling decision based on the last known sync state.
   }
@@ -200,10 +228,12 @@ async function pollSyncDocuments() {
   }
 }
 
-function scheduleSyncPoll() {
-  if (syncPollingControls.isActive.value) return;
+function scheduleSyncPoll({ extendWindow = false } = {}) {
+  if (extendWindow || !syncPollStartedAt.value) {
+    syncPollStartedAt.value = Date.now();
+  }
 
-  syncPollStartedAt.value ||= Date.now();
+  if (syncPollingControls.isActive.value) return;
   syncPollingControls.resume();
 }
 
@@ -221,8 +251,7 @@ const handleSync = async id => {
   try {
     await store.dispatch('captainDocuments/sync', id);
     useAlert(t('CAPTAIN.DOCUMENTS.SYNC.QUEUED_MESSAGE'));
-    await refreshDocumentsPage();
-    scheduleSyncPoll();
+    scheduleSyncPoll({ extendWindow: true });
   } catch (error) {
     useAlert(t('CAPTAIN.DOCUMENTS.SYNC.ERROR_MESSAGE'));
   }
@@ -352,54 +381,28 @@ const handleBulkSync = async () => {
 
     useAlert(message);
     bulkSelectedIds.value = new Set();
-    await refreshDocumentsPage();
     if (queuedCount > 0) {
-      scheduleSyncPoll();
+      scheduleSyncPoll({ extendWindow: true });
     }
   } catch (error) {
     useAlert(t('CAPTAIN.DOCUMENTS.BULK_SYNC.ERROR_MESSAGE'));
   }
 };
 
-const syncIntervalHours = computed(() =>
-  Number(stats.value?.sync_interval_hours)
+const hasActiveDocumentFilters = computed(
+  () =>
+    activeSourceFilter.value !== 'all' ||
+    Boolean(activeStatusFilter.value) ||
+    Boolean(searchQuery.value.trim())
 );
-const isAutoSyncEligible = computed(
-  () => Number.isFinite(syncIntervalHours.value) && syncIntervalHours.value > 0
-);
-
-const isAutoSyncEnabled = computed(() =>
-  Boolean(
-    currentAccount.value?.features?.[FEATURE_FLAGS.CAPTAIN_DOCUMENT_AUTO_SYNC]
-  )
-);
-
-const syncFrequencyLabel = computed(() => {
-  if (!isAutoSyncEnabled.value || !isAutoSyncEligible.value) return '';
-
-  if (syncIntervalHours.value === 168) {
-    return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.WEEKLY');
-  }
-  if (syncIntervalHours.value === 24) {
-    return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.DAILY');
-  }
-  if (syncIntervalHours.value === 1) {
-    return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.HOURLY');
-  }
-  if (syncIntervalHours.value % 24 === 0) {
-    return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.EVERY_N_DAYS', {
-      count: syncIntervalHours.value / 24,
-    });
-  }
-  return t('CAPTAIN.DOCUMENTS.STATS.FREQUENCY.EVERY_N_HOURS', {
-    count: syncIntervalHours.value,
-  });
-});
 
 watch(selectedAssistantId, async () => {
-  activeFilter.value = null;
+  activeStatusFilter.value = null;
+  activeSourceFilter.value = 'all';
+  activeSort.value = 'recently_updated';
+  searchQuery.value = '';
   bulkSelectedIds.value = new Set();
-  stats.value = null;
+  syncIntervalHours.value = null;
   stopSyncPolling();
   await fetchDocuments(1);
   if (hasSyncingDocuments.value) {
@@ -416,7 +419,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopSyncPolling();
-  statsRequestId += 1;
   documentsRequestId += 1;
 });
 </script>
@@ -430,8 +432,7 @@ onUnmounted(() => {
     :current-page="documentsMeta.page"
     :show-pagination-footer="!isFetching && !!documents.length"
     :is-fetching="isFetching"
-    :is-empty="!documents.length"
-    :show-know-more="false"
+    :is-empty="!documents.length && !hasActiveDocumentFilters"
     :feature-flag="FEATURE_FLAGS.CAPTAIN"
     @update:current-page="onPageChange"
     @click="handleCreateDocument"
@@ -448,7 +449,7 @@ onUnmounted(() => {
           :class="{ 'mb-2': bulkSelectedIds.size > 0 }"
           @bulk-delete="bulkDeleteDialog.dialogRef.open()"
         >
-          <template v-if="hasSyncableSelection" #secondary-actions>
+          <template v-if="hasSyncableSelection" #secondaryActions>
             <Button
               :label="$t('CAPTAIN.DOCUMENTS.BULK_SYNC_BUTTON')"
               sm
@@ -464,14 +465,16 @@ onUnmounted(() => {
     </template>
 
     <template #controls>
-      <DocumentSyncStatsBar
-        :stats="stats"
-        :active-filter="activeFilter"
-        :sync-frequency-label="syncFrequencyLabel"
-        :is-auto-sync-eligible="isAutoSyncEligible"
-        :is-auto-sync-enabled="isAutoSyncEnabled"
+      <DocumentFiltersBar
+        :active-source-filter="activeSourceFilter"
+        :active-status-filter="activeStatusFilter"
+        :active-sort="activeSort"
+        :search-query="searchQuery"
         class="mb-5"
-        @select="handleFilterSelect"
+        @select-source="handleSourceFilterSelect"
+        @select-status="handleStatusFilterSelect"
+        @select-sort="handleSortSelect"
+        @search="handleSearch"
       />
     </template>
 
@@ -498,7 +501,19 @@ onUnmounted(() => {
     <template #body>
       <LimitBanner class="mb-5" />
 
-      <div class="flex flex-col gap-4">
+      <div
+        v-if="!documents.length && hasActiveDocumentFilters"
+        class="flex flex-col items-center justify-center min-h-80 gap-2 text-center"
+      >
+        <span class="text-base font-medium text-n-slate-12">
+          {{ $t('CAPTAIN.DOCUMENTS.EMPTY_STATE.FILTERED_TITLE') }}
+        </span>
+        <span class="max-w-md text-sm text-n-slate-11">
+          {{ $t('CAPTAIN.DOCUMENTS.EMPTY_STATE.FILTERED_SUBTITLE') }}
+        </span>
+      </div>
+
+      <div v-else class="flex flex-col gap-4">
         <DocumentCard
           v-for="doc in documents"
           :id="doc.id"

@@ -79,7 +79,6 @@ Rails.application.routes.draw do
             end
             resources :documents, only: [:index, :show, :create, :destroy] do
               post :sync, on: :member
-              get :stats, on: :collection
             end
             resource :tasks, only: [], controller: 'tasks' do
               post :rewrite
@@ -177,6 +176,17 @@ Rails.application.routes.draw do
           resources :companies, only: [:index, :show, :create, :update, :destroy] do
             collection do
               get :search
+            end
+            member do
+              post :destroy_custom_attributes
+              delete :avatar
+            end
+            scope module: :companies do
+              resources :contacts, only: [:index, :create, :destroy] do
+                collection do
+                  get :search
+                end
+              end
             end
           end
           resources :contacts, only: [:index, :show, :update, :create, :destroy] do
