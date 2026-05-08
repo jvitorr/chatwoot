@@ -1011,7 +1011,8 @@
         "LABEL": "பாஸ்வேர்ட்",
         "PLACE_HOLDER": "பாஸ்வேர்ட்"
       },
-      "ENABLE_SSL": "SSL ஐ இயக்கவும்"
+      "ENABLE_SSL": "SSL ஐ இயக்கவும்",
+      "AUTH_MECHANISM": "அங்கீகாரம்"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
