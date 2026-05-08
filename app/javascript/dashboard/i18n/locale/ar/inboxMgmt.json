@@ -1011,7 +1011,8 @@
         "LABEL": "كلمة المرور",
         "PLACE_HOLDER": "كلمة المرور"
       },
-      "ENABLE_SSL": "تمكين SSL"
+      "ENABLE_SSL": "تمكين SSL",
+      "AUTH_MECHANISM": "المصادقة"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
