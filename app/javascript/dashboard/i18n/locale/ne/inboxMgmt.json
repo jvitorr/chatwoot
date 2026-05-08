@@ -1011,7 +1011,8 @@
         "LABEL": "पासवर्ड",
         "PLACE_HOLDER": "पासवर्ड"
       },
-      "ENABLE_SSL": "SSL सक्षम गर्नुहोस्"
+      "ENABLE_SSL": "SSL सक्षम गर्नुहोस्",
+      "AUTH_MECHANISM": "प्रमाणीकरण"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
