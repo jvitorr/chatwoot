@@ -1011,7 +1011,8 @@
         "LABEL": "密碼",
         "PLACE_HOLDER": "密碼"
       },
-      "ENABLE_SSL": "啟用 SSL"
+      "ENABLE_SSL": "啟用 SSL",
+      "AUTH_MECHANISM": "驗證機制"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
