@@ -1,7 +1,7 @@
 class Onboarding::HelpCenterArticleGenerationService
   MAP_LIMIT = 500
-  SCRAPE_THREAD_POOL = 3
   MIN_ARTICLES = 3
+  SCRAPE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
   def initialize(account, user, portal)
     @account = account
@@ -73,20 +73,17 @@ class Onboarding::HelpCenterArticleGenerationService
     end
   end
 
-  # TODO: replace this in-process Thread.new fan-out with per-article Sidekiq jobs
-  # before wiring this service into the onboarding flow. Threads inside a single
-  # Rails request/job each check out their own AR connection and exhaust the
-  # pool quickly; Sidekiq workers run isolated and scale independently.
   def build_articles(planned)
-    pool = [planned.size, SCRAPE_THREAD_POOL].min
+    scrapes = batch_scrape_urls(planned.flat_map { |a| Array(a[:urls]).map(&:to_s) }.reject(&:blank?).uniq)
 
-    planned.each_with_index.each_slice(pool).flat_map do |batch|
-      batch.map { |article, idx| Thread.new { [idx, scrape_and_rewrite(article)] } }.map(&:value)
-    end.to_h
+    planned.each_with_index.with_object({}) do |(article, idx), acc|
+      result = build_article(article, scrapes)
+      acc[idx] = result if result
+    end
   end
 
-  def scrape_and_rewrite(article)
-    source_pages = collect_source_pages(article)
+  def build_article(article, scrapes)
+    source_pages = collect_source_pages(article, scrapes)
     return nil if source_pages.empty?
 
     rewrite(source_pages, article)
@@ -95,31 +92,41 @@ class Onboarding::HelpCenterArticleGenerationService
     nil
   end
 
-  def collect_source_pages(article)
-    Array(article[:urls]).map(&:to_s).reject(&:blank?).filter_map do |url|
-      raw = scrape_one(url)
-      next if raw.nil? || raw[:markdown].blank?
+  def batch_scrape_urls(urls)
+    return {} if urls.empty?
 
-      { url: url, markdown: raw[:markdown], page_title: raw[:page_title] }
+    response = Captain::Tools::FirecrawlService.new.batch_scrape(urls, max_age: SCRAPE_MAX_AGE_MS)
+    return {} unless response.success?
+
+    Array(response.parsed_response&.dig('data')).each_with_object({}) do |data, acc|
+      page = normalize_scrape(data)
+      next if page.nil?
+
+      acc[page[:url]] = page
     end
   end
 
-  def scrape_one(url)
-    response = Captain::Tools::FirecrawlService.new.scrape(url)
-    return nil unless response.success?
-
-    data = response.parsed_response&.dig('data')
+  def normalize_scrape(data)
     return nil if data.blank?
 
-    # Firecrawl returns API 200 even when the scraped page itself failed —
-    # the target page's real status lives in data.metadata.statusCode.
     target_status = data.dig('metadata', 'statusCode')
     return nil if target_status.present? && !(200..299).cover?(target_status)
+    return nil if data['markdown'].to_s.blank?
 
     {
+      url: data.dig('metadata', 'sourceURL') || data.dig('metadata', 'url'),
       page_title: data.dig('metadata', 'title').to_s.strip,
       markdown: data['markdown'].to_s
     }
+  end
+
+  def collect_source_pages(article, scrapes)
+    Array(article[:urls]).map(&:to_s).reject(&:blank?).filter_map do |url|
+      page = scrapes[url]
+      next if page.nil?
+
+      { url: url, markdown: page[:markdown], page_title: page[:page_title] }
+    end
   end
 
   def rewrite(source_pages, article)
