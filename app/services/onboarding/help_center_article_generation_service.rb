@@ -1,7 +1,6 @@
 class Onboarding::HelpCenterArticleGenerationService
   MAP_LIMIT = 500
   MIN_ARTICLES = 3
-  SCRAPE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
   def initialize(account, user, portal)
     @account = account
@@ -29,7 +28,7 @@ class Onboarding::HelpCenterArticleGenerationService
 
   def preflight_skip_reason
     return 'portal already has articles' if @portal.articles.exists?
-    return 'Firecrawl not configured' unless Captain::Tools::FirecrawlService.configured?
+    return 'Firecrawl not configured' unless Firecrawl::Configuration.configured?
     return 'no website url' if website_url.blank?
   end
 
@@ -40,12 +39,14 @@ class Onboarding::HelpCenterArticleGenerationService
   end
 
   def discover_links
-    response = Captain::Tools::FirecrawlService.new.map(website_url, limit: MAP_LIMIT, search: 'docs help support faq')
-    return [] unless response.success?
-
-    Array(response.parsed_response&.dig('links')).map do |link|
-      link.is_a?(Hash) ? link : { 'url' => link.to_s }
-    end
+    data = firecrawl.map(
+      website_url,
+      Firecrawl::Models::MapOptions.new(limit: MAP_LIMIT, search: 'docs help support faq')
+    )
+    Array(data.links)
+  rescue Firecrawl::FirecrawlError => e
+    Rails.logger.warn "[HelpCenterArticleGeneration] map failed: #{e.message}"
+    []
   end
 
   def curate(links)
@@ -95,28 +96,33 @@ class Onboarding::HelpCenterArticleGenerationService
   def batch_scrape_urls(urls)
     return {} if urls.empty?
 
-    response = Captain::Tools::FirecrawlService.new.batch_scrape(urls, max_age: SCRAPE_MAX_AGE_MS)
-    return {} unless response.success?
-
-    Array(response.parsed_response&.dig('data')).each_with_object({}) do |data, acc|
-      page = normalize_scrape(data)
+    job = firecrawl.batch_scrape(
+      urls,
+      Firecrawl::Models::BatchScrapeOptions.new(options: Firecrawl::Configuration.default_scrape_options)
+    )
+    Array(job.data).each_with_object({}) do |doc, acc|
+      page = normalize_scrape(doc)
       next if page.nil?
 
       acc[page[:url]] = page
     end
+  rescue Firecrawl::FirecrawlError => e
+    Rails.logger.warn "[HelpCenterArticleGeneration] batch_scrape failed: #{e.message}"
+    {}
   end
 
-  def normalize_scrape(data)
-    return nil if data.blank?
+  def normalize_scrape(doc)
+    return nil if doc.nil?
 
-    target_status = data.dig('metadata', 'statusCode')
-    return nil if target_status.present? && !(200..299).cover?(target_status)
-    return nil if data['markdown'].to_s.blank?
+    metadata = doc.metadata || {}
+    status = metadata['statusCode']
+    return nil if status.present? && !(200..299).cover?(status)
+    return nil if doc.markdown.to_s.blank?
 
     {
-      url: data.dig('metadata', 'sourceURL') || data.dig('metadata', 'url'),
-      page_title: data.dig('metadata', 'title').to_s.strip,
-      markdown: data['markdown'].to_s
+      url: metadata['sourceURL'] || metadata['url'],
+      page_title: metadata['title'].to_s.strip,
+      markdown: doc.markdown.to_s
     }
   end
 
@@ -171,5 +177,9 @@ class Onboarding::HelpCenterArticleGenerationService
   def log_skip(reason)
     Rails.logger.info "[HelpCenterArticleGeneration] Skipping for account #{@account.id}: #{reason}"
     nil
+  end
+
+  def firecrawl
+    @firecrawl ||= Firecrawl::Configuration.client
   end
 end
