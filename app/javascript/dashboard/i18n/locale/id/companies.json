@@ -44,8 +44,16 @@
       "SIDEBAR": {
         "TABS": {
           "ATTRIBUTES": "Atribut",
-          "CONTACTS": "Kontak"
+          "CONTACTS": "Kontak",
+          "HISTORY": "History",
+          "NOTES": "Catatan"
         }
+      },
+      "HISTORY": {
+        "EMPTY": "No conversations found for this company's contacts yet."
+      },
+      "NOTES": {
+        "EMPTY": "No notes found for this company's contacts yet."
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "Cari atribut...",
