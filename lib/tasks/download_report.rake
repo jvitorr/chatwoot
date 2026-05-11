@@ -4,6 +4,7 @@
 #   POSTGRES_STATEMENT_TIMEOUT=600s NEW_RELIC_AGENT_ENABLED=false bundle exec rake download_report:agent
 #   POSTGRES_STATEMENT_TIMEOUT=600s NEW_RELIC_AGENT_ENABLED=false bundle exec rake download_report:inbox
 #   POSTGRES_STATEMENT_TIMEOUT=600s NEW_RELIC_AGENT_ENABLED=false bundle exec rake download_report:label
+#   POSTGRES_STATEMENT_TIMEOUT=600s NEW_RELIC_AGENT_ENABLED=false bundle exec rake download_report:account_daily
 #
 # The task will prompt for:
 #   - Account ID
@@ -21,6 +22,16 @@ require 'csv'
 # rubocop:disable Metrics/MethodLength
 # rubocop:disable Metrics/ModuleLength
 module DownloadReportTasks
+  ACCOUNT_DAILY_METRICS = %w[
+    conversations_count
+    incoming_messages_count
+    outgoing_messages_count
+    avg_first_response_time
+    avg_resolution_time
+    resolutions_count
+    reply_time
+  ].freeze
+
   def self.prompt(message)
     print "#{message}: "
     $stdin.gets.chomp
@@ -159,6 +170,44 @@ module DownloadReportTasks
     filename = "#{account.id}_label_#{data[:start_date]}_#{data[:end_date]}.csv"
     save_csv(filename, headers, rows)
   end
+
+  def self.download_account_daily_report
+    data = collect_params
+    account = data[:account]
+
+    puts "\nGenerating per-day account report..."
+    tz = ActiveSupport::TimeZone[data[:params][:timezone_offset]] || ActiveSupport::TimeZone['UTC']
+    rows_by_date = Hash.new { |hash, key| hash[key] = {} }
+
+    ACCOUNT_DAILY_METRICS.each do |metric|
+      puts "  - #{metric}"
+      builder_params = data[:params].merge(metric: metric, type: :account, group_by: 'day')
+      V2::Reports::Timeseries::ReportBuilder.new(account, builder_params).timeseries.each do |point|
+        date = Time.at(point[:timestamp]).in_time_zone(tz).to_date.iso8601
+        rows_by_date[date][metric] = point[:value]
+      end
+    end
+
+    headers = %w[date conversations incoming_messages outgoing_messages
+                 avg_first_response_time avg_resolution_time resolutions_count avg_reply_time]
+
+    rows = rows_by_date.keys.sort.map do |date|
+      metrics = rows_by_date[date]
+      [
+        date,
+        metrics['conversations_count'].to_i,
+        metrics['incoming_messages_count'].to_i,
+        metrics['outgoing_messages_count'].to_i,
+        format_time(metrics['avg_first_response_time']),
+        format_time(metrics['avg_resolution_time']),
+        metrics['resolutions_count'].to_i,
+        format_time(metrics['reply_time'])
+      ]
+    end
+
+    filename = "#{account.id}_account_daily_#{data[:start_date]}_#{data[:end_date]}.csv"
+    save_csv(filename, headers, rows)
+  end
 end
 # rubocop:enable Metrics/CyclomaticComplexity
 # rubocop:enable Metrics/AbcSize
@@ -179,5 +228,10 @@ namespace :download_report do
   desc 'Download label summary report as CSV'
   task label: :environment do
     DownloadReportTasks.download_label_report
+  end
+
+  desc 'Download per-day account-level summary report as CSV'
+  task account_daily: :environment do
+    DownloadReportTasks.download_account_daily_report
   end
 end
