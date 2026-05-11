@@ -17,10 +17,10 @@ class Captain::Llm::HelpCenterCurationService < Captain::BaseTaskService
     return { categories: [], articles: [] } if message.blank?
 
     data = message.is_a?(Hash) ? message.deep_symbolize_keys : {}
-    {
-      categories: Array(data[:categories]),
-      articles: Array(data[:articles])
-    }
+    articles = Array(data[:articles])
+    used_names = articles.map { |a| a[:category_name].to_s }
+    categories = Array(data[:categories]).select { |c| used_names.include?(c[:name].to_s) }
+    { categories: categories, articles: articles }
   end
 
   def messages
@@ -39,6 +39,19 @@ class Captain::Llm::HelpCenterCurationService < Captain::BaseTaskService
       Skip marketing/landing pages, blog posts, login, pricing tiers, legal, careers, press, investor pages.
       Group your picks into 3-5 short, reusable categories.
       Use the URL paths and page titles to judge relevance — do not invent URLs.
+
+      URL-path priority (preference order, not hard rules):
+        - First tier — almost always pick when present. Paths containing /support, /help,
+          /docs, /documentation, /faq, /faqs, /kb, /knowledge-base, /learn, /guides,
+          /getting-started, /how-to, /tutorial, /troubleshoot.
+        - Second tier — pick when the page carries user-relevant information a customer
+          would ask support about. Paths like /features, /pricing, /plans, /shipping,
+          /returns, /warranty, /security, individual product or category pages. Prefer
+          these only after first-tier picks; if a topic exists in both tiers, prefer the
+          first-tier URL.
+        - Skip — promotional, navigational, or boilerplate paths: /blog, /news, /press,
+          /careers, /jobs, /about, /team, /investors, /customers, /testimonials,
+          /case-studies, /login, /signup, /register, /legal, /terms, /privacy.
 
       For each article, output one URL by default. Use 2 or 3 URLs ONLY when the pages
       clearly cover the SAME topic from complementary angles. When in doubt, use one URL.
@@ -115,6 +128,8 @@ class Captain::Llm::HelpCenterCurationService < Captain::BaseTaskService
     false
   end
 
+  # This modal consistently outperforms 5.2 in generating tighter and more
+  # accurate curations.
   def curation_model
     'gpt-4.1'
   end
