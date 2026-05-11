@@ -22,8 +22,7 @@ class Public::Api::V1::Portals::BaseController < PublicController
 
   def set_portal_layout
     @portal ||= Portal.find_by(slug: params[:slug], archived: false) if params[:slug].present?
-    persisted = @portal&.layout
-    @portal_layout = PORTAL_LAYOUTS.include?(persisted) ? persisted : 'classic'
+    @portal_layout = PORTAL_LAYOUTS.include?(@portal&.layout) ? @portal.layout : 'classic'
   end
 
   def portal
