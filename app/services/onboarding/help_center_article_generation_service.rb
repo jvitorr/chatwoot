@@ -39,7 +39,7 @@ class Onboarding::HelpCenterArticleGenerationService
   end
 
   def discover_links
-    response = Captain::Tools::FirecrawlService.new.map(website_url, limit: MAP_LIMIT)
+    response = Captain::Tools::FirecrawlService.new.map(website_url, limit: MAP_LIMIT, search: 'docs')
     return [] unless response.success?
 
     Array(response.parsed_response&.dig('links')).map do |link|

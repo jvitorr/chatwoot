@@ -1,6 +1,7 @@
 class Captain::Llm::HelpCenterCurationService < Captain::BaseTaskService
   RESPONSE_SCHEMA = Captain::Llm::HelpCenterCurationSchema
   MAX_LINKS_IN_PROMPT = 200
+  IGNORED_URL_PATTERN = /\.(?:pdf|jpe?g|png|gif|webp|svg|ico|bmp|tiff?|avif|heic)(?:\?|#|$)/i
 
   pattr_initialize [:account!, :links!]
 
@@ -96,10 +97,15 @@ class Captain::Llm::HelpCenterCurationService < Captain::BaseTaskService
   end
 
   def formatted_links
-    Array(links).first(MAX_LINKS_IN_PROMPT).map do |link|
+    Array(links).reject { |link| ignored_url?(link) }.first(MAX_LINKS_IN_PROMPT).map do |link|
       data = link.is_a?(Hash) ? link.deep_symbolize_keys : {}
       "- #{data[:url]} — #{data[:title].to_s.strip} — #{data[:description].to_s.strip}"
     end.join("\n")
+  end
+
+  def ignored_url?(link)
+    url = link.is_a?(Hash) ? link.deep_symbolize_keys[:url].to_s : link.to_s
+    url.match?(IGNORED_URL_PATTERN)
   end
 
   def brand_info

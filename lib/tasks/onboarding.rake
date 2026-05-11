@@ -68,7 +68,7 @@ namespace :onboarding do
     print "→ [1/4] Mapping website (#{website_url})… "
     $stdout.flush
     t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    map_response = Captain::Tools::FirecrawlService.new.map(website_url, limit: 200)
+    map_response = Captain::Tools::FirecrawlService.new.map(website_url, limit: 200, search: 'docs')
     abort "Error: Firecrawl /map returned HTTP #{map_response.code}" unless map_response.success?
     links = Array(map_response.parsed_response&.dig('links')).map { |l| l.is_a?(Hash) ? l : { 'url' => l.to_s } }
     abort 'Error: /map returned no links.' if links.empty?

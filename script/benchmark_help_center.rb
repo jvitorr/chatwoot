@@ -105,7 +105,7 @@ options[:domains].each do |raw|
     print '  → Mapping… '
     $stdout.flush
     t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    map_response = Captain::Tools::FirecrawlService.new.map(domain, limit: 200)
+    map_response = Captain::Tools::FirecrawlService.new.map(domain, limit: 200, search: 'docs')
     unless map_response.success?
       puts "FAILED (HTTP #{map_response.code})"
       next
