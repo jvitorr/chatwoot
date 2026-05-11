@@ -12,6 +12,7 @@
 #  first_reply_created_at :datetime
 #  identifier             :string
 #  last_activity_at       :datetime         not null
+#  last_resolved_at       :datetime
 #  priority               :integer
 #  snoozed_until          :datetime
 #  status                 :integer          default("open"), not null
@@ -226,11 +227,11 @@ class Conversation < ApplicationRecord
   end
 
   def handle_resolved_status_change
-    # When conversation is resolved, clear waiting_since using update_column to avoid callbacks
+    # When conversation is resolved, clear waiting_since using update_columns to avoid callbacks
     return unless saved_change_to_status? && status == 'resolved'
 
     # rubocop:disable Rails/SkipsModelValidations
-    update_column(:waiting_since, nil)
+    update_columns(waiting_since: nil, last_resolved_at: Time.current)
     # rubocop:enable Rails/SkipsModelValidations
   end
 
