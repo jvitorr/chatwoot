@@ -1,6 +1,7 @@
 class Captain::Tools::FirecrawlService
   BASE_URL = 'https://api.firecrawl.dev/v1'.freeze
   FIRECRAWL_EXCLUDE_TAGS = %w[iframe .sidebar .cookie-banner [role=navigation] [role=banner] [role=contentinfo]].freeze
+  SCRAPE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
   def self.configured?
     InstallationConfig.find_by(name: 'CAPTAIN_FIRECRAWL_API_KEY')&.value
@@ -22,12 +23,30 @@ class Captain::Tools::FirecrawlService
     raise "Failed to crawl URL: #{e.message}"
   end
 
-  def scrape(url)
+  def scrape(url, max_age: SCRAPE_MAX_AGE_MS)
     HTTParty.post(
       "#{BASE_URL}/scrape",
-      body: scrape_payload(url),
+      body: scrape_payload(url, max_age: max_age),
       headers: headers
     )
+  end
+
+  def batch_scrape(urls, max_age: SCRAPE_MAX_AGE_MS, poll_interval: 2, timeout: 180)
+    kickoff = HTTParty.post(
+      "#{BASE_URL}/batch/scrape",
+      body: batch_scrape_payload(urls, max_age: max_age),
+      headers: headers
+    )
+    return kickoff unless kickoff.success?
+
+    job_id = kickoff.parsed_response&.dig('id')
+    return kickoff if job_id.blank?
+
+    poll_batch(job_id, poll_interval: poll_interval, timeout: timeout)
+  end
+
+  def batch_status(job_id)
+    HTTParty.get("#{BASE_URL}/batch/scrape/#{job_id}", headers: headers)
   end
 
   # v2/map returns links as objects with url, title, and description (v1 returns
@@ -55,15 +74,34 @@ class Captain::Tools::FirecrawlService
     }.to_json
   end
 
-  def scrape_payload(url)
-    { url: url }.merge(scrape_options).to_json
+  def scrape_payload(url, max_age: SCRAPE_MAX_AGE_MS)
+    { url: url }.merge(scrape_options(max_age: max_age)).to_json
   end
 
-  def scrape_options
+  def batch_scrape_payload(urls, max_age: SCRAPE_MAX_AGE_MS)
+    { urls: Array(urls) }.merge(scrape_options(max_age: max_age)).to_json
+  end
+
+  def poll_batch(job_id, poll_interval:, timeout:)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    loop do
+      response = batch_status(job_id)
+      return response unless response.success?
+
+      status = response.parsed_response&.dig('status')
+      return response if %w[completed failed cancelled].include?(status)
+      return response if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+
+      sleep poll_interval
+    end
+  end
+
+  def scrape_options(max_age: SCRAPE_MAX_AGE_MS)
     {
       onlyMainContent: true,
       formats: ['markdown'],
-      excludeTags: FIRECRAWL_EXCLUDE_TAGS
+      excludeTags: FIRECRAWL_EXCLUDE_TAGS,
+      maxAge: max_age
     }
   end
 
