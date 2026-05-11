@@ -44,8 +44,16 @@
       "SIDEBAR": {
         "TABS": {
           "ATTRIBUTES": "속성",
-          "CONTACTS": "연락처"
+          "CONTACTS": "연락처",
+          "HISTORY": "기록",
+          "NOTES": "노트"
         }
+      },
+      "HISTORY": {
+        "EMPTY": "No conversations found for this company's contacts yet."
+      },
+      "NOTES": {
+        "EMPTY": "No notes found for this company's contacts yet."
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "사용자 지정 속성 검색...",
