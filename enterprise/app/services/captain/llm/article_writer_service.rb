@@ -93,7 +93,7 @@ class Captain::Llm::ArticleWriterService < Captain::BaseTaskService
   end
 
   def writer_model
-    @writer_model ||= InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || GPT_MODEL
+    'gpt-5.2'
   end
 
   def build_follow_up_context?
