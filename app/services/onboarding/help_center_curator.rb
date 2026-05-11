@@ -31,8 +31,6 @@ class Onboarding::HelpCenterCurator
       Firecrawl::Models::MapOptions.new(limit: MAP_LIMIT, search: MAP_SEARCH)
     )
     Array(data.links)
-  rescue Firecrawl::FirecrawlError => e
-    raise Skipped, "Firecrawl map failed: #{e.message}"
   end
 
   def curate(links)

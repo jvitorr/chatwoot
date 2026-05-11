@@ -16,6 +16,7 @@ class Onboarding::HelpCenterCreationService
 
     @account.portals.create!(portal_attributes).tap do |portal|
       attach_brand_logo(portal)
+      enqueue_article_generation(portal)
     end
   rescue StandardError => e
     Rails.logger.error "[HelpCenterCreation] #{e.message}"
@@ -60,6 +61,14 @@ class Onboarding::HelpCenterCreationService
 
   def homepage_link
     @account.domain.presence || brand_info[:domain].presence
+  end
+
+  def enqueue_article_generation(portal)
+    return if homepage_link.blank?
+
+    @account.help_center_generations.create!(portal: portal)
+  rescue StandardError => e
+    Rails.logger.error "[HelpCenterCreation] Failed to enqueue article generation for account #{@account.id}: #{e.class} - #{e.message}"
   end
 
   def attach_brand_logo(portal)

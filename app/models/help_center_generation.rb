@@ -30,6 +30,8 @@ class HelpCenterGeneration < ApplicationRecord
 
   enum :status, { pending: 0, curating: 1, generating: 2, completed: 3, skipped: 4 }
 
+  after_create_commit :enqueue_generation_job
+
   def terminal?
     completed? || skipped?
   end
@@ -40,5 +42,11 @@ class HelpCenterGeneration < ApplicationRecord
 
   def all_finished?
     articles_finished >= planned_total
+  end
+
+  private
+
+  def enqueue_generation_job
+    Onboarding::HelpCenterArticleGenerationJob.perform_later(self)
   end
 end
