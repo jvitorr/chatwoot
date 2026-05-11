@@ -44,8 +44,16 @@
       "SIDEBAR": {
         "TABS": {
           "ATTRIBUTES": "गुणहरू",
-          "CONTACTS": "सम्पर्कहरू"
+          "CONTACTS": "सम्पर्कहरू",
+          "HISTORY": "इतिहास",
+          "NOTES": "टिप्पणीहरू"
         }
+      },
+      "HISTORY": {
+        "EMPTY": "No conversations found for this company's contacts yet."
+      },
+      "NOTES": {
+        "EMPTY": "No notes found for this company's contacts yet."
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "Search attributes...",
