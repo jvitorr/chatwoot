@@ -142,6 +142,30 @@ RSpec.describe 'Public Articles API', type: :request do
     end
   end
 
+  describe 'GET /public/api/v1/portals/:slug/articles/:slug.md (markdown)' do
+    it 'serves the raw article markdown for a published article' do
+      get "/hc/#{portal.slug}/articles/#{article.slug}.md"
+
+      expect(response).to have_http_status(:success)
+      expect(response.headers['Content-Type']).to include('text/markdown')
+      expect(response.body).to eq(article.content)
+    end
+
+    it 'returns 404 for a draft article' do
+      draft_article = create(:article, category: category, status: :draft, portal: portal, account_id: account.id, author_id: agent.id)
+
+      get "/hc/#{portal.slug}/articles/#{draft_article.slug}.md"
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'returns 404 if the article does not exist' do
+      get "/hc/#{portal.slug}/articles/non-existent-article.md"
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
   describe 'GET /public/api/v1/portals/:slug/articles/:slug.png (tracking pixel)' do
     it 'serves a PNG image and increments view count for published article' do
       get "/hc/#{portal.slug}/articles/#{article.slug}.png"
