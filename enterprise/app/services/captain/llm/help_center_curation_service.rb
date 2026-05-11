@@ -116,7 +116,7 @@ class Captain::Llm::HelpCenterCurationService < Captain::BaseTaskService
   end
 
   def curation_model
-    @curation_model ||= InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || GPT_MODEL
+    'gpt-4.1'
   end
 
   def build_follow_up_context?
