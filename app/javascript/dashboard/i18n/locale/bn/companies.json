@@ -44,8 +44,16 @@
       "SIDEBAR": {
         "TABS": {
           "ATTRIBUTES": "বৈশিষ্ট্যসমূহ",
-          "CONTACTS": "কন্টাক্টসমূহ"
+          "CONTACTS": "কন্টাক্টসমূহ",
+          "HISTORY": "ইতিহাস",
+          "NOTES": "Notes"
         }
+      },
+      "HISTORY": {
+        "EMPTY": "No conversations found for this company's contacts yet."
+      },
+      "NOTES": {
+        "EMPTY": "No notes found for this company's contacts yet."
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "Search attributes...",
