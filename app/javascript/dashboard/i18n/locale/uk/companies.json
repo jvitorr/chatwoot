@@ -44,8 +44,16 @@
       "SIDEBAR": {
         "TABS": {
           "ATTRIBUTES": "Атрибути",
-          "CONTACTS": "Контакти"
+          "CONTACTS": "Контакти",
+          "HISTORY": "History",
+          "NOTES": "Нотатки"
         }
+      },
+      "HISTORY": {
+        "EMPTY": "No conversations found for this company's contacts yet."
+      },
+      "NOTES": {
+        "EMPTY": "No notes found for this company's contacts yet."
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "Атрибути пошуку...",
