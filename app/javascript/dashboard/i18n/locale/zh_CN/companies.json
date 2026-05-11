@@ -44,8 +44,16 @@
       "SIDEBAR": {
         "TABS": {
           "ATTRIBUTES": "属性",
-          "CONTACTS": "联系人"
+          "CONTACTS": "联系人",
+          "HISTORY": "历史记录",
+          "NOTES": "备注"
         }
+      },
+      "HISTORY": {
+        "EMPTY": "No conversations found for this company's contacts yet."
+      },
+      "NOTES": {
+        "EMPTY": "No notes found for this company's contacts yet."
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "搜索属性...",
