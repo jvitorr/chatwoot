@@ -161,6 +161,12 @@ options[:domains].each do |raw|
     stats[:url_counts] = plan[:articles].map { |a| Array(a[:urls]).size }
     puts "picked #{plan[:articles].size} articles across #{plan[:categories].size} categories in #{timings[:curate]}s"
 
+    if plan[:articles].size < 3
+      puts "  → Skipping completely (#{plan[:articles].size} articles < 3 threshold)"
+      FileUtils.rmdir(out_dir) if Dir.empty?(out_dir)
+      next
+    end
+
     if options[:curate_only]
       timings[:total] = elapsed.call(total_started)
       out_dir.join('INDEX.md').write(curate_index_md.call(domain, plan, timings))

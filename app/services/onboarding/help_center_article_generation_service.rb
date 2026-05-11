@@ -1,6 +1,7 @@
 class Onboarding::HelpCenterArticleGenerationService
   MAP_LIMIT = 500
   SCRAPE_THREAD_POOL = 3
+  MIN_ARTICLES = 3
 
   def initialize(account, user, portal)
     @account = account
@@ -16,7 +17,7 @@ class Onboarding::HelpCenterArticleGenerationService
     return log_skip('map returned no links') if links.empty?
 
     plan = curate(links)
-    return log_skip('curation returned no articles') if plan[:articles].blank?
+    return log_skip("only #{plan[:articles].size} articles curated (< #{MIN_ARTICLES} threshold)") if plan[:articles].size < MIN_ARTICLES
 
     generate(plan)
   rescue StandardError => e
