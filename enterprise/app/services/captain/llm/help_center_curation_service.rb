@@ -33,12 +33,18 @@ class Captain::Llm::HelpCenterCurationService < Captain::BaseTaskService
 
   def system_prompt
     <<~PROMPT
-      You are curating a small help center for a company's customer-support widget.
+      You are curating a help center for a company's customer-support widget.
       You will be given a list of pages discovered on the company's website.
-      Pick the 10-12 pages that would make the most useful help-center articles for end users:
-      docs, FAQs, how-tos, troubleshooting, getting-started, account/billing help, product guides.
+      Pick pages that would make genuinely useful help-center articles for end users —
+      substantive how-to, FAQ, troubleshooting, policy, getting-started, account/billing
+      help, or product guide content.
+
+      Quality over quantity: include every page that's genuinely useful, and stop there.
+      If the site has 5 good pages, return 5; if it has 40, return 40. Do not pad with
+      thin, overview, or marketing-adjacent pages to hit a target count.
+
       Skip marketing/landing pages, blog posts, login, pricing tiers, legal, careers, press, investor pages.
-      Group your picks into 3-5 short, reusable categories.
+      Group your picks into reusable categories — use as many as the content naturally breaks into.
       Use the URL paths and page titles to judge relevance — do not invent URLs.
 
       URL-path priority (preference order, not hard rules):
@@ -54,25 +60,22 @@ class Captain::Llm::HelpCenterCurationService < Captain::BaseTaskService
           /careers, /jobs, /about, /team, /investors, /customers, /testimonials,
           /case-studies, /login, /signup, /register, /legal, /terms, /privacy.
 
-      For each article, output one URL by default. Use 2 or 3 URLs ONLY when the pages
-      clearly cover the SAME topic from complementary angles. When in doubt, use one URL.
+      For each article, group 1 to 3 URLs that together cover a single topic. Grouping
+      is encouraged when pages overlap or complement each other — aim for one coherent
+      article per topic rather than a separate stub per URL.
 
-      Strong overlap signals (multi-URL is appropriate):
-        - One URL is a topic overview, another is a provider/variant-specific guide on
-          the same topic ("SSO setup" + "SSO with Okta"; "Webhooks overview" + "Webhook
-          payload reference").
-        - One URL is an FAQ for a topic, another is the deep-dive that the FAQ links to.
-        - A how-to is split across multiple URLs by step or platform.
+      Good reasons to group multiple URLs:
+        - Overview + variant-specific guide ("SSO setup" + "SSO with Okta"; "Webhooks
+          overview" + "Webhook payload reference").
+        - FAQ + the deep-dive it links to.
+        - A how-to split across multiple URLs by step or platform.
+        - Two pages about the same feature, policy, or process from different angles
+          (e.g. "Shipping policy" + "Shipping FAQ").
+        - Related troubleshooting pages for the same issue.
 
-      NOT overlap (use separate articles, one URL each):
-        - Topics that share a category but cover different things ("Setting up SSO" and
-          "Setting up MFA" are both auth — still separate articles).
-        - One URL is a marketing page about a feature, another is the feature's docs —
-          skip the marketing page entirely.
-        - Pages that are merely thematically related ("Pricing" and "Plan limits" — pick
-          one).
-
-      Almost every article on a typical site has one URL. Multi-URL is the exception, not the norm.
+      Don't group across distinct topics that merely share a category ("Setting up SSO"
+      and "Setting up MFA" stay separate). If a URL is marketing for a feature and
+      another is the feature's docs, pick the docs and skip the marketing.
 
       Write all category names, category descriptions, and article titles in #{locale_name}.
       The input page titles and descriptions may be in another language; translate the labels you emit into #{locale_name}.
