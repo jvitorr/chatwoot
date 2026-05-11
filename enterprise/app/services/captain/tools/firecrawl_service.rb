@@ -30,10 +30,14 @@ class Captain::Tools::FirecrawlService
     )
   end
 
-  def map(url, limit: 100, include_subdomains: false)
+  # v2/map returns links as objects with url, title, and description (v1 returns
+  # bare URL strings), giving the curator real signal to filter on. Other
+  # endpoints stay on v1 — their request payloads aren't v2-compatible.
+  def map(url, limit: 100, include_subdomains: false, search: nil)
+    body = { url: url, limit: limit, includeSubdomains: include_subdomains, search: search }.compact
     HTTParty.post(
-      "#{BASE_URL}/map",
-      body: { url: url, limit: limit, includeSubdomains: include_subdomains }.to_json,
+      'https://api.firecrawl.dev/v2/map',
+      body: body.to_json,
       headers: headers
     )
   end
