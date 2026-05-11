@@ -742,12 +742,58 @@
       "SELECT_ALL": "Selecionar todos ({count})",
       "UNSELECT_ALL": "Desmarcar todos ({count})",
       "BULK_DELETE_BUTTON": "Excluir",
+      "BULK_SYNC_BUTTON": "Atualizar",
       "BULK_DELETE": {
         "TITLE": "Excluir documentos?",
         "DESCRIPTION": "Você tem certeza que deseja excluir os documentos selecionados? Esta ação não pode ser desfeita.",
         "CONFIRM": "Sim, excluir todas",
         "SUCCESS_MESSAGE": "Documentos excluídos com sucesso",
         "ERROR_MESSAGE": "Ocorreu um erro ao excluir os documentos, por favor novamente."
+      },
+      "BULK_SYNC": {
+        "SUCCESS_MESSAGE_ONE": "Refresh queued for 1 document",
+        "SUCCESS_MESSAGE": "Refresh queued for {count} documents",
+        "ZERO_MESSAGE": "No documents marked for refresh.",
+        "ERROR_MESSAGE": "There was an error queuing the refresh, please try again."
+      },
+      "SYNC": {
+        "QUEUED_MESSAGE": "Refresh queued. We'll update the document shortly.",
+        "ERROR_MESSAGE": "Could not queue refresh, please try again."
+      },
+      "FILTERS": {
+        "SOURCE": {
+          "ALL": "All sources",
+          "WEB": "Web pages",
+          "PDF": "PDFs"
+        },
+        "STATUS": {
+          "ANY": "Any status",
+          "UPDATED": "Updated",
+          "NEEDS_UPDATE": "Needs update",
+          "UPDATING": "Updating",
+          "FAILED": "Falha"
+        },
+        "SORT": {
+          "RECENTLY_UPDATED": "Recently updated",
+          "RECENTLY_CREATED": "Recently created"
+        },
+        "SEARCH_PLACEHOLDER": "Pesquisar..."
+      },
+      "SYNC_STATUS": {
+        "SYNCED": "last updated {time}",
+        "SYNCING": "atualizando...",
+        "STALE_SYNC": "update stalled",
+        "FAILED": "Failed to sync",
+        "NEVER_SYNCED": "not updated yet"
+      },
+      "SYNC_ERRORS": {
+        "NOT_FOUND": "Página não encontrada",
+        "ACCESS_DENIED": "Access denied",
+        "TIMEOUT": "Page took too long to respond",
+        "CONTENT_EMPTY": "Page returned empty content",
+        "FETCH_FAILED": "Could not fetch page",
+        "SYNC_ERROR": "Unexpected error",
+        "DEFAULT": "Sync error"
       },
       "RELATED_RESPONSES": {
         "TITLE": "FAQs Relacionadas",
@@ -792,11 +838,15 @@
       },
       "OPTIONS": {
         "VIEW_RELATED_RESPONSES": "Visualizar Respostas relacionadas",
+        "SYNC_NOW": "Refresh now",
+        "RETRY_SYNC": "Retry refresh",
         "DELETE_DOCUMENT": "Excluir Documento"
       },
       "EMPTY_STATE": {
         "TITLE": "Nenhum documento disponível",
         "SUBTITLE": "Os documentos são usados pelo seu assistente para gerar perguntas frequentes. Pode importar documentos para fornecer um contexto para seu assistente.",
+        "FILTERED_TITLE": "No matching documents",
+        "FILTERED_SUBTITLE": "Try changing the source, status, or search term.",
         "FEATURE_SPOTLIGHT": {
           "TITLE": "Documento do Capitão",
           "NOTE": "Um documento no Capitão serve como um recurso de conhecimento para o assistente. Ao conectar sua central de ajuda ou guias, o Capitão pode analisar o conteúdo e fornecer respostas precisas para as dúvidas dos clientes."
