@@ -154,6 +154,7 @@ const handleSave = () => {
         <LayoutPreviewCard
           name="portal-layout"
           value="documentation"
+          beta
           :active="layout === 'documentation'"
           :title="
             t('HELP_CENTER.PORTAL_SETTINGS.LAYOUT_CONTENT.LAYOUT.SIDEBAR.TITLE')

@@ -1,12 +1,17 @@
 <script setup>
+import { useI18n } from 'vue-i18n';
+
 defineProps({
   active: { type: Boolean, default: false },
   title: { type: String, default: '' },
   description: { type: String, default: '' },
   name: { type: String, required: true },
   value: { type: String, required: true },
+  beta: { type: Boolean, default: false },
 });
 defineEmits(['select']);
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -21,8 +26,16 @@ defineEmits(['select']);
   >
     <div class="flex flex-col gap-2 items-center w-full rounded-t-[5px]">
       <div class="grid grid-cols-[1fr_auto] items-center w-full gap-1">
-        <div class="overflow-hidden text-heading-2 text-n-slate-12 text-start">
-          <span class="block truncate">{{ title }}</span>
+        <div
+          class="flex items-center gap-2 overflow-hidden text-heading-2 text-n-slate-12 text-start"
+        >
+          <span class="truncate">{{ title }}</span>
+          <span
+            v-if="beta"
+            class="inline-flex items-center px-1.5 py-0.5 text-xs font-semibold uppercase tracking-tight rounded-md bg-n-brand/10 text-n-brand"
+          >
+            {{ t('GENERAL.BETA') }}
+          </span>
         </div>
         <input
           :checked="active"
