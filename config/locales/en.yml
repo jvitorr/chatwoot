@@ -441,6 +441,12 @@ en:
       others: others
       by: By
       no_articles: There are no articles here
+    article_actions:
+      label: Open in
+      view_markdown: View as Markdown
+      open_in_chatgpt: Open in ChatGPT
+      open_in_claude: Open in Claude
+      llm_prompt: "Read the following article and help me understand it: %{url}"
     footer:
       made_with: Made with
     header:

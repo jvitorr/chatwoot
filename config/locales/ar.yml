@@ -421,6 +421,12 @@ ar:
       others: الآخرين
       by: بواسطة
       no_articles: لا توجد مقالات
+    article_actions:
+      label: فتح في
+      view_markdown: عرض كـ Markdown
+      open_in_chatgpt: فتح في ChatGPT
+      open_in_claude: فتح في Claude
+      llm_prompt: "اقرأ المقال التالي وساعدني في فهمه: %{url}"
     footer:
       made_with: صنع بـ
     header:

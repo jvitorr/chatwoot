@@ -16,7 +16,8 @@
           <article class="flex-1 min-w-0">
             <%= render 'public/api/v1/portals/documentation_layout/breadcrumb',
                        category: @article.category, article: @article %>
-            <%= render 'public/api/v1/portals/documentation_layout/articles/header' %>
+            <%= render 'public/api/v1/portals/documentation_layout/articles/header',
+                       portal: @portal, article: @article %>
 
             <div id="cw-article-content"
                  class="prose dark:prose-invert max-w-none break-words

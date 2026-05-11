@@ -421,6 +421,12 @@ pt_BR:
       others: outros
       by: Por
       no_articles: Não há artigos aqui
+    article_actions:
+      label: Abrir em
+      view_markdown: Ver como Markdown
+      open_in_chatgpt: Abrir no ChatGPT
+      open_in_claude: Abrir no Claude
+      llm_prompt: "Leia o seguinte artigo e me ajude a entendê-lo: %{url}"
     footer:
       made_with: Criado com
     header:
