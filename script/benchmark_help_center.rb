@@ -18,9 +18,10 @@ require 'fileutils'
 
 options = {}
 OptionParser.new do |opts|
-  opts.banner = 'Usage: rails runner script/benchmark_help_center.rb -- --domains <comma-list> [--account-id <id>]'
+  opts.banner = 'Usage: rails runner script/benchmark_help_center.rb -- --domains <comma-list> [--account-id <id>] [--curate]'
   opts.on('--domains DOMAINS', Array, 'Comma-separated list of domains') { |v| options[:domains] = v }
   opts.on('--account-id ID', Integer, 'Account to use for LLM context (defaults to first)') { |v| options[:account_id] = v }
+  opts.on('--curate', 'Run only mapping + curation (skip scrape/rewrite; INDEX.md only)') { options[:curate_only] = true }
 end.parse!(ARGV)
 
 abort 'Error: --domains is required.' if options[:domains].blank?
@@ -74,6 +75,29 @@ index_md = lambda do |domain, plan, pages, timings|
       label = page ? page[:title] : art[:title]
       file_path = "#{sanitize.call(cat[:name])}/#{sanitize.call(label)}.md"
       buf << (ok ? "- ✓ [#{label}](#{file_path})" : "- ✗ #{label} (failed)")
+      Array(art[:urls]).each { |u| buf << "    - source: #{u}" }
+    end
+    buf << ''
+  end
+  buf.join("\n")
+end
+
+curate_index_md = lambda do |domain, plan, timings|
+  buf = ["# Help center benchmark — #{domain} (curate only)", '',
+         "Generated #{Time.zone.now.strftime('%Y-%m-%d %H:%M:%S %Z')}", '',
+         '## Pipeline timings',
+         "- Map: #{timings[:map]}s",
+         "- Curate: #{timings[:curate]}s",
+         "- Total: #{timings[:total]}s",
+         '', '## Articles by category', '']
+  grouped = plan[:articles].group_by { |art| art[:category_name].to_s }
+  plan[:categories].each do |cat|
+    cat_articles = grouped[cat[:name].to_s] || []
+    buf << "### #{cat[:name]} (#{cat_articles.size})"
+    buf << cat[:description] if cat[:description].present?
+    buf << ''
+    cat_articles.each do |art|
+      buf << "- #{art[:title]}"
       Array(art[:urls]).each { |u| buf << "    - source: #{u}" }
     end
     buf << ''
@@ -136,6 +160,13 @@ options[:domains].each do |raw|
     stats[:picked] = plan[:articles].size
     stats[:url_counts] = plan[:articles].map { |a| Array(a[:urls]).size }
     puts "picked #{plan[:articles].size} articles across #{plan[:categories].size} categories in #{timings[:curate]}s"
+
+    if options[:curate_only]
+      timings[:total] = elapsed.call(total_started)
+      out_dir.join('INDEX.md').write(curate_index_md.call(domain, plan, timings))
+      puts "  → Wrote #{out_dir.relative_path_from(Rails.root)} (curate only, total #{timings[:total]}s)"
+      next
+    end
 
     # Stage 3: Scrape + rewrite (parallel, 3 threads)
     print '  → Scraping & rewriting… '
@@ -251,10 +282,12 @@ puts '═══ Summary ══════════════════�
 puts "Domains processed: #{domain_stats.size}"
 puts ''
 puts "Articles picked by curator: #{total_picked}"
-puts "  Successfully generated:   #{total_generated} (#{gen_pct}%)"
-puts "  Failed to generate:       #{total_failed} (#{fail_pct}%)"
+unless options[:curate_only]
+  puts "  Successfully generated:   #{total_generated} (#{gen_pct}%)"
+  puts "  Failed to generate:       #{total_failed} (#{fail_pct}%)"
+end
 puts ''
-if gen_counts.any?
+if !options[:curate_only] && gen_counts.any?
   puts 'Per-domain article output'
   puts "  Min:    #{gen_counts.min}"
   puts "  Median: #{median.call(gen_counts)}"
@@ -283,11 +316,11 @@ puts "  Total wall time:    #{format_secs.call(overall_total)}"
 puts '  Sum per stage:'
 puts "    Map:              #{format_secs.call(maps.sum)}"
 puts "    Curate:           #{format_secs.call(curates.sum)}"
-puts "    Scrape + rewrite: #{format_secs.call(rewrites.sum)}"
+puts "    Scrape + rewrite: #{format_secs.call(rewrites.sum)}" unless options[:curate_only]
 puts '  Avg per domain:'
 puts "    Map:              #{format_secs.call(avg.call(maps))}"
 puts "    Curate:           #{format_secs.call(avg.call(curates))}"
-puts "    Scrape + rewrite: #{format_secs.call(avg.call(rewrites))}"
+puts "    Scrape + rewrite: #{format_secs.call(avg.call(rewrites))}" unless options[:curate_only]
 puts "    Total:            #{format_secs.call(avg.call(totals))}"
 puts ''
 puts 'Done. Outputs in help_center_benchmarks/'
