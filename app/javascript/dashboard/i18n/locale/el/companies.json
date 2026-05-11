@@ -44,8 +44,16 @@
       "SIDEBAR": {
         "TABS": {
           "ATTRIBUTES": "Ιδιότητες",
-          "CONTACTS": "Επαφές"
+          "CONTACTS": "Επαφές",
+          "HISTORY": "History",
+          "NOTES": "Σημειώσεις"
         }
+      },
+      "HISTORY": {
+        "EMPTY": "No conversations found for this company's contacts yet."
+      },
+      "NOTES": {
+        "EMPTY": "No notes found for this company's contacts yet."
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "Αναζήτηση ιδιοτήτων...",
