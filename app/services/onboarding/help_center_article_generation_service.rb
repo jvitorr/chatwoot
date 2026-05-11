@@ -1,5 +1,5 @@
 class Onboarding::HelpCenterArticleGenerationService
-  MAP_LIMIT = 200
+  MAP_LIMIT = 500
   SCRAPE_THREAD_POOL = 3
 
   def initialize(account, user, portal)
@@ -39,7 +39,7 @@ class Onboarding::HelpCenterArticleGenerationService
   end
 
   def discover_links
-    response = Captain::Tools::FirecrawlService.new.map(website_url, limit: MAP_LIMIT, search: 'docs')
+    response = Captain::Tools::FirecrawlService.new.map(website_url, limit: MAP_LIMIT, search: 'docs help support faq')
     return [] unless response.success?
 
     Array(response.parsed_response&.dig('links')).map do |link|
