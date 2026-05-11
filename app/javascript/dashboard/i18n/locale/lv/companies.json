@@ -44,8 +44,16 @@
       "SIDEBAR": {
         "TABS": {
           "ATTRIBUTES": "Atribūti",
-          "CONTACTS": "Kontaktpersonas"
+          "CONTACTS": "Kontaktpersonas",
+          "HISTORY": "Vēsture",
+          "NOTES": "Piezīmes"
         }
+      },
+      "HISTORY": {
+        "EMPTY": "No conversations found for this company's contacts yet."
+      },
+      "NOTES": {
+        "EMPTY": "No notes found for this company's contacts yet."
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "Meklēt īpašības...",
