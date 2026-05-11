@@ -6,8 +6,7 @@ class Public::Api::V1::Portals::CategoriesController < Public::Api::V1::Portals:
   layout 'portal'
 
   def index
-    locale = params[:locale].presence || @portal.default_locale
-    redirect_to public_portal_locale_path(@portal.slug, locale), status: :moved_permanently
+    redirect_to public_portal_locale_path(@portal.slug, params[:locale]), status: :moved_permanently
   end
 
   def show
