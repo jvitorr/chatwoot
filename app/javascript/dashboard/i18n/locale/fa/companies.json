@@ -44,8 +44,16 @@
       "SIDEBAR": {
         "TABS": {
           "ATTRIBUTES": "ویژگی ها",
-          "CONTACTS": "مخاطبین"
+          "CONTACTS": "مخاطبین",
+          "HISTORY": "History",
+          "NOTES": "یادداشت‌ها"
         }
+      },
+      "HISTORY": {
+        "EMPTY": "No conversations found for this company's contacts yet."
+      },
+      "NOTES": {
+        "EMPTY": "No notes found for this company's contacts yet."
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "جستجو ویژگی ها...",
