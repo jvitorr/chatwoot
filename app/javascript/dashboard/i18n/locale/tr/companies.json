@@ -44,8 +44,16 @@
       "SIDEBAR": {
         "TABS": {
           "ATTRIBUTES": "Öznitelikler",
-          "CONTACTS": "Kişiler"
+          "CONTACTS": "Kişiler",
+          "HISTORY": "Geçmiş",
+          "NOTES": "Notlar"
         }
+      },
+      "HISTORY": {
+        "EMPTY": "No conversations found for this company's contacts yet."
+      },
+      "NOTES": {
+        "EMPTY": "No notes found for this company's contacts yet."
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "Öznitelik ara...",
