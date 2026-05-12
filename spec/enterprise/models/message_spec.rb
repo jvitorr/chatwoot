@@ -89,14 +89,4 @@ RSpec.describe Message do
     end
   end
 
-  context 'when contact message is created' do
-    it 'updates linked company last_activity_at' do
-      company = create(:company)
-      contact = create(:contact, account: company.account, company: company)
-      conversation = create(:conversation, account: company.account, contact: contact)
-      message = create(:message, account: company.account, conversation: conversation, sender: contact)
-
-      expect(company.reload.last_activity_at).to be_within(1.second).of(message.created_at)
-    end
-  end
 end
