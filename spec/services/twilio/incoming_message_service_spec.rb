@@ -403,6 +403,43 @@ describe Twilio::IncomingMessageService do
         expect(existing_contact.name).to eq('Alice Johnson')
       end
 
+      describe 'When the incoming WhatsApp message only has BSUID identifiers' do
+        let!(:whatsapp_twilio_channel) do
+          create(:channel_twilio_sms, :whatsapp, account: account, account_sid: 'ACxxx',
+                                                 inbox: create(:inbox, account: account, greeting_enabled: false))
+        end
+
+        it 'creates a contact and conversation without a phone number' do
+          params = {
+            SmsSid: 'SMxx',
+            From: 'whatsapp:IN.2081978709342942',
+            AccountSid: 'ACxxx',
+            MessagingServiceSid: whatsapp_twilio_channel.messaging_service_sid,
+            Body: 'testing bsuid',
+            ProfileName: 'Muhsin',
+            ProfileUsername: 'muhsin',
+            ExternalUserId: 'IN.2081978709342942',
+            ParentExternalUserId: 'IN.ENT.9081726354'
+          }
+
+          described_class.new(params: params).perform
+
+          contact_inbox = whatsapp_twilio_channel.inbox.contact_inboxes.find_by!(source_id: 'whatsapp:IN.2081978709342942')
+          contact = contact_inbox.contact
+          expect(whatsapp_twilio_channel.inbox.conversations.count).to eq(1)
+          expect(whatsapp_twilio_channel.inbox.messages.first.content).to eq('testing bsuid')
+          expect(contact).to have_attributes(name: 'Muhsin', phone_number: nil)
+          expect(contact.additional_attributes).to include(
+            'social_whatsapp_user_name' => 'muhsin',
+            'social_profiles' => { 'whatsapp' => 'muhsin' }
+          )
+          expect(contact_inbox).to have_attributes(
+            whatsapp_bsuid: 'IN.2081978709342942',
+            whatsapp_parent_bsuid: 'IN.ENT.9081726354'
+          )
+        end
+      end
+
       describe 'When the incoming number is a Brazilian number in new format with 9 included' do
         let!(:whatsapp_twilio_channel) do
           create(:channel_twilio_sms, :whatsapp, account: account, account_sid: 'ACxxx',

@@ -86,6 +86,40 @@ describe Whatsapp::IncomingMessageService do
         described_class.new(inbox: whatsapp_channel.inbox, params: params).perform
         expect(whatsapp_channel.inbox.messages.count).to eq(1)
       end
+
+      it 'creates a contact and conversation when only BSUID is present' do
+        params = {
+          'contacts' => [{
+            'profile' => { 'name' => 'Muhsin', 'username' => 'muhsin' },
+            'user_id' => 'IN.2081978709342942',
+            'parent_user_id' => 'IN.ENT.9081726354'
+          }],
+          'messages' => [{
+            'from_user_id' => 'IN.2081978709342942',
+            'from_parent_user_id' => 'IN.ENT.9081726354',
+            'id' => 'wamid.bsuid-only-message',
+            'text' => { 'body' => 'testing bsuid' },
+            'timestamp' => '1778579582',
+            'type' => 'text'
+          }]
+        }.with_indifferent_access
+
+        described_class.new(inbox: whatsapp_channel.inbox, params: params).perform
+
+        contact_inbox = whatsapp_channel.inbox.contact_inboxes.find_by!(source_id: 'IN.2081978709342942')
+        contact = contact_inbox.contact
+        expect(whatsapp_channel.inbox.conversations.count).to eq(1)
+        expect(whatsapp_channel.inbox.messages.first.content).to eq('testing bsuid')
+        expect(contact).to have_attributes(name: 'Muhsin', phone_number: nil)
+        expect(contact.additional_attributes).to include(
+          'social_whatsapp_user_name' => 'muhsin',
+          'social_profiles' => { 'whatsapp' => 'muhsin' }
+        )
+        expect(contact_inbox).to have_attributes(
+          whatsapp_bsuid: 'IN.2081978709342942',
+          whatsapp_parent_bsuid: 'IN.ENT.9081726354'
+        )
+      end
     end
 
     context 'when unsupported message types' do
