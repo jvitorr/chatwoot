@@ -102,6 +102,13 @@ tr:
       reauthorization:
         generic: 'WhatsApp''ı yeniden yetkilendirme işlemi başarısız oldu. Lütfen tekrar deneyin.'
         not_supported: 'Bu tür WhatsApp kanalları için yeniden yetkilendirme desteklenmemektedir.'
+      calls:
+        not_enabled: 'Calling is not enabled for this inbox'
+        no_recording: 'No recording file provided'
+        no_message: 'Call has no associated message'
+        sdp_offer_required: 'sdp_offer is required'
+        contact_phone_required: 'Contact phone number is required'
+        permission_request_failed: 'Failed to send call permission request'
     inboxes:
       imap:
         socket_error: Lütfen ağ bağlantınızı, IMAP adresini kontrol edin ve tekrar deneyin.
@@ -232,6 +239,9 @@ tr:
       whatsapp:
         list_button_label: 'Bir öğe seçin'
         call_permission_request_body: 'We would like to call you regarding your conversation.'
+      voice_call:
+        twilio: 'Voice Call'
+        whatsapp: 'WhatsApp Call'
       delivery_status:
         error_code: 'Hata kodu: %{error_code}'
     activity:
@@ -276,6 +286,9 @@ tr:
         issue_created: 'Linear sorun %{issue_id} %{user_name} tarafından oluşturuldu'
         issue_linked: 'Linear sorun %{issue_id} %{user_name} tarafından bağlandı'
         issue_unlinked: 'Linear sorun %{issue_id} %{user_name} tarafından bağlantısı kaldırıldı'
+      whatsapp_call:
+        permission_requested: 'Sent a call permission request to %{contact_name}.'
+        permission_granted: '%{contact_name} accepted the call permission request.'
       csat:
         not_sent_due_to_messaging_window: 'Giden mesaj kısıtlamaları nedeniyle CSAT anketi gönderilmedi'
       auto_resolve:
