@@ -102,6 +102,13 @@ he:
       reauthorization:
         generic: 'אישור מחדש של WhatsApp נכשל. אנא נסה שוב.'
         not_supported: 'אישור מחדש אינו נתמך עבור סוג ערוץ WhatsApp זה.'
+      calls:
+        not_enabled: 'Calling is not enabled for this inbox'
+        no_recording: 'No recording file provided'
+        no_message: 'Call has no associated message'
+        sdp_offer_required: 'sdp_offer is required'
+        contact_phone_required: 'Contact phone number is required'
+        permission_request_failed: 'Failed to send call permission request'
     inboxes:
       imap:
         socket_error: אנא בדוק את חיבור הרשת, כתובת ה-IMAP ונסה שוב.
@@ -232,6 +239,9 @@ he:
       whatsapp:
         list_button_label: 'בחר פריט'
         call_permission_request_body: 'We would like to call you regarding your conversation.'
+      voice_call:
+        twilio: 'Voice Call'
+        whatsapp: 'WhatsApp Call'
       delivery_status:
         error_code: 'קוד שגיאה: %{error_code}'
     activity:
@@ -276,6 +286,9 @@ he:
         issue_created: 'בעיית Linear %{issue_id} נוצרה על ידי %{user_name}'
         issue_linked: 'בעיית Linear %{issue_id} קושרה על ידי %{user_name}'
         issue_unlinked: 'בעיית Linear %{issue_id} נותקה על ידי %{user_name}'
+      whatsapp_call:
+        permission_requested: 'Sent a call permission request to %{contact_name}.'
+        permission_granted: '%{contact_name} accepted the call permission request.'
       csat:
         not_sent_due_to_messaging_window: 'סקר CSAT לא נשלח עקב הגבלות הודעות יוצאות'
       auto_resolve:
