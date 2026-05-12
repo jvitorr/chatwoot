@@ -353,6 +353,7 @@ lv:
       name: 'Lineārs'
       short_description: 'Create and link Linear issues directly from conversations.'
       description: 'Izveidojiet problēmu pieteikumus programmā Linear, tieši no sarunas loga. Varat arī sasaistīt esošos Linear problēmu pieteikumus, lai nodrošinātu racionālāku un efektīvāku problēmu izsekošanas procesu.'
+      attachment_link_title: 'Saruna (#%{conversation_id}) ar %{name}'
     notion:
       name: 'Notion'
       short_description: 'Integrate databases, documents and pages directly with Captain.'
