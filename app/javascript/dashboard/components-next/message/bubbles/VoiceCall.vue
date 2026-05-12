@@ -3,9 +3,12 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'vuex';
 import { useMessageContext } from '../provider.js';
-import { VOICE_CALL_STATUS } from '../constants';
+import { VOICE_CALL_STATUS, MESSAGE_TYPES } from '../constants';
 import { useCallActions } from 'dashboard/composables/useCallSession';
+import { useWhatsappCallSession } from 'dashboard/composables/useWhatsappCallSession';
+import { useCallsStore } from 'dashboard/stores/calls';
 import { formatDuration } from 'shared/helpers/timeHelper';
+import { useAlert } from 'dashboard/composables';
 
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import BaseBubble from 'next/message/bubbles/Base.vue';
@@ -17,17 +20,10 @@ const LABEL_MAP = {
 };
 
 const ICON_MAP = {
-  [VOICE_CALL_STATUS.IN_PROGRESS]: 'i-ph-phone-call',
-  [VOICE_CALL_STATUS.NO_ANSWER]: 'i-ph-phone-x',
-  [VOICE_CALL_STATUS.FAILED]: 'i-ph-phone-x',
-};
-
-const BG_COLOR_MAP = {
-  [VOICE_CALL_STATUS.IN_PROGRESS]: 'bg-n-teal-9',
-  [VOICE_CALL_STATUS.RINGING]: 'bg-n-teal-9 animate-pulse',
-  [VOICE_CALL_STATUS.COMPLETED]: 'bg-n-slate-11',
-  [VOICE_CALL_STATUS.NO_ANSWER]: 'bg-n-ruby-9',
-  [VOICE_CALL_STATUS.FAILED]: 'bg-n-ruby-9',
+  [VOICE_CALL_STATUS.IN_PROGRESS]: 'i-ph-phone-call-bold',
+  [VOICE_CALL_STATUS.COMPLETED]: 'i-ph-phone-bold',
+  [VOICE_CALL_STATUS.NO_ANSWER]: 'i-ph-phone-x-bold',
+  [VOICE_CALL_STATUS.FAILED]: 'i-ph-phone-x-bold',
 };
 
 const { t } = useI18n();
@@ -39,26 +35,35 @@ const {
   conversationId,
   currentUserId,
   inboxId,
+  sender,
+  messageType,
 } = useMessageContext();
-// Lightweight consumer — bubble doesn't own global listeners; the
-// FloatingCallWidget is the singleton root that drives the session.
 const { joinCall, endCall, activeCall, hasActiveCall, isJoining } =
   useCallActions();
+const whatsappCallSession = useWhatsappCallSession();
 
 const status = computed(() => call.value?.status);
-const isOutbound = computed(() => call.value?.direction === 'outgoing');
+// Server-side call records use `outgoing`/`incoming`, while the Pinia store
+// and a few API hops normalise to `outbound`/`inbound`. Accept either so the
+// bubble label matches the message orientation no matter the source.
+const isOutbound = computed(() => {
+  const dir = call.value?.direction;
+  if (dir === 'outgoing' || dir === 'outbound') return true;
+  if (dir === 'incoming' || dir === 'inbound') return false;
+  // Fall back to the message orientation: agent-authored messages sit on the
+  // right (outbound) and contact-authored ones on the left.
+  return messageType.value === MESSAGE_TYPES.OUTGOING;
+});
+const isWhatsapp = computed(() => call.value?.provider === 'whatsapp');
 const isFailed = computed(() =>
   [VOICE_CALL_STATUS.NO_ANSWER, VOICE_CALL_STATUS.FAILED].includes(status.value)
 );
+const isMissedInbound = computed(() => isFailed.value && !isOutbound.value);
 const acceptedByAgentId = computed(() => call.value?.acceptedByAgentId);
 const didCurrentUserAnswer = computed(
   () =>
     !!acceptedByAgentId.value && acceptedByAgentId.value === currentUserId.value
 );
-// Pickup auto-assigns the conversation, so the assignee is a safe display proxy
-// for the answerer when the Call payload lacks accepted_by_agent_id (e.g.,
-// Twilio's call-status webhook flipped the call to in-progress before the
-// participant-join webhook claimed it).
 const conversationAssignee = computed(() => {
   const conversation = store.getters.getConversationById?.(
     conversationId?.value
@@ -79,13 +84,9 @@ const audioAttachment = computed(() =>
   (attachments?.value || []).find(a => a.fileType === 'audio')
 );
 
-// Duration may arrive on call.duration_seconds (push_event_data) or
-// content_attributes.data.duration_seconds — and either may be camelCased
-// upstream, so check every variant.
 const durationSeconds = computed(() => {
   const fromCall = call.value?.durationSeconds || call.value?.duration_seconds;
   if (fromCall != null) return fromCall;
-
   const data = contentAttributes?.value?.data;
   return data?.durationSeconds || data?.duration_seconds;
 });
@@ -117,11 +118,6 @@ const subtext = computed(() => {
     return formattedDuration.value;
   }
   if (status.value === VOICE_CALL_STATUS.IN_PROGRESS) {
-    // Outbound calls can flip to in-progress before the contact actually
-    // picks up (e.g., Twilio marks in-progress when the agent joins the
-    // conference); claiming "they answered" here would be misleading. The
-    // 'Call in progress' label alone is accurate; the floating widget shows
-    // the live duration.
     if (isOutbound.value) return null;
     if (didCurrentUserAnswer.value) {
       return t('CONVERSATION.VOICE_CALL.YOU_ANSWERED');
@@ -143,25 +139,33 @@ const subtext = computed(() => {
 
 const iconName = computed(() => {
   if (ICON_MAP[status.value]) return ICON_MAP[status.value];
-  return isOutbound.value ? 'i-ph-phone-outgoing' : 'i-ph-phone-incoming';
+  return isOutbound.value
+    ? 'i-ph-phone-outgoing-bold'
+    : 'i-ph-phone-incoming-bold';
 });
 
-const bgColor = computed(() => BG_COLOR_MAP[status.value] || 'bg-n-teal-9');
+// Subtle icon container — matches the design's tonal swatch over the bubble bg.
+// Status drives the accent: teal for live, ruby for missed, neutral otherwise.
+const iconContainerClass = computed(() => {
+  if (status.value === VOICE_CALL_STATUS.IN_PROGRESS) {
+    return 'bg-n-teal-3 text-n-teal-11';
+  }
+  if (status.value === VOICE_CALL_STATUS.RINGING) {
+    return 'bg-n-teal-3 text-n-teal-11';
+  }
+  if (isMissedInbound.value) {
+    return 'bg-n-alpha-2 text-n-ruby-9';
+  }
+  return 'bg-n-alpha-2 text-n-slate-12';
+});
 
 const callSid = computed(() => call.value?.providerCallId);
 
-// Show "Join call" when the call is still ringing, no agent has claimed it,
-// and the conversation is unassigned or assigned to the current user. Mirrors
-// the eligibility used by FloatingCallWidget so the bubble can act as a
-// recovery affordance after a refresh or missed widget.
 const canJoinCall = computed(() => {
   if (status.value !== VOICE_CALL_STATUS.RINGING) return false;
   if (isOutbound.value) return false;
   if (acceptedByAgentId.value) return false;
   if (!callSid.value || !inboxId.value || !conversationId.value) return false;
-  // Suppress the button once this call is the local active session — the
-  // message status webhook may lag behind, so we can't rely on `status` alone
-  // to hide it after a successful join from this client.
   if (hasActiveCall.value && activeCall.value?.callSid === callSid.value)
     return false;
   const assignee = conversationAssignee.value;
@@ -198,48 +202,102 @@ const handleJoinCall = async () => {
     callSid: callSid.value,
   });
 };
+
+const canCallBack = computed(
+  () => isMissedInbound.value && !!inboxId.value && !!conversationId.value
+);
+
+const handleCallBack = async () => {
+  if (!canCallBack.value) return;
+  try {
+    if (isWhatsapp.value) {
+      const response = await whatsappCallSession.initiateOutboundCall(
+        conversationId.value
+      );
+      if (response?.status === 'locked') return;
+      if (response?.call_id) {
+        const callsStore = useCallsStore();
+        callsStore.addCall({
+          callSid: response.call_id,
+          callId: response.id,
+          conversationId: conversationId.value,
+          inboxId: inboxId.value,
+          callDirection: 'outbound',
+          provider: 'whatsapp',
+        });
+      }
+      return;
+    }
+    await store.dispatch('contacts/initiateCall', {
+      contactId: sender.value?.id,
+      inboxId: inboxId.value,
+      conversationId: conversationId.value,
+    });
+  } catch (error) {
+    useAlert(error?.message || t('CONTACT_PANEL.CALL_FAILED'));
+  }
+};
 </script>
 
 <template>
-  <BaseBubble class="p-0 border-none" hide-meta>
-    <div class="flex overflow-hidden flex-col w-full max-w-sm">
-      <div class="flex gap-3 items-center p-3 w-full">
+  <BaseBubble class="!p-3 !max-w-md min-w-[240px]" hide-meta>
+    <div class="flex flex-col gap-3 w-full">
+      <!-- Header row: icon + title + duration/subtext -->
+      <div class="flex gap-2.5 items-start">
         <div
-          class="flex justify-center items-center rounded-full size-10 shrink-0"
-          :class="bgColor"
+          class="flex justify-center items-center rounded-xl size-11 shrink-0"
+          :class="iconContainerClass"
         >
-          <Icon
-            class="size-5"
-            :icon="iconName"
-            :class="{
-              'text-n-slate-1': status === VOICE_CALL_STATUS.COMPLETED,
-              'text-white': status !== VOICE_CALL_STATUS.COMPLETED,
-            }"
-          />
+          <Icon class="size-4" :icon="iconName" />
         </div>
-
-        <div class="flex overflow-hidden flex-col flex-grow">
-          <span class="text-sm font-medium truncate text-n-slate-12">
+        <div class="flex flex-col flex-1 min-w-0 self-center">
+          <span
+            class="font-display text-sm font-medium leading-tight truncate tracking-tight"
+          >
             {{ $t(labelKey) }}
           </span>
-          <span v-if="subtext" class="text-xs text-n-slate-11">
+          <span
+            v-if="subtext"
+            class="text-sm leading-tight truncate tracking-tight opacity-75"
+          >
             {{ subtext }}
           </span>
-          <button
-            v-if="canJoinCall"
-            type="button"
-            class="p-0 mt-1 text-xs font-medium text-start text-n-teal-10 hover:text-n-teal-11 disabled:opacity-50"
-            :disabled="isJoining"
-            @click="handleJoinCall"
-          >
-            {{ $t('CONVERSATION.VOICE_CALL.JOIN_CALL') }}
-          </button>
         </div>
       </div>
 
-      <div v-if="recordingAttachment" class="px-3 pb-3 w-full">
-        <AudioChip :attachment="recordingAttachment" class="text-n-slate-12" />
-      </div>
+      <!-- Audio player (when there's a recording) -->
+      <AudioChip
+        v-if="recordingAttachment"
+        :attachment="recordingAttachment"
+        show-transcribed-text
+      />
+
+      <!-- Call back button (missed inbound) -->
+      <button
+        v-if="canCallBack"
+        type="button"
+        class="flex justify-center items-center gap-2 px-3 h-10 bg-n-teal-9 hover:bg-n-teal-10 rounded-full transition-colors"
+        @click="handleCallBack"
+      >
+        <i class="text-base text-white i-ph-phone-bold" />
+        <span class="text-sm font-medium text-white tracking-tight">
+          {{ $t('CONVERSATION.VOICE_CALL.CALL_BACK') }}
+        </span>
+      </button>
+
+      <!-- Join call button (ringing inbound) -->
+      <button
+        v-if="canJoinCall"
+        type="button"
+        class="flex justify-center items-center gap-2 px-3 h-10 bg-n-teal-9 hover:bg-n-teal-10 disabled:opacity-50 rounded-full transition-colors"
+        :disabled="isJoining"
+        @click="handleJoinCall"
+      >
+        <i class="text-base text-white i-ph-phone-bold" />
+        <span class="text-sm font-medium text-white tracking-tight">
+          {{ $t('CONVERSATION.VOICE_CALL.JOIN_CALL') }}
+        </span>
+      </button>
     </div>
   </BaseBubble>
 </template>

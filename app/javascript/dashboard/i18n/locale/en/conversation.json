@@ -89,7 +89,8 @@
       "THEY_ANSWERED": "They answered",
       "YOU_ANSWERED": "You answered",
       "AGENT_ANSWERED": "{agentName} answered",
-      "JOIN_CALL": "Join call"
+      "JOIN_CALL": "Join call",
+      "CALL_BACK": "Call back"
     },
     "HEADER": {
       "RESOLVE_ACTION": "Resolve",
@@ -311,7 +312,8 @@
       "END_CALL": "End call",
       "MUTE": "Mute mic",
       "UNMUTE": "Unmute mic",
-      "VIEW_CHAT_HISTORY": "View chat history"
+      "VIEW_CHAT_HISTORY": "View chat history",
+      "GO_TO_CONVERSATION": "Go to conversation thread"
     }
   },
   "EMAIL_TRANSCRIPT": {
