@@ -102,6 +102,13 @@ ko:
       reauthorization:
         generic: 'WhatsApp 재인증에 실패했습니다. 다시 시도하십시오.'
         not_supported: '이 유형의 WhatsApp 채널은 재인증을 지원하지 않습니다.'
+      calls:
+        not_enabled: 'Calling is not enabled for this inbox'
+        no_recording: 'No recording file provided'
+        no_message: 'Call has no associated message'
+        sdp_offer_required: 'sdp_offer is required'
+        contact_phone_required: 'Contact phone number is required'
+        permission_request_failed: 'Failed to send call permission request'
     inboxes:
       imap:
         socket_error: 네트워크 연결, IMAP 주소를 확인하고 다시 시도하십시오.
@@ -232,6 +239,9 @@ ko:
       whatsapp:
         list_button_label: '항목 선택'
         call_permission_request_body: 'We would like to call you regarding your conversation.'
+      voice_call:
+        twilio: 'Voice Call'
+        whatsapp: 'WhatsApp Call'
       delivery_status:
         error_code: '오류 코드: %{error_code}'
     activity:
@@ -276,6 +286,9 @@ ko:
         issue_created: '%{user_name}님이 Linear 이슈 %{issue_id}을(를) 생성했습니다'
         issue_linked: '%{user_name}님이 Linear 이슈 %{issue_id}을(를) 연결했습니다'
         issue_unlinked: '%{user_name}님이 Linear 이슈 %{issue_id}의 연결을 해제했습니다'
+      whatsapp_call:
+        permission_requested: 'Sent a call permission request to %{contact_name}.'
+        permission_granted: '%{contact_name} accepted the call permission request.'
       csat:
         not_sent_due_to_messaging_window: '발신 메시지 제한으로 인해 CSAT 설문이 전송되지 않았습니다'
       auto_resolve:
