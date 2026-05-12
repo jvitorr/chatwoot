@@ -102,6 +102,13 @@ zh_TW:
       reauthorization:
         generic: '無法重新授權 WhatsApp，請再試一次。'
         not_supported: '此類型的 WhatsApp 頻道不支援重新授權。'
+      calls:
+        not_enabled: 'Calling is not enabled for this inbox'
+        no_recording: 'No recording file provided'
+        no_message: 'Call has no associated message'
+        sdp_offer_required: 'sdp_offer is required'
+        contact_phone_required: 'Contact phone number is required'
+        permission_request_failed: 'Failed to send call permission request'
     inboxes:
       imap:
         socket_error: 請檢查網路連線與 IMAP 位址後再試一次。
@@ -232,6 +239,9 @@ zh_TW:
       whatsapp:
         list_button_label: '選擇一個項目'
         call_permission_request_body: 'We would like to call you regarding your conversation.'
+      voice_call:
+        twilio: 'Voice Call'
+        whatsapp: 'WhatsApp Call'
       delivery_status:
         error_code: '錯誤代碼：%{error_code}'
     activity:
@@ -276,6 +286,9 @@ zh_TW:
         issue_created: '%{user_name} 建立了 Linear 議題 %{issue_id}'
         issue_linked: '%{user_name} 連結了 Linear 議題 %{issue_id}'
         issue_unlinked: '%{user_name} 取消連結了 Linear 議題 %{issue_id}'
+      whatsapp_call:
+        permission_requested: 'Sent a call permission request to %{contact_name}.'
+        permission_granted: '%{contact_name} accepted the call permission request.'
       csat:
         not_sent_due_to_messaging_window: '由於傳出訊息限制，未發送 CSAT 問卷'
       auto_resolve:
