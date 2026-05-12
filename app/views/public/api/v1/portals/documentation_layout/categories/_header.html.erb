@@ -1,31 +1,31 @@
-<% article_count_label = I18n.t(@articles.size == 1 ? 'public_portal.common.article' : 'public_portal.common.articles') %>
+<% article_count_label = I18n.t(articles.size == 1 ? 'public_portal.common.article' : 'public_portal.common.articles') %>
 <header class="mb-8">
   <div class="flex items-center gap-4">
-    <% if @category.icon.present? %>
-      <span class="flex items-center justify-center w-14 h-14 text-3xl rounded-2xl bg-n-slate-1 border border-solid border-n-weak shadow-sm"><%= @category.icon %></span>
+    <% if category.icon.present? %>
+      <span class="flex items-center justify-center w-14 h-14 text-3xl rounded-2xl bg-n-slate-1 border border-solid border-n-weak shadow-sm"><%= category.icon %></span>
     <% end %>
     <div class="min-w-0">
-      <h1 class="text-3xl leading-snug font-620 tracking-tight text-n-slate-12 text-balance"><%= @category.name %></h1>
+      <h1 class="text-3xl leading-snug font-620 tracking-tight text-n-slate-12 text-balance"><%= category.name %></h1>
       <div class="flex items-center gap-2 text-sm text-n-slate-10 flex-wrap">
-        <span class="tabular-nums"><%= @articles.size %> <%= article_count_label %></span>
-        <% if @category_authors.any? %>
+        <span class="tabular-nums"><%= articles.size %> <%= article_count_label %></span>
+        <% if category_authors.any? %>
           <span aria-hidden="true">·</span>
           <span class="inline-flex items-center gap-2">
             <span class="flex">
-              <% @category_authors.first(3).each_with_index do |author, idx| %>
+              <% category_authors.first(3).each_with_index do |author, idx| %>
                 <%= render 'public/api/v1/portals/documentation_layout/user_avatar',
                            user: author,
                            size: :xs,
                            extra_class: idx.positive? ? '-ml-0.5' : '' %>
               <% end %>
             </span>
-            <span><%= I18n.t('public_portal.common.by') %> <%= format_authors_label(@category_authors) %></span>
+            <span><%= I18n.t('public_portal.common.by') %> <%= format_authors_label(category_authors) %></span>
           </span>
         <% end %>
       </div>
     </div>
   </div>
-  <% if @category.description.present? %>
-    <p class="mt-6 text-lg leading-relaxed text-n-slate-11 text-pretty"><%= @category.description %></p>
+  <% if category.description.present? %>
+    <p class="mt-6 text-lg leading-relaxed text-n-slate-11 text-pretty"><%= category.description %></p>
   <% end %>
 </header>

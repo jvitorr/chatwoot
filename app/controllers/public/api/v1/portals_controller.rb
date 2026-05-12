@@ -1,16 +1,10 @@
 class Public::Api::V1::PortalsController < Public::Api::V1::Portals::BaseController
   before_action :ensure_custom_domain_request, only: [:show]
   before_action :redirect_to_portal_with_locale, only: [:show]
-  before_action :portal
-  before_action :ensure_portal_feature_enabled
-  layout 'portal'
+  before_action :load_home_data, only: [:show], if: -> { @portal_layout == 'documentation' }
 
   def show
     @og_image_url = helpers.set_og_image_url('', @portal.header_text)
-    return unless @portal_layout == 'documentation'
-
-    load_documentation_layout_home_data
-    render template: 'public/api/v1/portals/documentation_layout/show'
   end
 
   def sitemap
@@ -33,7 +27,7 @@ class Public::Api::V1::PortalsController < Public::Api::V1::Portals::BaseControl
     redirect_to "/hc/#{@portal.slug}/#{@portal.default_locale}"
   end
 
-  def load_documentation_layout_home_data
+  def load_home_data
     base_articles = @portal.articles.published.where(locale: @locale).includes(:author, :category)
     @visible_categories = @portal.categories
                                  .where(locale: @locale)

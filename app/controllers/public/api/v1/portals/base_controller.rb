@@ -4,9 +4,13 @@ class Public::Api::V1::Portals::BaseController < PublicController
   before_action :show_plain_layout
   before_action :set_color_scheme
   before_action :set_portal_layout
+  before_action :set_view_variant
   before_action :set_global_config
+  before_action :portal
+  before_action :ensure_portal_feature_enabled
   around_action :set_locale
   after_action :allow_iframe_requests
+  layout 'portal'
 
   PORTAL_LAYOUTS = %w[classic documentation].freeze
 
@@ -23,6 +27,10 @@ class Public::Api::V1::Portals::BaseController < PublicController
   def set_portal_layout
     @portal ||= Portal.find_by(slug: params[:slug], archived: false) if params[:slug].present?
     @portal_layout = PORTAL_LAYOUTS.include?(@portal&.layout) ? @portal.layout : 'classic'
+  end
+
+  def set_view_variant
+    request.variant = :documentation if @portal_layout == 'documentation' && !@is_plain_layout_enabled
   end
 
   def portal

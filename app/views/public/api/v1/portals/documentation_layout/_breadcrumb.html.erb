@@ -1,7 +1,7 @@
-<%# locals: (category: nil, article: nil) %>
+<%# locals: (portal:, locale:, category: nil, article: nil) %>
 <nav class="flex items-center gap-2 text-sm text-n-slate-11 mb-8 flex-wrap">
   <a
-    href="<%= public_portal_locale_path(@portal.slug, @locale) %>"
+    href="<%= public_portal_locale_path(portal.slug, locale) %>"
     class="inline-flex items-center gap-1.5 hover:text-n-slate-12 transition"
   >
     <span class="i-lucide-house size-3.5" aria-hidden="true"></span>
@@ -11,7 +11,7 @@
     <span class="i-lucide-chevron-right size-3 text-n-slate-9" aria-hidden="true"></span>
     <% if article %>
       <a
-        href="<%= public_portal_category_path(@portal.slug, category.locale, category.slug) %>"
+        href="<%= public_portal_category_path(portal.slug, category.locale, category.slug) %>"
         class="inline-flex items-center gap-1.5 hover:text-n-slate-12 transition"
       >
         <% if category.icon.present? %><span><%= category.icon %></span><% end %>
