@@ -353,6 +353,7 @@ ne:
       name: 'Linear'
       short_description: 'कुराकानीबाट सिधै Linear मुद्दा सिर्जना र लिंक गर्नुहोस्।.'
       description: 'तपाईंको कुराकानी विन्डोबाट सिधै Linear मा मुद्दा सिर्जना गर्नुहोस्। वैकल्पिक रूपमा, अझ सहज र प्रभावकारी ट्र्याकिङका लागि अवस्थित Linear मुद्दा जोड्नुहोस्।.'
+      attachment_link_title: 'Conversation (#%{conversation_id}) with %{name}'
     notion:
       name: 'Notion'
       short_description: 'डेटाबेस, कागजात र पृष्ठहरू सिधै Captain सँग एकीकृत गर्नुहोस्।.'
