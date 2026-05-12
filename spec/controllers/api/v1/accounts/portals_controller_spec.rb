@@ -135,9 +135,7 @@ RSpec.describe 'Api::V1::Accounts::Portals', type: :request do
             'allowed_locales' => [
               { 'articles_count' => 0, 'categories_count' => 0, 'code' => 'en', 'draft' => false },
               { 'articles_count' => 0, 'categories_count' => 0, 'code' => 'es', 'draft' => true }
-            ],
-            'default_locale' => 'en',
-            'layout' => 'classic'
+            ]
           }
         )
       end
