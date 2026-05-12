@@ -61,7 +61,7 @@ class Twilio::IncomingMessageService
 
   def normalized_phone_number
     return phone_number unless twilio_channel.whatsapp?
-    return twilio_whatsapp_bsuid_source_id if phone_number.blank?
+    return twilio_whatsapp_source_id_from_bsuid if phone_number.blank?
 
     Whatsapp::PhoneNumberNormalizationService.new(inbox).normalize_and_find_contact_by_provider("whatsapp:#{phone_number}", :twilio)
   end
@@ -78,12 +78,7 @@ class Twilio::IncomingMessageService
 
   def set_contact
     source_id = twilio_channel.whatsapp? ? normalized_phone_number : params[:From]
-
-    contact_inbox = ::ContactInboxWithContactBuilder.new(
-      source_id: source_id,
-      inbox: inbox,
-      contact_attributes: contact_attributes
-    ).perform
+    contact_inbox = twilio_contact_inbox(source_id)
 
     @contact_inbox = contact_inbox
     @contact = contact_inbox.contact
@@ -125,7 +120,7 @@ class Twilio::IncomingMessageService
   end
 
   def contact_name
-    params[:ProfileName].presence || formatted_phone_number || twilio_whatsapp_bsuid_source_id || params[:From]
+    params[:ProfileName].presence || formatted_phone_number || twilio_whatsapp_display_identifier || params[:From]
   end
 
   def additional_attributes

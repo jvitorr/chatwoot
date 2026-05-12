@@ -120,6 +120,38 @@ describe Whatsapp::IncomingMessageService do
           whatsapp_parent_bsuid: 'IN.ENT.9081726354'
         )
       end
+
+      it 'reuses the phone-based contact inbox when a later message is BSUID-only' do
+        phone_with_bsuid_params = {
+          'contacts' => [{ 'profile' => { 'name' => 'Muhsin' }, 'wa_id' => '919745786257', 'user_id' => 'IN.2081978709342942' }],
+          'messages' => [{
+            'from' => '919745786257',
+            'from_user_id' => 'IN.2081978709342942',
+            'id' => 'wamid.phone-bsuid-message',
+            'text' => { 'body' => 'phone and bsuid' },
+            'timestamp' => '1778579582',
+            'type' => 'text'
+          }]
+        }.with_indifferent_access
+        bsuid_only_params = {
+          'contacts' => [{ 'profile' => { 'name' => 'Muhsin' }, 'user_id' => 'IN.2081978709342942' }],
+          'messages' => [{
+            'from_user_id' => 'IN.2081978709342942',
+            'id' => 'wamid.bsuid-follow-up-message',
+            'text' => { 'body' => 'bsuid only' },
+            'timestamp' => '1778579583',
+            'type' => 'text'
+          }]
+        }.with_indifferent_access
+
+        described_class.new(inbox: whatsapp_channel.inbox, params: phone_with_bsuid_params).perform
+        contact_inbox = whatsapp_channel.inbox.contact_inboxes.find_by!(source_id: '919745786257')
+
+        expect { described_class.new(inbox: whatsapp_channel.inbox, params: bsuid_only_params).perform }.not_to raise_error
+        expect(whatsapp_channel.inbox.contact_inboxes.count).to eq(1)
+        expect(whatsapp_channel.inbox.messages.pluck(:content)).to contain_exactly('phone and bsuid', 'bsuid only')
+        expect(contact_inbox.reload.whatsapp_bsuid).to eq('IN.2081978709342942')
+      end
     end
 
     context 'when unsupported message types' do

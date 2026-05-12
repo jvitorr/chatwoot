@@ -4,11 +4,11 @@ module Whatsapp::IncomingMessageIdentifierHelper
     source_identifier = outgoing_message_source_identifier(message)
     return if source_identifier.blank?
 
-    @contact_inbox = ::ContactInboxWithContactBuilder.new(
-      source_id: processed_waid(source_identifier),
-      inbox: inbox,
+    @contact_inbox = find_or_create_contact_inbox(
+      source_identifier: source_identifier,
+      bsuid: message[:to_user_id],
       contact_attributes: contact_attributes_for_identifier(source_identifier, message[:to])
-    ).perform
+    )
     @contact = @contact_inbox.contact
     update_whatsapp_identifiers(bsuid: message[:to_user_id], parent_bsuid: message[:to_parent_user_id])
   end
@@ -20,11 +20,11 @@ module Whatsapp::IncomingMessageIdentifierHelper
     source_identifier = incoming_message_source_identifier(contact_params)
     return if source_identifier.blank?
 
-    @contact_inbox = ::ContactInboxWithContactBuilder.new(
-      source_id: processed_waid(source_identifier),
-      inbox: inbox,
+    @contact_inbox = find_or_create_contact_inbox(
+      source_identifier: source_identifier,
+      bsuid: whatsapp_bsuid(contact_params),
       contact_attributes: contact_attributes_from_contact_params(contact_params, source_identifier)
-    ).perform
+    )
     @contact = @contact_inbox.contact
     update_inbound_whatsapp_identifiers(contact_params)
     update_contact_with_profile_name(contact_params)
@@ -32,10 +32,42 @@ module Whatsapp::IncomingMessageIdentifierHelper
 
   def update_inbound_whatsapp_identifiers(contact_params)
     update_whatsapp_identifiers(
-      bsuid: contact_params[:user_id] || messages_data.first[:from_user_id],
+      bsuid: whatsapp_bsuid(contact_params),
       parent_bsuid: contact_params[:parent_user_id] || messages_data.first[:from_parent_user_id],
       username: contact_params.dig(:profile, :username)
     )
+  end
+
+  def find_or_create_contact_inbox(source_identifier:, bsuid:, contact_attributes:)
+    source_id = processed_waid(source_identifier)
+    existing_contact_inbox = find_contact_inbox_by_source_or_bsuid(source_id, bsuid)
+    return existing_contact_inbox if existing_contact_inbox
+
+    ::ContactInboxWithContactBuilder.new(
+      source_id: source_id,
+      inbox: inbox,
+      contact_attributes: contact_attributes
+    ).perform
+  end
+
+  def find_contact_inbox_by_source_or_bsuid(source_id, bsuid)
+    inbox.contact_inboxes.find_by(source_id: source_id) ||
+      find_contact_inbox_by_bsuid(bsuid)
+  end
+
+  def find_contact_inbox_by_bsuid(bsuid)
+    bsuid = normalized_whatsapp_bsuid(bsuid)
+    return if bsuid.blank?
+
+    inbox.contact_inboxes.find_by(whatsapp_bsuid: bsuid)
+  end
+
+  def whatsapp_bsuid(contact_params)
+    contact_params[:user_id] || messages_data.first[:from_user_id]
+  end
+
+  def normalized_whatsapp_bsuid(bsuid)
+    bsuid.to_s.delete_prefix('whatsapp:').presence
   end
 
   def incoming_message_source_identifier(contact_params)
@@ -63,14 +95,6 @@ module Whatsapp::IncomingMessageIdentifierHelper
     formatted_phone_number = "+#{phone_number}"
     display_name = name == phone_identifier ? formatted_phone_number : name
     { name: display_name, phone_number: formatted_phone_number }
-  end
-
-  def whatsapp_phone_number(identifier)
-    identifier = identifier.to_s
-    return if identifier.blank?
-    return unless identifier.match?(/\A\d{1,15}\z/)
-
-    identifier
   end
 
   def update_whatsapp_identifiers(bsuid: nil, parent_bsuid: nil, username: nil)
