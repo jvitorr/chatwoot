@@ -11,14 +11,8 @@
         <% if category_authors.any? %>
           <span aria-hidden="true">·</span>
           <span class="inline-flex items-center gap-2">
-            <span class="flex">
-              <% category_authors.first(3).each_with_index do |author, idx| %>
-                <%= render 'public/api/v1/portals/documentation_layout/user_avatar',
-                           user: author,
-                           size: :xs,
-                           extra_class: idx.positive? ? '-ml-0.5' : '' %>
-              <% end %>
-            </span>
+            <%= render 'public/api/v1/portals/documentation_layout/avatar_group',
+                       users: category_authors, size: :xs, overlap: '-ml-0.5' %>
             <span><%= I18n.t('public_portal.common.by') %> <%= format_authors_label(category_authors) %></span>
           </span>
         <% end %>

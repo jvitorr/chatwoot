@@ -11,14 +11,8 @@
   <% end %>
   <div class="mt-auto pt-5 flex items-center justify-between">
     <% if contributors.any? %>
-      <span class="flex">
-        <% contributors.each_with_index do |author, idx| %>
-          <%= render 'public/api/v1/portals/documentation_layout/user_avatar',
-                     user: author,
-                     size: :sm,
-                     extra_class: idx.positive? ? '-ml-1.5' : '' %>
-        <% end %>
-      </span>
+      <%= render 'public/api/v1/portals/documentation_layout/avatar_group',
+                 users: contributors, size: :sm, overlap: '-ml-1.5' %>
     <% else %>
       <span></span>
     <% end %>
