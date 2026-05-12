@@ -353,6 +353,7 @@ zh_CN:
       name: 'Linear'
       short_description: '直接在会话中创建并关联 Linear 问题。'
       description: '直接从对话窗口在 Linear 中创建问题。或者，链接现有的 Linear 问题以简化问题跟踪过程。'
+      attachment_link_title: 'Conversation (#%{conversation_id}) with %{name}'
     notion:
       name: 'Notion'
       short_description: 'Integrate databases, documents and pages directly with Captain.'
