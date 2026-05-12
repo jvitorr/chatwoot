@@ -353,6 +353,7 @@ it:
       name: 'Linear'
       short_description: 'Crea e collega issue Linear direttamente dalle conversazioni.'
       description: 'Crea issue in Linear direttamente dalla finestra di conversazione. In alternativa, collega issue Linear esistenti per un processo di monitoraggio più snello ed efficiente.'
+      attachment_link_title: 'Conversation (#%{conversation_id}) with %{name}'
     notion:
       name: 'Notion'
       short_description: 'Integra database, documenti e pagine direttamente con Captain.'
