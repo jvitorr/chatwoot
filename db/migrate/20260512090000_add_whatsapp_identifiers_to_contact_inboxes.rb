@@ -1,4 +1,6 @@
-class AddWhatsappIdentifiersToContactInboxes < ActiveRecord::Migration[7.0]
+class AddWhatsappIdentifiersToContactInboxes < ActiveRecord::Migration[7.1]
+  disable_ddl_transaction!
+
   def change
     add_column :contact_inboxes, :whatsapp_bsuid, :string
     add_column :contact_inboxes, :whatsapp_parent_bsuid, :string
@@ -6,9 +8,11 @@ class AddWhatsappIdentifiersToContactInboxes < ActiveRecord::Migration[7.0]
     add_index :contact_inboxes, [:inbox_id, :whatsapp_bsuid],
               unique: true,
               where: 'whatsapp_bsuid IS NOT NULL',
+              algorithm: :concurrently,
               name: 'index_contact_inboxes_on_inbox_id_and_whatsapp_bsuid'
     add_index :contact_inboxes, [:inbox_id, :whatsapp_parent_bsuid],
               where: 'whatsapp_parent_bsuid IS NOT NULL',
+              algorithm: :concurrently,
               name: 'index_contact_inboxes_on_inbox_id_and_whatsapp_parent_bsuid'
   end
 end

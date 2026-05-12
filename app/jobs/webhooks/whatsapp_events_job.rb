@@ -91,10 +91,23 @@ class Webhooks::WhatsappEventsJob < MutexApplicationJob
   # Returns nil for status-only webhooks so they bypass the lock.
   def contact_sender_id(params)
     value = params.dig(:entry, 0, :changes, 0, :value) || params
-    message = (value[:messages] || value[:message_echoes])&.first
+    return contact_sender_id_from_message_echoes(value[:message_echoes]) if value[:message_echoes].present?
+
+    contact_sender_id_from_messages(value[:messages])
+  end
+
+  def contact_sender_id_from_message_echoes(message_echoes)
+    message = message_echoes&.first
     return if message.blank?
 
-    message[:to] || message[:from]
+    message[:to].presence || message[:to_user_id].presence
+  end
+
+  def contact_sender_id_from_messages(messages)
+    message = messages&.first
+    return if message.blank?
+
+    message[:from].presence || message[:from_user_id].presence
   end
 
   def channel_is_inactive?(channel)

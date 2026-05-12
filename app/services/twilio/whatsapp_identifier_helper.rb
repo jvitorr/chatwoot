@@ -1,4 +1,6 @@
 module Twilio::WhatsappIdentifierHelper
+  TWILIO_WHATSAPP_BSUID_SOURCE_ID_REGEX = Regexp.new("\\Awhatsapp:#{RegexHelper::WHATSAPP_BSUID_PATTERN}\\z")
+
   def update_twilio_whatsapp_identifiers
     return unless twilio_channel.whatsapp?
 
@@ -23,7 +25,7 @@ module Twilio::WhatsappIdentifierHelper
 
   def twilio_whatsapp_bsuid_source_id
     from = params[:From].to_s
-    return from if from.match?(/\Awhatsapp:[A-Z]{2}\.(?:ENT\.)?[A-Za-z0-9]+\z/)
+    return from if from.match?(TWILIO_WHATSAPP_BSUID_SOURCE_ID_REGEX)
   end
 
   def find_twilio_contact_inbox(source_id)
