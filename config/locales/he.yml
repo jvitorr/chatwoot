@@ -353,6 +353,7 @@ he:
       name: 'Linear'
       short_description: 'צור וקשר בעיות Linear ישירות משיחות.'
       description: 'צור בעיות ב-Linear ישירות מחלון השיחה שלך. לחלופין, קשר בעיות Linear קיימות לתהליך מעקב בעיות יעיל וזורם יותר.'
+      attachment_link_title: 'Conversation (#%{conversation_id}) with %{name}'
     notion:
       name: 'Notion'
       short_description: 'שלב מסדי נתונים, מסמכים ודפים ישירות עם Captain.'
