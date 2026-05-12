@@ -229,7 +229,7 @@ function install_dependencies() {
       nodejs patch ruby-dev zlib1g-dev liblzma-dev \
       libgmp-dev libncurses5-dev libffi-dev libgdbm6 libgdbm-dev sudo \
       libvips python3-pip
-  npm install -g pnpm
+  npm install -g pnpm@10.33.4
 }
 
 ##############################################################################
@@ -940,7 +940,7 @@ function get_pnpm() {
     return
   fi
   echo "pnpm is not installed. Installing pnpm..."
-  npm install -g pnpm
+  npm install -g pnpm@10.33.4
   echo "Cleaning up existing node_modules directory..."
   sudo -i -u chatwoot << "EOF"
   cd chatwoot
