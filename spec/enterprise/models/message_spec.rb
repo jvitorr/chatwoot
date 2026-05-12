@@ -88,5 +88,4 @@ RSpec.describe Message do
       expect(conversation.reload.pending?).to be true
     end
   end
-
 end

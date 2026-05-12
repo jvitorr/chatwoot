@@ -31,6 +31,11 @@ module Enterprise::Concerns::Contact
   end
 
   def record_company_activity
+    if saved_change_to_company_id?
+      previous_company_id = saved_change_to_company_id.first
+      Company.find_by(id: previous_company_id)&.refresh_activity_from_contacts! if previous_company_id.present?
+    end
+
     company&.record_activity_at!(last_activity_at) if last_activity_at.present?
   end
 

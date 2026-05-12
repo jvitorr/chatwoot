@@ -66,6 +66,10 @@ class Company < ApplicationRecord
     end
   end
 
+  def refresh_activity_from_contacts!
+    with_lock { update!(last_activity_at: contacts.maximum(:last_activity_at)) }
+  end
+
   private
 
   def prepare_jsonb_attributes
