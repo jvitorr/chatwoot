@@ -39,16 +39,6 @@ const sizeClasses = computed(() => {
   };
 });
 
-const formattedKbd = computed(() =>
-  props.kbd
-    .replace(/⌘/g, '<span class="i-lucide-command size-3 inline-block"></span>')
-    .replace(/⌥/g, '<span class="i-lucide-option size-3 inline-block"></span>')
-    .replace(
-      /⇧/g,
-      '<span class="i-lucide-arrow-big-up size-3 inline-block"></span>'
-    )
-);
-
 const onChange = e => {
   emit('update:searchTerm', e.target.value);
 };
@@ -99,8 +89,9 @@ defineExpose({ focusInput, blurInput });
     />
     <kbd
       v-if="kbd"
-      v-dompurify-html="formattedKbd"
       class="flex-shrink-0 inline-flex items-center text-xs leading-none font-semibold text-slate-500 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 border border-solid border-slate-100 dark:border-slate-700 rounded px-1.5 py-1"
-    />
+    >
+      {{ kbd }}
+    </kbd>
   </div>
 </template>

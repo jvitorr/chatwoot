@@ -108,7 +108,7 @@ export default {
               class="block text-base font-520 text-n-slate-12 truncate"
             />
             <span
-              v-dompurify-html="prepareContent(getPlainText(article.content))"
+              v-dompurify-html="prepareContent(article.content)"
               class="block text-sm text-n-slate-11 line-clamp-1"
             />
           </span>
