@@ -353,6 +353,7 @@ sl:
       name: 'Linear'
       short_description: 'Create and link Linear issues directly from conversations.'
       description: 'Ustvarite issue v Linearju neposredno iz pogovornega okna. Druga možnost je, da povežete obstoječe Linear issue za bolj poenostavljen in učinkovit postopek sledenja težavam.'
+      attachment_link_title: 'Conversation (#%{conversation_id}) with %{name}'
     notion:
       name: 'Notion'
       short_description: 'Integrate databases, documents and pages directly with Captain.'
