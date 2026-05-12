@@ -100,14 +100,14 @@ class Webhooks::WhatsappEventsJob < MutexApplicationJob
     message = message_echoes&.first
     return if message.blank?
 
-    message[:to].presence || message[:to_user_id].presence
+    message[:to_user_id].presence || message[:to].presence
   end
 
   def contact_sender_id_from_messages(messages)
     message = messages&.first
     return if message.blank?
 
-    message[:from].presence || message[:from_user_id].presence
+    message[:from_user_id].presence || message[:from].presence
   end
 
   def channel_is_inactive?(channel)

@@ -113,12 +113,44 @@ RSpec.describe Webhooks::WhatsappEventsJob do
       job_instance.perform(wb_params)
     end
 
+    it 'prefers from_user_id as the mutex sender for mixed phone and BSUID inbound messages' do
+      bsuid = 'IN.2081978709342942'
+      wb_params = params.deep_dup
+      wb_params[:entry].first[:changes].first[:value][:messages] = [
+        { from: '919745786257', from_user_id: bsuid, id: 'wamid-test', text: { body: 'Hello' }, type: 'text' }
+      ]
+      job_instance = described_class.new
+      mutex_key = format(Redis::Alfred::WHATSAPP_MESSAGE_MUTEX, inbox_id: channel.inbox.id, sender_id: bsuid)
+
+      allow(Whatsapp::IncomingMessageWhatsappCloudService).to receive(:new).and_return(process_service)
+      expect(job_instance).to receive(:with_lock).with(mutex_key, 30.seconds).and_yield
+
+      job_instance.perform(wb_params)
+    end
+
     it 'uses to_user_id as the mutex sender for BSUID-only echo messages' do
       bsuid = 'IN.2081978709342942'
       wb_params = params.deep_dup
       wb_params[:entry].first[:changes].first[:field] = 'smb_message_echoes'
       wb_params[:entry].first[:changes].first[:value][:message_echoes] = [
         { from: channel.phone_number.delete('+'), to: '', to_user_id: bsuid, id: 'wamid-test', text: { body: 'Hello' }, type: 'text' }
+      ]
+      job_instance = described_class.new
+      mutex_key = format(Redis::Alfred::WHATSAPP_MESSAGE_MUTEX, inbox_id: channel.inbox.id, sender_id: bsuid)
+
+      allow(Whatsapp::IncomingMessageWhatsappCloudService).to receive(:new).and_return(process_service)
+      expect(job_instance).to receive(:with_lock).with(mutex_key, 30.seconds).and_yield
+
+      job_instance.perform(wb_params)
+    end
+
+    it 'prefers to_user_id as the mutex sender for mixed phone and BSUID echo messages' do
+      bsuid = 'IN.2081978709342942'
+      wb_params = params.deep_dup
+      wb_params[:entry].first[:changes].first[:field] = 'smb_message_echoes'
+      wb_params[:entry].first[:changes].first[:value][:message_echoes] = [
+        { from: channel.phone_number.delete('+'), to: '919745786257', to_user_id: bsuid, id: 'wamid-test', text: { body: 'Hello' },
+          type: 'text' }
       ]
       job_instance = described_class.new
       mutex_key = format(Redis::Alfred::WHATSAPP_MESSAGE_MUTEX, inbox_id: channel.inbox.id, sender_id: bsuid)
