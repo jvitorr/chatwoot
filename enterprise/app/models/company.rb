@@ -58,6 +58,12 @@ class Company < ApplicationRecord
     )
   }
 
+  def record_activity_at!(activity_at)
+    return if last_activity_at.present? && last_activity_at >= activity_at
+
+    update!(last_activity_at: activity_at)
+  end
+
   private
 
   def prepare_jsonb_attributes

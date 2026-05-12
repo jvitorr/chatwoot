@@ -15,6 +15,13 @@ module Enterprise::Message
 
   private
 
+  def update_contact_activity
+    super
+
+    company = sender.company if sender.is_a?(Contact)
+    company&.record_activity_at!(created_at)
+  end
+
   def mark_pending_conversation_as_open_for_human_response
     return unless captain_pending_conversation?
     return unless human_response?
