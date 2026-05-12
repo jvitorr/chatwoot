@@ -353,6 +353,7 @@ ru:
       name: 'Linear'
       short_description: 'Создать и связать Линейные задачи непосредственно из диалогов.'
       description: 'Создавайте или прикрепляйте уже существующие задачи в Linear непосредственно из окна диалога для более упорядоченного и эффективного процесса отслеживания проблем.'
+      attachment_link_title: 'Conversation (#%{conversation_id}) with %{name}'
     notion:
       name: 'Notion'
       short_description: 'Интеграция баз данных, документов и страниц напрямую с Captain.'
