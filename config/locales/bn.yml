@@ -353,6 +353,7 @@ bn:
       name: 'লিনিয়ার'
       short_description: 'কথোপকথন থেকে সরাসরি Linear ইস্যু তৈরি ও সংযুক্ত করুন।.'
       description: 'আপনার কথোপকথনের উইন্ডো থেকেই সরাসরি Linear-এ ইস্যু তৈরি করুন। বিকল্পভাবে, বিদ্যমান Linear ইস্যুগুলিকে সংযুক্ত করুন আরও সহজ ও কার্যকর ইস্যু ট্র্যাকিংয়ের জন্য।.'
+      attachment_link_title: 'Conversation (#%{conversation_id}) with %{name}'
     notion:
       name: 'Notion'
       short_description: 'ডাটাবেস, ডকুমেন্ট এবং পেজগুলো সরাসরি Captain-এর সাথে সংযুক্ত করুন।.'
