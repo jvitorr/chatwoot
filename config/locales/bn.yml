@@ -102,6 +102,13 @@ bn:
       reauthorization:
         generic: 'WhatsApp পুনরায় অনুমোদন করতে ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।.'
         not_supported: 'এই ধরনের WhatsApp চ্যানেলের জন্য পুনরায় অনুমোদন সমর্থিত নয়।.'
+      calls:
+        not_enabled: 'Calling is not enabled for this inbox'
+        no_recording: 'No recording file provided'
+        no_message: 'Call has no associated message'
+        sdp_offer_required: 'sdp_offer is required'
+        contact_phone_required: 'Contact phone number is required'
+        permission_request_failed: 'Failed to send call permission request'
     inboxes:
       imap:
         socket_error: অনুগ্রহ করে নেটওয়ার্ক সংযোগ, IMAP ঠিকানা যাচাই করুন এবং আবার চেষ্টা করুন।.
@@ -232,6 +239,9 @@ bn:
       whatsapp:
         list_button_label: 'একটি আইটেম নির্বাচন করুন'
         call_permission_request_body: 'We would like to call you regarding your conversation.'
+      voice_call:
+        twilio: 'Voice Call'
+        whatsapp: 'WhatsApp Call'
       delivery_status:
         error_code: 'ত্রুটি কোড: %{error_code}'
     activity:
@@ -276,6 +286,9 @@ bn:
         issue_created: 'Linear ইস্যু %{issue_id} তৈরি করেছেন %{user_name}'
         issue_linked: 'Linear ইস্যু %{issue_id} লিঙ্ক করেছেন %{user_name}'
         issue_unlinked: 'Linear ইস্যু %{issue_id} আনলিঙ্ক করেছেন %{user_name}'
+      whatsapp_call:
+        permission_requested: 'Sent a call permission request to %{contact_name}.'
+        permission_granted: '%{contact_name} accepted the call permission request.'
       csat:
         not_sent_due_to_messaging_window: 'বাহ্যিক বার্তা পাঠানোর সীমাবদ্ধতার কারণে CSAT জরিপ পাঠানো হয়নি'
       auto_resolve:
