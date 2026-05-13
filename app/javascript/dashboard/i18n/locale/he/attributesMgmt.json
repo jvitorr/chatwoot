@@ -3,7 +3,7 @@
     "HEADER": "מאפיינים מותאמים אישית",
     "HEADER_BTN_TXT": "הוסף מאפיין מותאם אישית",
     "LOADING": "טוען מאפיינים מותאמים אישית",
-    "DESCRIPTION": "A custom attribute tracks additional details about your contacts, companies, or conversations—such as the subscription plan or the date of their first purchase. You can add different types of custom attributes, such as text, lists, or numbers, to capture the specific information you need.",
+    "DESCRIPTION": "מאפיין מותאם אישית עוקב אחר פרטים נוספים על אנשי הקשר או השיחות שלך—כגון תוכנית המנוי או תאריך הרכישה הראשונה שלהם. אתה יכול להוסיף סוגים שונים של מאפיינים מותאמים אישית, כגון טקסט, רשימות או מספרים, כדי ללכוד את המידע הספציפי שאתה צריך.",
     "LEARN_MORE": "למד עוד על מאפיינים מותאמים אישית",
     "COUNT": "{n} attribute | {n} attributes",
     "SEARCH_PLACEHOLDER": "חפש מאפיין...",
