@@ -145,22 +145,22 @@ export default {
       {{ $t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.LOADING') }}
     </div>
 
-    <NextBanner
-      v-else-if="isWabaCallingDisabled"
-      :color="wabaBannerColor"
-      :action-label="
-        canEnableCalling
-          ? $t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.ENABLE_ACTION')
-          : null
-      "
-      class="!items-start"
-      @action="enableWhatsappCalling"
-    >
-      <div class="flex flex-col gap-0.5">
-        <span class="font-medium">{{ wabaBannerTitle }}</span>
-        <span class="text-xs">{{ wabaBannerDescription }}</span>
+    <div v-else-if="isWabaCallingDisabled" class="flex flex-col gap-3">
+      <NextBanner :color="wabaBannerColor" class="!items-start">
+        <div class="flex flex-col gap-0.5">
+          <span class="font-medium">{{ wabaBannerTitle }}</span>
+          <span class="text-xs">{{ wabaBannerDescription }}</span>
+        </div>
+      </NextBanner>
+      <div v-if="canEnableCalling">
+        <NextButton
+          icon="i-lucide-phone-call"
+          :is-loading="isEnablingCalling"
+          :label="$t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.ENABLE_ACTION')"
+          @click="enableWhatsappCalling"
+        />
       </div>
-    </NextBanner>
+    </div>
 
     <template v-if="!isFetchingWabaStatus && !isWabaCallingDisabled">
       <SettingsToggleSection
