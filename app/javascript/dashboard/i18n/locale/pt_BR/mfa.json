@@ -51,7 +51,7 @@
     },
     "DISABLE": {
       "TITLE": "Desabilitar Autenticação em Dois Fatores",
-      "DESCRIPTION": "Você precisará inserir sua senha e um código de verificação do seu aplicativo de autenticação ou um código de recuperação para desativar a autenticação de dois fatores.",
+      "DESCRIPTION": "Você precisará informar sua senha e um código de verificação para desativar a autenticação em dois fatores.",
       "PASSWORD": "Senha",
       "OTP_CODE": "Código de Verificação",
       "OTP_CODE_PLACEHOLDER": "000000",
