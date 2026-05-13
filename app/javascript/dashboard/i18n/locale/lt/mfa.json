@@ -51,7 +51,7 @@
     },
     "DISABLE": {
       "TITLE": "Disable Two-Factor Authentication",
-      "DESCRIPTION": "You'll need to enter your password and either a verification code from your authenticator app or a backup code to disable two-factor authentication.",
+      "DESCRIPTION": "You'll need to enter your password and a verification code to disable two-factor authentication.",
       "PASSWORD": "Slaptažodis",
       "OTP_CODE": "Verification Code",
       "OTP_CODE_PLACEHOLDER": "000000",
