@@ -83,14 +83,14 @@ export const InitializationHelpers = {
       const mountPoint = document.querySelector(selector);
       if (!mountPoint) return;
       const size = mountPoint.dataset.size || 'default';
-      const kbd = mountPoint.dataset.kbd || '';
+      const showKbd = !!mountPoint.dataset.kbd;
       // eslint-disable-next-line vue/one-component-per-file
       const app = createApp({
         components: { PublicArticleSearch },
         data() {
-          return { size, kbd };
+          return { size, showKbd };
         },
-        template: '<PublicArticleSearch :size="size" :kbd="kbd" />',
+        template: '<PublicArticleSearch :size="size" :show-kbd="showKbd" />',
       });
       app.use(VueDOMPurifyHTML, domPurifyConfig);
       app.directive('on-clickaway', onClickaway);

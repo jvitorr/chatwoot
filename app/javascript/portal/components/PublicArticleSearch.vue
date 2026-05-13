@@ -15,9 +15,9 @@ export default {
       default: 'default',
       validator: value => ['small', 'default'].includes(value),
     },
-    kbd: {
-      type: String,
-      default: '',
+    showKbd: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ['input', 'blur'],
@@ -47,6 +47,13 @@ export default {
       const { searchTranslations = {} } = window.portalConfig;
       return searchTranslations;
     },
+    kbdLabel() {
+      if (!this.showKbd) return '';
+      const isMac = /Mac|iPhone|iPad|iPod/i.test(
+        navigator.platform || navigator.userAgent
+      );
+      return isMac ? '⌘ K' : 'Ctrl K';
+    },
   },
 
   watch: {
@@ -56,11 +63,11 @@ export default {
   },
 
   mounted() {
-    if (this.kbd) document.addEventListener('keydown', this.onKeydown);
+    if (this.showKbd) document.addEventListener('keydown', this.onKeydown);
   },
 
   unmounted() {
-    if (this.kbd) document.removeEventListener('keydown', this.onKeydown);
+    if (this.showKbd) document.removeEventListener('keydown', this.onKeydown);
     clearTimeout(this.typingTimer);
   },
 
@@ -142,7 +149,7 @@ export default {
       :search-term="searchTerm"
       :search-placeholder="searchTranslations.searchPlaceholder"
       :size="size"
-      :kbd="kbd"
+      :kbd="kbdLabel"
       @update:search-term="onUpdateSearchTerm"
       @focus="openSearch"
     />
