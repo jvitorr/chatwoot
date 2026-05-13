@@ -37,7 +37,11 @@
     </div>
 
     <div class="ms-auto flex items-center gap-1.5">
-      <div id="sidebar-theme-toggle"></div>
+      <div id="sidebar-theme-toggle"
+           data-label-trigger="<%= I18n.t('public_portal.header.appearance.title', default: 'Appearance') %>"
+           data-label-system="<%= I18n.t('public_portal.header.appearance.system') %>"
+           data-label-light="<%= I18n.t('public_portal.header.appearance.light') %>"
+           data-label-dark="<%= I18n.t('public_portal.header.appearance.dark') %>"></div>
 
       <% if portal.public_locale_codes.length > 1 %>
         <details class="relative group" data-close-on-clickaway>
@@ -48,7 +52,7 @@
             <span class="i-lucide-chevron-down size-3 opacity-60 transition-transform group-open:rotate-180" aria-hidden="true"></span>
           </summary>
 
-          <div class="absolute end-0 top-full mt-2 bg-n-slate-1 border border-solid border-n-weak rounded-lg shadow-lg p-1 min-w-60 max-h-96 overflow-y-auto z-50">
+          <div class="absolute end-0 top-full mt-2 bg-n-slate-1 border border-solid border-n-weak rounded-lg shadow-lg p-1 min-w-60 max-h-96 overflow-y-auto z-50 flex flex-col gap-0.5">
             <div class="px-2.5 pt-2 pb-1.5 text-xs font-semibold text-n-slate-10 uppercase tracking-wider"><%= I18n.t('public_portal.sidebar.language') %></div>
             <% portal.public_locale_codes.each do |code| %>
               <% is_current = code == locale %>

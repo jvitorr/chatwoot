@@ -1,28 +1,42 @@
 <script>
 import { directive as onClickaway } from 'vue3-click-away';
 
-const TRIGGER_LABEL = 'Theme';
-
-const OPTIONS = [
-  { value: 'system', label: 'System', icon: 'i-lucide-monitor' },
-  { value: 'light', label: 'Light', icon: 'i-lucide-sun' },
-  { value: 'dark', label: 'Dark', icon: 'i-lucide-moon' },
+const OPTION_DEFS = [
+  { value: 'system', icon: 'i-lucide-monitor', fallback: 'System' },
+  { value: 'light', icon: 'i-lucide-sun', fallback: 'Light' },
+  { value: 'dark', icon: 'i-lucide-moon', fallback: 'Dark' },
 ];
+
+const readLabels = () => {
+  const el = document.querySelector('#sidebar-theme-toggle');
+  const data = (el && el.dataset) || {};
+  return {
+    trigger: data.labelTrigger || 'Appearance',
+    options: OPTION_DEFS.map(opt => ({
+      ...opt,
+      label:
+        data[
+          `label${opt.value.charAt(0).toUpperCase()}${opt.value.slice(1)}`
+        ] || opt.fallback,
+    })),
+  };
+};
 
 export default {
   directives: { onClickaway },
   data() {
+    const labels = readLabels();
     return {
       mode: 'system',
       systemPrefersDark: false,
       open: false,
-      options: OPTIONS,
-      triggerLabel: TRIGGER_LABEL,
+      options: labels.options,
+      triggerLabel: labels.trigger,
     };
   },
   computed: {
     triggerIcon() {
-      const opt = OPTIONS.find(o => o.value === this.mode);
+      const opt = this.options.find(o => o.value === this.mode);
       return opt ? opt.icon : 'i-lucide-monitor';
     },
     isDarkActive() {
@@ -93,7 +107,7 @@ export default {
     </button>
     <div
       v-if="open"
-      class="absolute right-0 top-full mt-2 bg-n-slate-1 border border-solid border-n-weak rounded-lg shadow-lg p-1 min-w-36 z-50"
+      class="absolute end-0 top-full mt-2 bg-n-slate-1 border border-solid border-n-weak rounded-lg shadow-lg p-1 min-w-36 z-50 flex flex-col gap-0.5"
     >
       <button
         v-for="opt in options"

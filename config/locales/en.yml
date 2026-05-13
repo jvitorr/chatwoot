@@ -466,6 +466,7 @@ en:
       go_to_homepage: Website
       visit_website: Visit website
       appearance:
+        title: Appearance
         system: System
         light: Light
         dark: Dark
