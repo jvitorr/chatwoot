@@ -1,6 +1,6 @@
 {
   "BULK_ACTION": {
-    "CONVERSATIONS_SELECTED": "{conversationCount} napili",
+    "CONVERSATIONS_SELECTED": "{conversationCount} conversations selected",
     "NONE": "None",
     "CLEAR_SELECTION": "Clear",
     "ASSIGN_AGENT_CONFIRMATION_LABEL": "Are you sure you want to assign {n} conversation to {agentName}? | Are you sure you want to assign {n} conversations to {agentName}?",
