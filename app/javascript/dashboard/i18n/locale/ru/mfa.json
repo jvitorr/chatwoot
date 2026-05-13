@@ -51,7 +51,7 @@
     },
     "DISABLE": {
       "TITLE": "Отключить двухфакторную аутентификацию",
-      "DESCRIPTION": "You'll need to enter your password and either a verification code from your authenticator app or a backup code to disable two-factor authentication.",
+      "DESCRIPTION": "Вам необходимо ввести пароль и проверочный код, чтобы отключить двухфакторную аутентификацию.",
       "PASSWORD": "Пароль",
       "OTP_CODE": "Проверочный код",
       "OTP_CODE_PLACEHOLDER": "000000",
