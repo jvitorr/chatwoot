@@ -1,6 +1,6 @@
 {
   "BULK_ACTION": {
-    "CONVERSATIONS_SELECTED": "{conversationCount} selected",
+    "CONVERSATIONS_SELECTED": "{conversationCount} گفتگو انتخاب شده است",
     "NONE": "هیچکدام",
     "CLEAR_SELECTION": "پاک کردن",
     "ASSIGN_AGENT_CONFIRMATION_LABEL": "Are you sure you want to assign {n} conversation to {agentName}? | Are you sure you want to assign {n} conversations to {agentName}?",
