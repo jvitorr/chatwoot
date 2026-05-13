@@ -1,20 +1,20 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, nextTick, watch } from 'vue';
-import { useDebounceFn, useTimeoutPoll } from '@vueuse/core';
+import { computed, onUnmounted, ref, nextTick, watch } from 'vue';
+import { useTimeoutPoll } from '@vueuse/core';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useRoute } from 'vue-router';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import { useAccount } from 'dashboard/composables/useAccount';
 import { useAlert } from 'dashboard/composables';
 import { usePolicy } from 'dashboard/composables/usePolicy';
+import { debounce } from '@chatwoot/utils';
 
 import DeleteDialog from 'dashboard/components-next/captain/pageComponents/DeleteDialog.vue';
 import DocumentCard from 'dashboard/components-next/captain/assistant/DocumentCard.vue';
-import DocumentFiltersBar from 'dashboard/components-next/captain/assistant/DocumentFiltersBar.vue';
-import BulkSelectBar from 'dashboard/components-next/captain/assistant/BulkSelectBar.vue';
-import BulkDeleteDialog from 'dashboard/components-next/captain/pageComponents/BulkDeleteDialog.vue';
+import DocumentFilter from 'dashboard/components-next/captain/assistant/DocumentFilter.vue';
+import DocumentBulkActions from 'dashboard/components-next/captain/assistant/DocumentBulkActions.vue';
+import Input from 'dashboard/components-next/input/Input.vue';
 import Policy from 'dashboard/components/policy.vue';
-import Button from 'dashboard/components-next/button/Button.vue';
 import PageLayout from 'dashboard/components-next/captain/PageLayout.vue';
 import CaptainPaywall from 'dashboard/components-next/captain/pageComponents/Paywall.vue';
 import RelatedResponses from 'dashboard/components-next/captain/pageComponents/document/RelatedResponses.vue';
@@ -44,7 +44,6 @@ const canManageDocuments = computed(() => checkPermissions(['administrator']));
 
 const selectedDocument = ref(null);
 const deleteDocumentDialog = ref(null);
-const bulkDeleteDialog = ref(null);
 const bulkSelectedIds = ref(new Set());
 const hoveredCard = ref(null);
 
@@ -74,49 +73,61 @@ const handleCreateDialogClose = () => {
   showCreateDialog.value = false;
 };
 
-const activeStatusFilter = ref(null);
-const activeSourceFilter = ref('all');
-const activeSort = ref('recently_updated');
-const searchQuery = ref('');
+const documentFilter = ref(null);
 const syncIntervalHours = ref(null);
-let documentsRequestId = 0;
-let fetchingListRequestId = null;
+const searchQuery = ref('');
 
 const currentAssistantId = () =>
   Number.isFinite(selectedAssistantId.value) ? selectedAssistantId.value : null;
 
 const buildDocumentFilterParams = (page = 1) => {
-  const filterParams = { page };
+  const filterParams = documentFilter.value?.buildParams(page) ?? {
+    page,
+    sort: 'recently_updated',
+  };
   const assistantId = currentAssistantId();
-
-  if (assistantId) {
-    filterParams.assistantId = assistantId;
-  }
-  if (activeSourceFilter.value !== 'all') {
-    filterParams.source = activeSourceFilter.value;
-  }
-  if (activeStatusFilter.value) {
-    filterParams.filter = activeStatusFilter.value;
-  }
-  if (activeSort.value) {
-    filterParams.sort = activeSort.value;
-  }
-  if (searchQuery.value.trim()) {
-    filterParams.searchKey = searchQuery.value.trim();
-  }
-
+  if (assistantId) filterParams.assistantId = assistantId;
+  const trimmedQuery = searchQuery.value.trim();
+  if (trimmedQuery) filterParams.searchKey = trimmedQuery;
   return filterParams;
 };
 
+let documentsRequestId = 0;
+let fetchingListRequestId = null;
+
+const comparableFilterParams = params => ({
+  page: params.page || 1,
+  assistantId: params.assistantId || null,
+  source: params.source || null,
+  filter: params.filter || null,
+  sort: params.sort || null,
+  searchKey: params.searchKey || null,
+});
+
 const isCurrentDocumentRequest = (requestId, filterParams) => {
-  return (
-    requestId === documentsRequestId &&
-    (filterParams.assistantId || null) === currentAssistantId() &&
-    (filterParams.source || 'all') === activeSourceFilter.value &&
-    (filterParams.filter || null) === (activeStatusFilter.value || null) &&
-    (filterParams.sort || null) === (activeSort.value || null) &&
-    (filterParams.searchKey || '') === searchQuery.value.trim()
+  if (requestId !== documentsRequestId) return false;
+
+  const currentParams = comparableFilterParams(
+    buildDocumentFilterParams(filterParams.page)
   );
+  const requestParams = comparableFilterParams(filterParams);
+
+  return Object.keys(requestParams).every(
+    key => requestParams[key] === currentParams[key]
+  );
+};
+
+const pruneSelectionToDocuments = nextDocuments => {
+  if (!bulkSelectedIds.value.size) return;
+
+  const visibleDocumentIds = new Set(nextDocuments.map(doc => doc.id));
+  const selectedIds = new Set(
+    [...bulkSelectedIds.value].filter(id => visibleDocumentIds.has(id))
+  );
+
+  if (selectedIds.size !== bulkSelectedIds.value.size) {
+    bulkSelectedIds.value = selectedIds;
+  }
 };
 
 const fetchDocuments = async (page = 1, { showLoader = true } = {}) => {
@@ -138,6 +149,7 @@ const fetchDocuments = async (page = 1, { showLoader = true } = {}) => {
 
     const { payload, meta } = response.data;
     store.dispatch('captainDocuments/setRecords', { records: payload, meta });
+    pruneSelectionToDocuments(payload);
     syncIntervalHours.value = Number(meta?.sync_interval_hours) || null;
     return payload;
   } catch (error) {
@@ -160,39 +172,15 @@ const refreshDocumentsPage = (
   return fetchDocuments(page, { showLoader }).catch(() => {});
 };
 
-const handleSourceFilterSelect = sourceKey => {
-  activeSourceFilter.value = sourceKey;
-  if (sourceKey !== 'web') {
-    activeStatusFilter.value = null;
-  }
+const onFiltersChanged = () => {
   bulkSelectedIds.value = new Set();
   fetchDocuments(1);
 };
 
-const handleStatusFilterSelect = filterKey => {
-  activeStatusFilter.value = filterKey;
-  if (filterKey) {
-    activeSourceFilter.value = 'web';
-  }
-  bulkSelectedIds.value = new Set();
-  fetchDocuments(1);
-};
-
-const handleSortSelect = sortKey => {
-  activeSort.value = sortKey;
-  bulkSelectedIds.value = new Set();
-  fetchDocuments(1);
-};
-
-const fetchDocumentsForSearch = useDebounceFn(() => {
+const debouncedSearch = debounce(() => {
   bulkSelectedIds.value = new Set();
   fetchDocuments(1);
 }, 300);
-
-const handleSearch = value => {
-  searchQuery.value = value;
-  fetchDocumentsForSearch();
-};
 
 const syncPollStartedAt = ref(null);
 
@@ -290,28 +278,9 @@ const onDeleteSuccess = () => {
   }
 };
 
-const buildSelectedCountLabel = computed(() => {
-  const count = documents.value?.length || 0;
-  const isAllSelected = bulkSelectedIds.value.size === count && count > 0;
-  return isAllSelected
-    ? t('CAPTAIN.DOCUMENTS.UNSELECT_ALL', { count })
-    : t('CAPTAIN.DOCUMENTS.SELECT_ALL', { count });
-});
-
-const selectedCountLabel = computed(() => {
-  return t('CAPTAIN.DOCUMENTS.SELECTED', {
-    count: bulkSelectedIds.value.size,
-  });
-});
-
-const hasBulkSelection = computed(() => bulkSelectedIds.value.size > 0);
-
-const shouldShowSelectionControl = docId => {
-  return (
-    canManageDocuments.value &&
-    (hoveredCard.value === docId || hasBulkSelection.value)
-  );
-};
+const shouldShowSelectionControl = docId =>
+  canManageDocuments.value &&
+  (hoveredCard.value === docId || bulkSelectedIds.value.size > 0);
 
 const handleCardHover = (isHovered, id) => {
   hoveredCard.value = isHovered ? id : null;
@@ -338,84 +307,29 @@ const fetchDocumentsAfterBulkAction = () => {
   bulkSelectedIds.value = new Set();
 };
 
-const onBulkDeleteSuccess = () => {
-  fetchDocumentsAfterBulkAction();
-};
-
 const onCreateSuccess = () => {
   refreshDocumentsPage(1);
 };
 
-const isSyncableDocument = doc =>
-  !doc.pdf_document && doc.status === 'available' && !doc.sync_in_progress;
-
-const syncableSelectedIds = computed(() => {
-  if (!bulkSelectedIds.value.size) return [];
-  return (documents.value || [])
-    .filter(doc => bulkSelectedIds.value.has(doc.id) && isSyncableDocument(doc))
-    .map(doc => doc.id);
-});
-
-const hasSyncableSelection = computed(
-  () => syncableSelectedIds.value.length > 0
-);
-
-const handleBulkSync = async () => {
-  const ids = syncableSelectedIds.value;
-  if (!ids.length) return;
-
-  try {
-    const response = await store.dispatch('captainBulkActions/handleBulkSync', {
-      ids,
-    });
-    const queuedCount = response?.count ?? response?.ids?.length ?? 0;
-    let message = t('CAPTAIN.DOCUMENTS.BULK_SYNC.ZERO_MESSAGE');
-
-    if (queuedCount === 1) {
-      message = t('CAPTAIN.DOCUMENTS.BULK_SYNC.SUCCESS_MESSAGE_ONE');
-    } else if (queuedCount > 1) {
-      message = t('CAPTAIN.DOCUMENTS.BULK_SYNC.SUCCESS_MESSAGE', {
-        count: queuedCount,
-      });
-    }
-
-    useAlert(message);
-    bulkSelectedIds.value = new Set();
-    if (queuedCount > 0) {
-      scheduleSyncPoll({ extendWindow: true });
-    }
-  } catch (error) {
-    useAlert(t('CAPTAIN.DOCUMENTS.BULK_SYNC.ERROR_MESSAGE'));
-  }
-};
-
 const hasActiveDocumentFilters = computed(
   () =>
-    activeSourceFilter.value !== 'all' ||
-    Boolean(activeStatusFilter.value) ||
+    (documentFilter.value?.hasActiveFilters ?? false) ||
     Boolean(searchQuery.value.trim())
 );
 
-watch(selectedAssistantId, async () => {
-  activeStatusFilter.value = null;
-  activeSourceFilter.value = 'all';
-  activeSort.value = 'recently_updated';
-  searchQuery.value = '';
-  bulkSelectedIds.value = new Set();
-  syncIntervalHours.value = null;
-  stopSyncPolling();
-  await fetchDocuments(1);
-  if (hasSyncingDocuments.value) {
-    scheduleSyncPoll();
-  }
-});
-
-onMounted(async () => {
-  await fetchDocuments();
-  if (hasSyncingDocuments.value) {
-    scheduleSyncPoll();
-  }
-});
+watch(
+  selectedAssistantId,
+  async () => {
+    documentFilter.value?.reset();
+    searchQuery.value = '';
+    bulkSelectedIds.value = new Set();
+    syncIntervalHours.value = null;
+    stopSyncPolling();
+    await fetchDocuments(1);
+    if (hasSyncingDocuments.value) scheduleSyncPoll();
+  },
+  { immediate: true }
+);
 
 onUnmounted(() => {
   stopSyncPolling();
@@ -437,44 +351,36 @@ onUnmounted(() => {
     @update:current-page="onPageChange"
     @click="handleCreateDocument"
   >
-    <template #subHeader>
-      <Policy :permissions="['administrator']">
-        <BulkSelectBar
-          v-model="bulkSelectedIds"
-          :all-items="documents"
-          :select-all-label="buildSelectedCountLabel"
-          :selected-count-label="selectedCountLabel"
-          :delete-label="$t('CAPTAIN.DOCUMENTS.BULK_DELETE_BUTTON')"
-          class="w-fit"
-          :class="{ 'mb-2': bulkSelectedIds.size > 0 }"
-          @bulk-delete="bulkDeleteDialog.dialogRef.open()"
-        >
-          <template v-if="hasSyncableSelection" #secondaryActions>
-            <Button
-              :label="$t('CAPTAIN.DOCUMENTS.BULK_SYNC_BUTTON')"
-              sm
-              slate
-              ghost
-              icon="i-lucide-refresh-cw"
-              class="!px-1.5"
-              @click="handleBulkSync"
-            />
-          </template>
-        </BulkSelectBar>
-      </Policy>
+    <template #search>
+      <div
+        v-if="bulkSelectedIds.size === 0"
+        class="flex gap-3 justify-between w-full items-center"
+      >
+        <Input
+          v-model="searchQuery"
+          :placeholder="$t('CAPTAIN.DOCUMENTS.FILTERS.SEARCH_PLACEHOLDER')"
+          class="max-w-64 min-w-0 w-full"
+          size="sm"
+          type="search"
+          @input="debouncedSearch"
+        />
+      </div>
     </template>
 
-    <template #controls>
-      <DocumentFiltersBar
-        :active-source-filter="activeSourceFilter"
-        :active-status-filter="activeStatusFilter"
-        :active-sort="activeSort"
-        :search-query="searchQuery"
-        class="mb-5"
-        @select-source="handleSourceFilterSelect"
-        @select-status="handleStatusFilterSelect"
-        @select-sort="handleSortSelect"
-        @search="handleSearch"
+    <template #subHeader>
+      <Policy :permissions="['administrator']">
+        <DocumentBulkActions
+          v-model:selected-ids="bulkSelectedIds"
+          :documents="documents"
+          @bulk-sync-queued="scheduleSyncPoll({ extendWindow: true })"
+          @bulk-delete-succeeded="fetchDocumentsAfterBulkAction"
+        />
+      </Policy>
+      <DocumentFilter
+        v-show="!bulkSelectedIds.size"
+        ref="documentFilter"
+        class="mb-2"
+        @change="onFiltersChanged"
       />
     </template>
 
@@ -559,13 +465,6 @@ onUnmounted(() => {
       :entity="selectedDocument"
       type="Documents"
       @delete-success="onDeleteSuccess"
-    />
-    <BulkDeleteDialog
-      v-if="bulkSelectedIds"
-      ref="bulkDeleteDialog"
-      :bulk-ids="bulkSelectedIds"
-      type="AssistantDocument"
-      @delete-success="onBulkDeleteSuccess"
     />
   </PageLayout>
 </template>
