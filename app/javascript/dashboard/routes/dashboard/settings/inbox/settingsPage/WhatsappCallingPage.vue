@@ -1,9 +1,11 @@
 <script>
 import { useAlert } from 'dashboard/composables';
+import InboxesAPI from 'dashboard/api/inboxes';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
 import SettingsToggleSection from 'dashboard/components-next/Settings/SettingsToggleSection.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import TextArea from 'next/textarea/TextArea.vue';
+import NextBanner from 'dashboard/components-next/banner/Banner.vue';
 
 export default {
   components: {
@@ -11,6 +13,7 @@ export default {
     SettingsToggleSection,
     NextButton,
     TextArea,
+    NextBanner,
   },
   props: {
     inbox: {
@@ -24,6 +27,9 @@ export default {
       permissionRequestBody:
         this.inbox.provider_config?.call_permission_request_body || '',
       isUpdating: false,
+      wabaCallingStatus: null,
+      isFetchingWabaStatus: false,
+      isEnablingCalling: false,
     };
   },
   computed: {
@@ -31,6 +37,27 @@ export default {
       return (
         this.inbox.provider_config?.phone_number || this.inbox.phone_number
       );
+    },
+    isWabaCallingDisabled() {
+      return this.wabaCallingStatus && this.wabaCallingStatus !== 'ENABLED';
+    },
+    canEnableCalling() {
+      return this.wabaCallingStatus === 'DISABLED';
+    },
+    wabaBannerColor() {
+      return this.wabaCallingStatus === 'UNKNOWN' ? 'amber' : 'ruby';
+    },
+    wabaBannerTitle() {
+      return this.wabaCallingStatus === 'UNKNOWN'
+        ? this.$t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.UNKNOWN_TITLE')
+        : this.$t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.DISABLED_TITLE');
+    },
+    wabaBannerDescription() {
+      return this.wabaCallingStatus === 'UNKNOWN'
+        ? this.$t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.UNKNOWN_DESCRIPTION')
+        : this.$t(
+            'INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.DISABLED_DESCRIPTION'
+          );
     },
   },
   watch: {
@@ -41,7 +68,47 @@ export default {
       this.permissionRequestBody = val || '';
     },
   },
+  mounted() {
+    this.fetchWabaCallingStatus();
+  },
   methods: {
+    async fetchWabaCallingStatus() {
+      if (this.inbox.provider !== 'whatsapp_cloud') return;
+      this.isFetchingWabaStatus = true;
+      try {
+        const { data } = await InboxesAPI.getWhatsappCallingStatus(
+          this.inbox.id
+        );
+        this.wabaCallingStatus = data.status;
+      } catch {
+        this.wabaCallingStatus = 'UNKNOWN';
+      } finally {
+        this.isFetchingWabaStatus = false;
+      }
+    },
+    async enableWhatsappCalling() {
+      this.isEnablingCalling = true;
+      try {
+        const { data } = await InboxesAPI.enableWhatsappCalling(this.inbox.id);
+        this.wabaCallingStatus = data.status;
+        this.callingEnabled = true;
+        await this.$store.dispatch('inboxes/get', this.inbox.id);
+        useAlert(
+          this.$t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.ENABLE_SUCCESS')
+        );
+      } catch (error) {
+        const message =
+          error?.response?.data?.message ||
+          this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE');
+        useAlert(
+          this.$t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.ENABLE_FAILURE', {
+            error: message,
+          })
+        );
+      } finally {
+        this.isEnablingCalling = false;
+      }
+    },
     async updateCallingSettings() {
       this.isUpdating = true;
       try {
@@ -70,47 +137,76 @@ export default {
 
 <template>
   <div class="flex flex-col gap-6">
-    <SettingsToggleSection
-      v-model="callingEnabled"
-      :header="$t('INBOX_MGMT.WHATSAPP_CALLING.ENABLE.LABEL')"
-      :description="$t('INBOX_MGMT.WHATSAPP_CALLING.ENABLE.DESCRIPTION')"
-    />
-
-    <SettingsFieldSection
-      v-if="phoneNumber"
-      :label="$t('INBOX_MGMT.WHATSAPP_CALLING.PHONE_NUMBER.LABEL')"
-      :help-text="$t('INBOX_MGMT.WHATSAPP_CALLING.PHONE_NUMBER.HELP_TEXT')"
+    <div
+      v-if="isFetchingWabaStatus"
+      class="flex items-center gap-2 text-body-main text-n-slate-11 px-3 py-2 rounded-xl bg-n-slate-3 border border-n-weak"
     >
-      <woot-code :script="phoneNumber" lang="html" />
-    </SettingsFieldSection>
-
-    <SettingsFieldSection
-      :label="$t('INBOX_MGMT.WHATSAPP_CALLING.PERMISSION_REQUEST_BODY.LABEL')"
-      :help-text="
-        $t('INBOX_MGMT.WHATSAPP_CALLING.PERMISSION_REQUEST_BODY.HELP_TEXT')
-      "
-    >
-      <TextArea
-        v-model="permissionRequestBody"
-        :placeholder="
-          $t('INBOX_MGMT.WHATSAPP_CALLING.PERMISSION_REQUEST_BODY.PLACEHOLDER')
-        "
-        auto-height
-        resize
-      />
-    </SettingsFieldSection>
-
-    <SettingsFieldSection
-      :label="$t('INBOX_MGMT.WHATSAPP_CALLING.HOW_IT_WORKS.LABEL')"
-      :help-text="$t('INBOX_MGMT.WHATSAPP_CALLING.HOW_IT_WORKS.DESCRIPTION')"
-    />
-
-    <div>
-      <NextButton
-        :is-loading="isUpdating"
-        :label="$t('INBOX_MGMT.SETTINGS_POPUP.UPDATE')"
-        @click="updateCallingSettings"
-      />
+      <span class="i-lucide-loader-circle animate-spin size-4" />
+      {{ $t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.LOADING') }}
     </div>
+
+    <NextBanner
+      v-else-if="isWabaCallingDisabled"
+      :color="wabaBannerColor"
+      :action-label="
+        canEnableCalling
+          ? $t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.ENABLE_ACTION')
+          : null
+      "
+      class="!items-start"
+      @action="enableWhatsappCalling"
+    >
+      <div class="flex flex-col gap-0.5">
+        <span class="font-medium">{{ wabaBannerTitle }}</span>
+        <span class="text-xs">{{ wabaBannerDescription }}</span>
+      </div>
+    </NextBanner>
+
+    <template v-if="!isFetchingWabaStatus && !isWabaCallingDisabled">
+      <SettingsToggleSection
+        v-model="callingEnabled"
+        :header="$t('INBOX_MGMT.WHATSAPP_CALLING.ENABLE.LABEL')"
+        :description="$t('INBOX_MGMT.WHATSAPP_CALLING.ENABLE.DESCRIPTION')"
+      />
+
+      <SettingsFieldSection
+        v-if="phoneNumber"
+        :label="$t('INBOX_MGMT.WHATSAPP_CALLING.PHONE_NUMBER.LABEL')"
+        :help-text="$t('INBOX_MGMT.WHATSAPP_CALLING.PHONE_NUMBER.HELP_TEXT')"
+      >
+        <woot-code :script="phoneNumber" lang="html" />
+      </SettingsFieldSection>
+
+      <SettingsFieldSection
+        :label="$t('INBOX_MGMT.WHATSAPP_CALLING.PERMISSION_REQUEST_BODY.LABEL')"
+        :help-text="
+          $t('INBOX_MGMT.WHATSAPP_CALLING.PERMISSION_REQUEST_BODY.HELP_TEXT')
+        "
+      >
+        <TextArea
+          v-model="permissionRequestBody"
+          :placeholder="
+            $t(
+              'INBOX_MGMT.WHATSAPP_CALLING.PERMISSION_REQUEST_BODY.PLACEHOLDER'
+            )
+          "
+          auto-height
+          resize
+        />
+      </SettingsFieldSection>
+
+      <SettingsFieldSection
+        :label="$t('INBOX_MGMT.WHATSAPP_CALLING.HOW_IT_WORKS.LABEL')"
+        :help-text="$t('INBOX_MGMT.WHATSAPP_CALLING.HOW_IT_WORKS.DESCRIPTION')"
+      />
+
+      <div>
+        <NextButton
+          :is-loading="isUpdating"
+          :label="$t('INBOX_MGMT.SETTINGS_POPUP.UPDATE')"
+          @click="updateCallingSettings"
+        />
+      </div>
+    </template>
   </div>
 </template>

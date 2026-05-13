@@ -666,6 +666,16 @@
         "LABEL": "Call permission request message",
         "HELP_TEXT": "Shown to the contact when they haven't yet consented to receive calls. Leave blank to use the default.",
         "PLACEHOLDER": "We would like to call you regarding your conversation."
+      },
+      "WABA_STATUS": {
+        "LOADING": "Checking calling status with Meta…",
+        "DISABLED_TITLE": "Calling is not enabled on this WhatsApp Business Account",
+        "DISABLED_DESCRIPTION": "Enable WhatsApp calling for this phone number to subscribe to call webhooks and let agents place and receive calls from this inbox.",
+        "ENABLE_ACTION": "Enable WhatsApp Calling",
+        "ENABLE_SUCCESS": "WhatsApp calling enabled for this inbox.",
+        "ENABLE_FAILURE": "Could not enable calling: {error}",
+        "UNKNOWN_TITLE": "Couldn't verify calling status with Meta",
+        "UNKNOWN_DESCRIPTION": "We were unable to read the calling configuration for this phone number. The access token may be missing the whatsapp_business_management permission."
       }
     },
     "CHANNEL_PREFERENCES": "Channel Preferences",

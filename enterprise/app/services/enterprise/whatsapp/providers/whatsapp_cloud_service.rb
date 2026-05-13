@@ -40,6 +40,40 @@ module Enterprise::Whatsapp::Providers::WhatsappCloudService
     process_initiate_call_response(response)
   end
 
+  # Reads the WABA-level calling configuration for this phone number from Meta.
+  # Returns the parsed `calling` object (e.g. { 'status' => 'ENABLED', ... }) or
+  # nil on transport/auth failure. The access token must hold the
+  # `whatsapp_business_management` permission.
+  # https://developers.facebook.com/docs/whatsapp/cloud-api/reference/phone-numbers/
+  def fetch_calling_status
+    response = HTTParty.get("#{calls_phone_id_path}/settings?fields=calling", headers: api_headers)
+
+    unless response.success?
+      Rails.logger.error "[WHATSAPP CALL] fetch_calling_status failed: status=#{response.code} body=#{response.body}"
+      return nil
+    end
+
+    response.parsed_response.is_a?(Hash) ? response.parsed_response['calling'] : nil
+  end
+
+  # Toggles the WABA-level calling status. `status` is 'ENABLED' or 'DISABLED'.
+  # Returns true on success; raises with Meta's user-facing message on failure
+  # so the caller can surface it (Meta returns helpful errors like "phone number
+  # not registered for calling").
+  def update_calling_status(status)
+    response = HTTParty.post(
+      "#{calls_phone_id_path}/settings",
+      headers: api_headers,
+      body: { calling: { status: status } }.to_json
+    )
+    return true if response.success?
+
+    parsed = response.parsed_response.is_a?(Hash) ? response.parsed_response : {}
+    message = parsed.dig('error', 'error_user_msg') || parsed.dig('error', 'message') || 'Failed to update calling status'
+    Rails.logger.error "[WHATSAPP CALL] update_calling_status failed: status=#{response.code} body=#{response.body}"
+    raise message
+  end
+
   private
 
   def calls_phone_id_path
