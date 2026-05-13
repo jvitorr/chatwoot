@@ -4,7 +4,10 @@ class Public::Api::V1::Portals::CategoriesController < Public::Api::V1::Portals:
   before_action :load_category_articles, only: [:show], if: -> { @portal_layout == 'documentation' }
 
   def index
-    redirect_to public_portal_locale_path(@portal.slug, params[:locale]), status: :moved_permanently
+    respond_to do |format|
+      format.html { redirect_to public_portal_locale_path(@portal.slug, params[:locale]), status: :moved_permanently }
+      format.json { @categories = @portal.categories.order(position: :asc) }
+    end
   end
 
   def show
