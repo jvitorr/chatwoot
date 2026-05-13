@@ -51,7 +51,7 @@
     },
     "DISABLE": {
       "TITLE": "İki Faktörlü Kimlik Doğrulamayı Devre Dışı Bırak",
-      "DESCRIPTION": "You'll need to enter your password and either a verification code from your authenticator app or a backup code to disable two-factor authentication.",
+      "DESCRIPTION": "İki faktörlü kimlik doğrulamayı devre dışı bırakmak için şifrenizi ve doğrulama kodunu girmeniz gerekir.",
       "PASSWORD": "Parola",
       "OTP_CODE": "Doğrulama Kodu",
       "OTP_CODE_PLACEHOLDER": "000000",
