@@ -5,9 +5,22 @@ RSpec.describe Captain::Documents::ScheduleSyncsJob, type: :job do
   let(:assistant) { create(:captain_assistant, account: account) }
 
   before do
-    create(:installation_config, name: 'CAPTAIN_DOCUMENT_AUTO_SYNC_INTERVALS', value: { business: 24, hacker: nil }.to_json)
+    set_installation_config('CAPTAIN_DOCUMENT_AUTO_SYNC_INTERVALS', { business: 24, hacker: nil }.to_json)
+    set_installation_config('CAPTAIN_DOCUMENT_AUTO_SYNC_PER_ACCOUNT_HOURLY_CAP', 50)
+    set_installation_config('CAPTAIN_DOCUMENT_AUTO_SYNC_GLOBAL_HOURLY_CAP', 1000)
     account.enable_features!('captain_document_auto_sync')
     clear_enqueued_jobs
+  end
+
+  def set_installation_config(name, value)
+    InstallationConfig.find_or_initialize_by(name: name).tap do |config|
+      config.value = value
+      config.save!
+    end
+  end
+
+  def update_sync_limit(name, value)
+    InstallationConfig.find_by!(name: name).update!(value: value)
   end
 
   context 'when the account has not enabled auto-sync' do
@@ -124,7 +137,7 @@ RSpec.describe Captain::Documents::ScheduleSyncsJob, type: :job do
     end
 
     it 'skips invalid legacy documents without counting them against the account cap' do
-      stub_const("#{described_class}::PER_ACCOUNT_HOURLY_CAP", 1)
+      update_sync_limit('CAPTAIN_DOCUMENT_AUTO_SYNC_PER_ACCOUNT_HOURLY_CAP', 1)
       create(
         :captain_document,
         assistant: assistant,
@@ -154,8 +167,8 @@ RSpec.describe Captain::Documents::ScheduleSyncsJob, type: :job do
     end
 
     it 'keeps paging due documents when invalid documents fill the first batch' do
-      stub_const("#{described_class}::PER_ACCOUNT_HOURLY_CAP", 1)
-      stub_const("#{described_class}::DUE_DOCUMENT_BATCH_SIZE", 1)
+      update_sync_limit('CAPTAIN_DOCUMENT_AUTO_SYNC_PER_ACCOUNT_HOURLY_CAP', 1)
+      stub_const("#{described_class}::DUE_DOCUMENT_BATCH_MULTIPLIER", 1)
       create(
         :captain_document,
         assistant: assistant,
@@ -213,7 +226,7 @@ RSpec.describe Captain::Documents::ScheduleSyncsJob, type: :job do
 
   context 'when more documents are due than the account cap allows' do
     before do
-      stub_const("#{described_class}::PER_ACCOUNT_HOURLY_CAP", 2)
+      update_sync_limit('CAPTAIN_DOCUMENT_AUTO_SYNC_PER_ACCOUNT_HOURLY_CAP', 2)
     end
 
     it 'queues backfilled and oldest-attempted documents first' do
@@ -230,6 +243,30 @@ RSpec.describe Captain::Documents::ScheduleSyncsJob, type: :job do
         .to have_enqueued_job(Captain::Documents::PerformSyncJob).with(backfilled_document)
         .and have_enqueued_job(Captain::Documents::PerformSyncJob).with(oldest_document)
       expect(Captain::Documents::PerformSyncJob).not_to have_been_enqueued.with(newest_document)
+    end
+  end
+
+  context 'when sync caps are configured' do
+    it 'uses installation config caps for per-account and global limits' do
+      update_sync_limit('CAPTAIN_DOCUMENT_AUTO_SYNC_PER_ACCOUNT_HOURLY_CAP', 2)
+      update_sync_limit('CAPTAIN_DOCUMENT_AUTO_SYNC_GLOBAL_HOURLY_CAP', 3)
+
+      second_account = create(:account, custom_attributes: { plan_name: 'business' })
+      second_account.enable_features!('captain_document_auto_sync')
+      second_assistant = create(:captain_assistant, account: second_account)
+
+      first_account_documents = create_list(:captain_document, 3, assistant: assistant, account: account, status: :available)
+      second_account_documents = create_list(:captain_document, 3, assistant: second_assistant, account: second_account, status: :available)
+      (first_account_documents + second_account_documents).each do |document|
+        document.update!(sync_status: :synced, last_synced_at: 3.days.ago, last_sync_attempted_at: 3.days.ago)
+      end
+      clear_enqueued_jobs
+
+      expect { described_class.new.perform }
+        .to have_enqueued_job(Captain::Documents::PerformSyncJob).exactly(3).times
+
+      expect(first_account_documents.count { |document| document.reload.sync_status == 'syncing' }).to eq(2)
+      expect(second_account_documents.count { |document| document.reload.sync_status == 'syncing' }).to eq(1)
     end
   end
 

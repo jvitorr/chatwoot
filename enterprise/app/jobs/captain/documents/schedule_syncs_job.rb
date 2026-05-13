@@ -1,16 +1,18 @@
 class Captain::Documents::ScheduleSyncsJob < ApplicationJob
   queue_as :scheduled_jobs
 
-  PER_ACCOUNT_HOURLY_CAP = 50
-  GLOBAL_HOURLY_CAP = 1000
-  DUE_DOCUMENT_BATCH_SIZE = PER_ACCOUNT_HOURLY_CAP * 2 # Inspite of skipping, we should at least reach the hourly cap
+  DEFAULT_PER_ACCOUNT_HOURLY_CAP = 50
+  DEFAULT_GLOBAL_HOURLY_CAP = 1000
+  DUE_DOCUMENT_BATCH_MULTIPLIER = 2 # In spite of skipping, we should at least reach the hourly cap
   SYNC_STALE_TIMEOUT = Captain::Document::SYNC_STALE_TIMEOUT
   DAILY_SYNC_JITTER = 4.hours
   WEEKLY_SYNC_JITTER = 1.day
   MONTHLY_SYNC_JITTER = 4.days
 
   def perform
-    @remaining_global_capacity = GLOBAL_HOURLY_CAP
+    @per_account_hourly_cap = configured_sync_limit('CAPTAIN_DOCUMENT_AUTO_SYNC_PER_ACCOUNT_HOURLY_CAP', DEFAULT_PER_ACCOUNT_HOURLY_CAP)
+    @global_hourly_cap = configured_sync_limit('CAPTAIN_DOCUMENT_AUTO_SYNC_GLOBAL_HOURLY_CAP', DEFAULT_GLOBAL_HOURLY_CAP)
+    @remaining_global_capacity = @global_hourly_cap
     sync_intervals = Enterprise::Account.captain_document_sync_intervals
     stats = { accounts_scanned: 0, accounts_enabled: 0, accounts_scheduled: 0, documents_enqueued: 0, documents_skipped: 0 }
 
@@ -36,13 +38,13 @@ class Captain::Documents::ScheduleSyncsJob < ApplicationJob
   private
 
   def enqueue_due_documents(account, interval)
-    per_account_limit = [PER_ACCOUNT_HOURLY_CAP, @remaining_global_capacity].min
+    per_account_limit = [@per_account_hourly_cap, @remaining_global_capacity].min
     result = { enqueued: 0, skipped: 0 }
     skipped_document_ids = []
 
     while result[:enqueued] < per_account_limit
 
-      documents = due_documents(account, interval, skipped_document_ids).limit(DUE_DOCUMENT_BATCH_SIZE).to_a
+      documents = due_documents(account, interval, skipped_document_ids).limit(due_document_batch_size).to_a
       break if documents.empty?
 
       documents.each do |document|
@@ -86,6 +88,16 @@ class Captain::Documents::ScheduleSyncsJob < ApplicationJob
     documents.order(Arel.sql('last_sync_attempted_at ASC NULLS FIRST'), :id)
   end
 
+  def configured_sync_limit(config_key, default)
+    configured_value = InstallationConfig.find_by(name: config_key)&.value
+    limit = configured_value.to_s.to_i
+    limit.positive? ? limit : default
+  end
+
+  def due_document_batch_size
+    @per_account_hourly_cap * DUE_DOCUMENT_BATCH_MULTIPLIER
+  end
+
   def reserve_sync_slot(document)
     mark_sync_started(document)
     true
@@ -126,6 +138,8 @@ class Captain::Documents::ScheduleSyncsJob < ApplicationJob
     payload = {
       event: 'completed',
       global_cap_hit: @remaining_global_capacity <= 0,
+      per_account_hourly_cap: @per_account_hourly_cap,
+      global_hourly_cap: @global_hourly_cap,
       remaining_global_capacity: @remaining_global_capacity
     }.merge(stats)
 
