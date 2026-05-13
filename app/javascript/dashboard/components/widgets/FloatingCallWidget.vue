@@ -7,6 +7,7 @@ import { setWhatsappCallMuted } from 'dashboard/composables/useWhatsappCallSessi
 import { frontendURL, conversationUrl } from 'dashboard/helper/URLHelper';
 import WindowVisibilityHelper from 'dashboard/helper/AudioAlerts/WindowVisibilityHelper';
 import CallCard from 'dashboard/components/widgets/call/CallCard.vue';
+import countriesList from 'shared/constants/countries.js';
 
 const RINGTONE_URL = '/audio/dashboard/bell.mp3';
 
@@ -71,8 +72,11 @@ const getCallInfo = call => {
   const caller = call?.caller;
   const additional = sender?.additional_attributes || {};
   const city = additional.city || '';
-  const country = additional.country || '';
   const countryCode = additional.country_code || '';
+  const country =
+    additional.country ||
+    countriesList.find(c => c.id === countryCode.toUpperCase())?.name ||
+    '';
   // Prefer the richest available location string ("City, Country"); fall back to
   // whichever single field is present; finally fall back to the inbox name so
   // there's always something to show.
