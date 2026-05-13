@@ -42,7 +42,7 @@ export default {
       return this.wabaCallingStatus && this.wabaCallingStatus !== 'ENABLED';
     },
     canEnableCalling() {
-      return this.wabaCallingStatus === 'DISABLED';
+      return this.isWabaCallingDisabled;
     },
     wabaBannerColor() {
       return this.wabaCallingStatus === 'UNKNOWN' ? 'amber' : 'ruby';
