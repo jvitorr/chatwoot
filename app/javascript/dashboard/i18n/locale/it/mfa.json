@@ -51,7 +51,7 @@
     },
     "DISABLE": {
       "TITLE": "Disattiva Autenticazione A Due Fattori",
-      "DESCRIPTION": "Dovrai inserire la tua password e un codice di verifica dall'app di autenticazione o un codice di backup per disabilitare l'autenticazione a due fattori.",
+      "DESCRIPTION": "Dovrai inserire la tua password e un codice di verifica per disabilitare l'autenticazione a due fattori.",
       "PASSWORD": "Password",
       "OTP_CODE": "Codice Di Verifica",
       "OTP_CODE_PLACEHOLDER": "000000",
