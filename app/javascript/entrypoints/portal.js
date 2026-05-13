@@ -7,3 +7,7 @@ Rails.start();
 Turbolinks.start();
 
 document.addEventListener('turbolinks:load', InitializationHelpers.onLoad);
+document.addEventListener(
+  'turbolinks:before-render',
+  InitializationHelpers.teardown
+);
