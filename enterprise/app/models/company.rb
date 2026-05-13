@@ -61,9 +61,9 @@ class Company < ApplicationRecord
   }
 
   def record_activity_at!(activity_at)
-    with_lock do
-      update!(last_activity_at: activity_at) unless last_activity_at.present? && last_activity_at > activity_at - ACTIVITY_ROLLUP_INTERVAL
-    end
+    return if last_activity_at.present? && last_activity_at > activity_at - ACTIVITY_ROLLUP_INTERVAL
+
+    update!(last_activity_at: activity_at)
   end
 
   private
