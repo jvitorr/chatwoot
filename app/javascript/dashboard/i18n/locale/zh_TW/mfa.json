@@ -51,7 +51,7 @@
     },
     "DISABLE": {
       "TITLE": "停用雙重驗證",
-      "DESCRIPTION": "You'll need to enter your password and either a verification code from your authenticator app or a backup code to disable two-factor authentication.",
+      "DESCRIPTION": "您需要輸入密碼和驗證碼才能停用雙重驗證。",
       "PASSWORD": "密碼",
       "OTP_CODE": "驗證碼",
       "OTP_CODE_PLACEHOLDER": "000000",
