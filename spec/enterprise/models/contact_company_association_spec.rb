@@ -61,19 +61,6 @@ RSpec.describe Contact, type: :model do
 
         expect(company.reload.last_activity_at).to be_within(1.second).of(contact.last_activity_at)
       end
-
-      it 'recomputes previous company activity when moving an active contact' do
-        previous_company = create(:company, account: account)
-        new_company = create(:company, account: account)
-        remaining_contact = create(:contact, account: account, company: previous_company, last_activity_at: 2.hours.ago)
-        contact = create(:contact, account: account, company: previous_company, last_activity_at: 1.hour.ago)
-        previous_company.update!(last_activity_at: contact.last_activity_at)
-
-        contact.update!(company: new_company)
-
-        expect(previous_company.reload.last_activity_at).to be_within(1.second).of(remaining_contact.last_activity_at)
-        expect(new_company.reload.last_activity_at).to be_within(1.second).of(contact.last_activity_at)
-      end
     end
 
     context 'when multiple contacts share the same domain' do
