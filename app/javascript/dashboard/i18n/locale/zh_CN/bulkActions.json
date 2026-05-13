@@ -1,6 +1,6 @@
 {
   "BULK_ACTION": {
-    "CONVERSATIONS_SELECTED": "{conversationCount} 已选择",
+    "CONVERSATIONS_SELECTED": "已选择 {conversationCount} 个对话",
     "NONE": "啥都没有",
     "CLEAR_SELECTION": "清除",
     "ASSIGN_AGENT_CONFIRMATION_LABEL": "Are you sure you want to assign {n} conversation to {agentName}? | Are you sure you want to assign {n} conversations to {agentName}?",
