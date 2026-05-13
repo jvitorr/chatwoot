@@ -1,6 +1,6 @@
 {
   "BULK_ACTION": {
-    "CONVERSATIONS_SELECTED": "{conversationCount}개 선택됨",
+    "CONVERSATIONS_SELECTED": "{conversationCount}개의 대화가 선택되었습니다",
     "NONE": "없음",
     "CLEAR_SELECTION": "초기화",
     "ASSIGN_AGENT_CONFIRMATION_LABEL": "Are you sure you want to assign {n} conversation to {agentName}? | Are you sure you want to assign {n} conversations to {agentName}?",
