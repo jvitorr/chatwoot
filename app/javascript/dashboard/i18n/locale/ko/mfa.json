@@ -51,7 +51,7 @@
     },
     "DISABLE": {
       "TITLE": "2단계 인증 비활성화",
-      "DESCRIPTION": "You'll need to enter your password and either a verification code from your authenticator app or a backup code to disable two-factor authentication.",
+      "DESCRIPTION": "2단계 인증을 비활성화하려면 비밀번호와 인증 코드를 입력해야 합니다.",
       "PASSWORD": "비밀번호",
       "OTP_CODE": "인증 코드",
       "OTP_CODE_PLACEHOLDER": "000000",
