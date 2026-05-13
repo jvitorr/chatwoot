@@ -3,7 +3,7 @@
     "HEADER": "Attributi Personalizzati",
     "HEADER_BTN_TXT": "Aggiungi Attributo Personalizzato",
     "LOADING": "Caricamento attributi personalizzati",
-    "DESCRIPTION": "Un attributo personalizzato traccia ulteriori dettagli sui tuoi contatti, aziende o conversazioni, come il loro piano di abbonamento o la data del loro primo acquisto. È possibile aggiungere diversi tipi di attributi personalizzati, come testi, elenchi o numeri, per salvare le informazioni specifiche di cui hai bisogno.",
+    "DESCRIPTION": "Un attributo personalizzato tiene traccia di informazioni aggiuntive sui tuoi contatti o sulle conversazioni — ad esempio il piano di abbonamento o la data del primo acquisto. Puoi aggiungere diversi tipi di attributi personalizzati, come testo, elenchi o numeri, per raccogliere le informazioni specifiche di cui hai bisogno.",
     "LEARN_MORE": "Scopri di più sugli attributi personalizzati",
     "COUNT": "{n} attributo | {n} attributi",
     "SEARCH_PLACEHOLDER": "Cerca attributi...",
