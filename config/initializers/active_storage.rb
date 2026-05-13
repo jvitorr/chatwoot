@@ -11,3 +11,21 @@ Rails.application.config.active_storage.content_types_allowed_inline += %w[
   audio/wav
   audio/x-wav
 ]
+
+module ActiveStorageDirectUploadMetadataFilter
+  INTERNAL_METADATA_KEYS = %w[identified analyzed composed].freeze
+
+  private
+
+  def blob_args
+    super.tap do |args|
+      args[:metadata]&.except!(*INTERNAL_METADATA_KEYS, *INTERNAL_METADATA_KEYS.map(&:to_sym))
+    end
+  end
+end
+
+Rails.application.config.to_prepare do
+  unless ActiveStorage::DirectUploadsController < ActiveStorageDirectUploadMetadataFilter
+    ActiveStorage::DirectUploadsController.prepend(ActiveStorageDirectUploadMetadataFilter)
+  end
+end

@@ -7,3 +7,6 @@ ignore:
   # storage provider rather than Rails proxy mode. Revisit if we enable
   # rails_storage_proxy or other app-served Active Storage proxy routes.
   - CVE-2026-33658
+  # Rails 7.1 has no patched release for this Active Storage direct-upload
+  # advisory. Chatwoot filters internal metadata keys locally.
+  - CVE-2026-33173
