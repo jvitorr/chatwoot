@@ -8,7 +8,7 @@
 #  plan              :jsonb
 #  skip_reason       :text
 #  started_at        :datetime
-#  status            :integer          default(0), not null
+#  status            :integer          default("pending"), not null
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null
 #  account_id        :bigint           not null
@@ -18,11 +18,6 @@
 #
 #  index_help_center_generations_on_account_id  (account_id)
 #  index_help_center_generations_on_portal_id   (portal_id)
-#
-# Foreign Keys
-#
-#  fk_rails_...  (account_id => accounts.id)
-#  fk_rails_...  (portal_id => portals.id)
 #
 class HelpCenterGeneration < ApplicationRecord
   belongs_to :account

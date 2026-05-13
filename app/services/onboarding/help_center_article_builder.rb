@@ -39,8 +39,6 @@ class Onboarding::HelpCenterArticleBuilder
       Firecrawl::Models::BatchScrapeOptions.new(options: Firecrawl::Configuration.default_scrape_options)
     )
     Array(job.data).filter_map { |doc| normalize(doc) }
-  rescue Firecrawl::FirecrawlError => e
-    raise BuildFailed, "Firecrawl batch_scrape failed for #{@urls.join(', ')}: #{e.message}"
   end
 
   def normalize(doc)
