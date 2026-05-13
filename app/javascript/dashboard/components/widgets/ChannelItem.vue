@@ -81,6 +81,13 @@ const isBeta = computed(() => {
   return ['tiktok', 'voice'].includes(props.channel.key);
 });
 
+const hasVoiceBadge = computed(() => {
+  return (
+    ['voice', 'whatsapp'].includes(props.channel.key) &&
+    !!props.enabledFeatures.channel_voice
+  );
+});
+
 const onItemClick = () => {
   if (isActive.value) {
     emit('channelItemClick', props.channel.key);
@@ -95,6 +102,7 @@ const onItemClick = () => {
     :icon="channel.icon"
     :is-coming-soon="isComingSoon"
     :is-beta="isBeta"
+    :has-voice-badge="hasVoiceBadge"
     :disabled="!isActive"
     @click="onItemClick"
   />
