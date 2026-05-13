@@ -51,7 +51,7 @@
     },
     "DISABLE": {
       "TITLE": "দুই-ধাপ যাচাইকরণ নিষ্ক্রিয় করুন",
-      "DESCRIPTION": "You'll need to enter your password and either a verification code from your authenticator app or a backup code to disable two-factor authentication.",
+      "DESCRIPTION": "দুই-ধাপ যাচাইকরণ নিষ্ক্রিয় করতে আপনাকে আপনার পাসওয়ার্ড এবং একটি যাচাইকরণ কোড প্রবেশ করতে হবে.",
       "PASSWORD": "পাসওয়ার্ড",
       "OTP_CODE": "ভেরিফিকেশন কোড",
       "OTP_CODE_PLACEHOLDER": "০০০০০০",
