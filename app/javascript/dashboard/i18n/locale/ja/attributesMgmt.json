@@ -3,7 +3,7 @@
     "HEADER": "カスタム属性",
     "HEADER_BTN_TXT": "カスタム属性を追加",
     "LOADING": "カスタム属性を取得中",
-    "DESCRIPTION": "A custom attribute tracks additional details about your contacts, companies, or conversations—such as the subscription plan or the date of their first purchase. You can add different types of custom attributes, such as text, lists, or numbers, to capture the specific information you need.",
+    "DESCRIPTION": "カスタム属性は、連絡先や会話に関する追加の詳細（例：サブスクリプションプランや初回購入日など）を記録します。必要な情報をキャプチャするために、テキスト、リスト、数値など、さまざまなタイプのカスタム属性を追加できます。",
     "LEARN_MORE": "カスタム属性について詳しく学ぶ",
     "COUNT": "{n} attribute | {n} attributes",
     "SEARCH_PLACEHOLDER": "属性を検索...",
