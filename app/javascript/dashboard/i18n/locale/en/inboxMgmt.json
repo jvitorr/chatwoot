@@ -669,11 +669,8 @@
       },
       "WABA_STATUS": {
         "LOADING": "Checking calling status with Meta…",
-        "DISABLED_TITLE": "Calling is not enabled on this WhatsApp Business Account",
-        "DISABLED_DESCRIPTION": "Enable WhatsApp calling for this phone number to subscribe to call webhooks and let agents place and receive calls from this inbox.",
-        "ENABLE_ACTION": "Enable WhatsApp Calling",
-        "ENABLE_SUCCESS": "WhatsApp calling enabled for this inbox.",
-        "ENABLE_FAILURE": "Could not enable calling: {error}",
+        "DISABLED_TITLE": "This phone number is not eligible for WhatsApp Calling",
+        "DISABLED_DESCRIPTION": "WhatsApp Calling has not been enabled by Meta on this number. Reach out to Meta (or your WhatsApp Business Solution Provider) to onboard this phone number for the WhatsApp Business Calling API.",
         "UNKNOWN_TITLE": "Couldn't verify calling status with Meta",
         "UNKNOWN_DESCRIPTION": "We were unable to read the calling configuration for this phone number. The access token may be missing the whatsapp_business_management permission."
       }

@@ -75,17 +75,34 @@ class Channel::Whatsapp < ApplicationRecord
     calling
   end
 
-  # End-to-end voice enablement for a WhatsApp Cloud inbox: toggles calling on
-  # at Meta, re-runs webhook setup so the `calls` field is subscribed, and
-  # flips the local `calling_enabled` flag. Raises on Meta failure so callers
-  # can surface the error verbatim.
+  # End-to-end voice enablement for a WhatsApp Cloud inbox:
+  # 1. Ensure calling is ON at Meta (idempotent — Meta returns success if it
+  #    was already enabled).
+  # 2. Re-run webhook setup so the `calls` field is subscribed alongside
+  #    `messages` and `smb_message_echoes`.
+  # 3. Flip the local `calling_enabled` flag.
+  # Raises on Meta failure so callers can surface the error verbatim.
   def enable_voice_calling!
     raise 'Voice calling is only supported on whatsapp_cloud channels' unless provider == 'whatsapp_cloud'
 
     provider_service.update_calling_status('ENABLED')
-    Whatsapp::WebhookSetupService.new(self, provider_config['business_account_id'], provider_config['api_key']).register_callback
+    webhook_setup_service.register_callback
     update!(provider_config: provider_config.merge('calling_enabled' => true))
     refresh_calling_status!
+  end
+
+  # End-to-end voice disablement for a WhatsApp Cloud inbox:
+  # 1. Re-subscribe the WABA webhook with `messages` and `smb_message_echoes`
+  #    only (drop the `calls` field) so call events stop reaching Chatwoot.
+  # 2. Flip the local `calling_enabled` flag off.
+  # We deliberately do NOT toggle calling.status to DISABLED at Meta — admins
+  # may want to keep the WABA capability available for other tools / future
+  # re-enablement without going through Meta onboarding again.
+  def disable_voice_calling!
+    raise 'Voice calling is only supported on whatsapp_cloud channels' unless provider == 'whatsapp_cloud'
+
+    webhook_setup_service.register_callback(subscribed_fields: %w[messages smb_message_echoes])
+    update!(provider_config: provider_config.merge('calling_enabled' => false))
   end
 
   def mark_message_templates_updated
@@ -118,10 +135,11 @@ class Channel::Whatsapp < ApplicationRecord
   end
 
   def perform_webhook_setup
-    business_account_id = provider_config['business_account_id']
-    api_key = provider_config['api_key']
+    webhook_setup_service.perform
+  end
 
-    Whatsapp::WebhookSetupService.new(self, business_account_id, api_key).perform
+  def webhook_setup_service
+    Whatsapp::WebhookSetupService.new(self, provider_config['business_account_id'], provider_config['api_key'])
   end
 
   def teardown_webhooks

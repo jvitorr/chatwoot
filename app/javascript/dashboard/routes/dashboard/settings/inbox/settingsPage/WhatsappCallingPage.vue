@@ -29,7 +29,6 @@ export default {
       isUpdating: false,
       wabaCallingStatus: null,
       isFetchingWabaStatus: false,
-      isEnablingCalling: false,
     };
   },
   computed: {
@@ -38,11 +37,11 @@ export default {
         this.inbox.provider_config?.phone_number || this.inbox.phone_number
       );
     },
+    isWabaCallingEnabled() {
+      return this.wabaCallingStatus === 'ENABLED';
+    },
     isWabaCallingDisabled() {
       return this.wabaCallingStatus && this.wabaCallingStatus !== 'ENABLED';
-    },
-    canEnableCalling() {
-      return this.isWabaCallingDisabled;
     },
     wabaBannerColor() {
       return this.wabaCallingStatus === 'UNKNOWN' ? 'amber' : 'ruby';
@@ -86,32 +85,17 @@ export default {
         this.isFetchingWabaStatus = false;
       }
     },
-    async enableWhatsappCalling() {
-      this.isEnablingCalling = true;
-      try {
-        const { data } = await InboxesAPI.enableWhatsappCalling(this.inbox.id);
-        this.wabaCallingStatus = data.status;
-        this.callingEnabled = true;
-        await this.$store.dispatch('inboxes/get', this.inbox.id);
-        useAlert(
-          this.$t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.ENABLE_SUCCESS')
-        );
-      } catch (error) {
-        const message =
-          error?.response?.data?.message ||
-          this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE');
-        useAlert(
-          this.$t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.ENABLE_FAILURE', {
-            error: message,
-          })
-        );
-      } finally {
-        this.isEnablingCalling = false;
-      }
-    },
     async updateCallingSettings() {
       this.isUpdating = true;
       try {
+        const previousEnabled = !!this.inbox.provider_config?.calling_enabled;
+        if (this.callingEnabled !== previousEnabled) {
+          if (this.callingEnabled) {
+            await InboxesAPI.enableWhatsappCalling(this.inbox.id);
+          } else {
+            await InboxesAPI.disableWhatsappCalling(this.inbox.id);
+          }
+        }
         await this.$store.dispatch('inboxes/updateInbox', {
           id: this.inbox.id,
           formData: false,
@@ -126,7 +110,10 @@ export default {
         });
         useAlert(this.$t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
       } catch (error) {
-        useAlert(this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));
+        const message =
+          error?.response?.data?.message ||
+          this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE');
+        useAlert(message);
       } finally {
         this.isUpdating = false;
       }
@@ -145,24 +132,18 @@ export default {
       {{ $t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.LOADING') }}
     </div>
 
-    <div v-else-if="isWabaCallingDisabled" class="flex flex-col gap-3">
-      <NextBanner :color="wabaBannerColor" class="!items-start">
-        <div class="flex flex-col gap-0.5">
-          <span class="font-medium">{{ wabaBannerTitle }}</span>
-          <span class="text-xs">{{ wabaBannerDescription }}</span>
-        </div>
-      </NextBanner>
-      <div v-if="canEnableCalling">
-        <NextButton
-          icon="i-lucide-phone-call"
-          :is-loading="isEnablingCalling"
-          :label="$t('INBOX_MGMT.WHATSAPP_CALLING.WABA_STATUS.ENABLE_ACTION')"
-          @click="enableWhatsappCalling"
-        />
+    <NextBanner
+      v-else-if="isWabaCallingDisabled"
+      :color="wabaBannerColor"
+      class="!items-start"
+    >
+      <div class="flex flex-col gap-0.5">
+        <span class="font-medium">{{ wabaBannerTitle }}</span>
+        <span class="text-xs">{{ wabaBannerDescription }}</span>
       </div>
-    </div>
+    </NextBanner>
 
-    <template v-if="!isFetchingWabaStatus && !isWabaCallingDisabled">
+    <template v-if="isWabaCallingEnabled">
       <SettingsToggleSection
         v-model="callingEnabled"
         :header="$t('INBOX_MGMT.WHATSAPP_CALLING.ENABLE.LABEL')"
