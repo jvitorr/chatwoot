@@ -27,6 +27,7 @@ export default {
       permissionRequestBody:
         this.inbox.provider_config?.call_permission_request_body || '',
       isUpdating: false,
+      isTogglingCalling: false,
       wabaCallingStatus: null,
       isFetchingWabaStatus: false,
     };
@@ -85,24 +86,38 @@ export default {
         this.isFetchingWabaStatus = false;
       }
     },
+    async handleCallingToggle(newValue) {
+      if (this.isTogglingCalling) return;
+      const previousValue = this.callingEnabled;
+      this.callingEnabled = newValue;
+      this.isTogglingCalling = true;
+      try {
+        if (newValue) {
+          await InboxesAPI.enableWhatsappCalling(this.inbox.id);
+        } else {
+          await InboxesAPI.disableWhatsappCalling(this.inbox.id);
+        }
+        await this.$store.dispatch('inboxes/get', this.inbox.id);
+        useAlert(this.$t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
+      } catch (error) {
+        this.callingEnabled = previousValue;
+        const message =
+          error?.response?.data?.message ||
+          this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE');
+        useAlert(message);
+      } finally {
+        this.isTogglingCalling = false;
+      }
+    },
     async updateCallingSettings() {
       this.isUpdating = true;
       try {
-        const previousEnabled = !!this.inbox.provider_config?.calling_enabled;
-        if (this.callingEnabled !== previousEnabled) {
-          if (this.callingEnabled) {
-            await InboxesAPI.enableWhatsappCalling(this.inbox.id);
-          } else {
-            await InboxesAPI.disableWhatsappCalling(this.inbox.id);
-          }
-        }
         await this.$store.dispatch('inboxes/updateInbox', {
           id: this.inbox.id,
           formData: false,
           channel: {
             provider_config: {
               ...this.inbox.provider_config,
-              calling_enabled: this.callingEnabled,
               call_permission_request_body:
                 this.permissionRequestBody.trim() || null,
             },
@@ -145,9 +160,10 @@ export default {
 
     <template v-if="isWabaCallingEnabled">
       <SettingsToggleSection
-        v-model="callingEnabled"
+        :model-value="callingEnabled"
         :header="$t('INBOX_MGMT.WHATSAPP_CALLING.ENABLE.LABEL')"
         :description="$t('INBOX_MGMT.WHATSAPP_CALLING.ENABLE.DESCRIPTION')"
+        @update:model-value="handleCallingToggle"
       />
 
       <SettingsFieldSection
