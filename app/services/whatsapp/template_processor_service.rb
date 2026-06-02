@@ -28,25 +28,42 @@ class Whatsapp::TemplateProcessorService
 
   def processed_templates_params
     template = find_template
-    return if template.blank?
 
-    # Convert legacy format to enhanced format before processing
-    converter = Whatsapp::TemplateParameterConverterService.new(template_params, template)
-    normalized_params = converter.normalize_to_enhanced
+    if template.present?
+      # Convert legacy format to enhanced format before processing
+      converter = Whatsapp::TemplateParameterConverterService.new(template_params, template)
+      normalized_params = converter.normalize_to_enhanced
 
-    process_enhanced_template_params(template, normalized_params['processed_params'])
+      return process_enhanced_template_params(template, normalized_params['processed_params'])
+    end
+
+    # Template not in the synced cache yet (e.g. just created in Meta). Trust the
+    # caller-provided enhanced params + parameter_format so sending no longer
+    # depends on the periodic template sync.
+    return if template_params['processed_params'].blank?
+
+    process_enhanced_template_params(template, template_params['processed_params'])
   end
 
   def process_enhanced_template_params(template, processed_params = nil)
     processed_params ||= template_params['processed_params']
+    parameter_format = resolve_parameter_format(template)
     components = []
 
     components.concat(process_header_components(processed_params))
-    components.concat(process_body_components(processed_params, template))
+    components.concat(process_body_components(processed_params, parameter_format))
     components.concat(process_footer_components(processed_params))
     components.concat(process_button_components(processed_params))
 
     @template_params = components
+  end
+
+  # The caller-provided format (from Meta, forwarded in template_params) wins so
+  # named/positional binding works even when the synced template is stale or
+  # missing; falls back to the cached template's format.
+  def resolve_parameter_format(template)
+    requested = template_params.is_a?(Hash) ? template_params['parameter_format'] : nil
+    requested.presence || template&.dig('parameter_format')
   end
 
   def process_header_components(processed_params)
@@ -76,13 +93,12 @@ class Whatsapp::TemplateProcessorService
     key == 'media_url' && header_data['media_type'].present?
   end
 
-  def process_body_components(processed_params, template)
+  def process_body_components(processed_params, parameter_format)
     return [] if processed_params['body'].blank?
 
     body_params = processed_params['body'].filter_map do |key, value|
       next if value.blank?
 
-      parameter_format = template['parameter_format']
       if parameter_format == 'NAMED'
         parameter_builder.build_named_parameter(key, value)
       else
