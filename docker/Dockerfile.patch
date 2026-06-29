@@ -1,0 +1,8 @@
+## Lightweight patch image: takes the previously published 4.13.1-connectei
+## and overlays only the files that changed. Avoids re-running the full
+## build pipeline (Gemfile install + pnpm install + asset compile),
+## which can hit transient npm/network errors on Docker Desktop.
+ARG BASE_TAG=4.13.1-connectei
+FROM joaoftnunes/chatwoot:${BASE_TAG}
+
+COPY app/views/api/v1/models/_inbox.json.jbuilder /app/app/views/api/v1/models/_inbox.json.jbuilder

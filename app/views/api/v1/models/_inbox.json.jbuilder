@@ -59,6 +59,7 @@ end
 ## Instagram Attributes
 json.reauthorization_required resource.channel.try(:reauthorization_required?) if resource.instagram?
 json.instagram_id resource.channel.try(:instagram_id) if resource.instagram?
+json.expires_at resource.channel.try(:expires_at) if resource.instagram?
 
 ## Tiktok Attributes
 json.reauthorization_required resource.channel.try(:reauthorization_required?) if resource.tiktok?

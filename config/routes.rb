@@ -289,7 +289,7 @@ Rails.application.routes.draw do
 
           namespace :instagram do
             resource :authorization, only: [:create]
-            resource :channels, only: [:create]
+            resources :channels, only: [:create, :update]
           end
 
           namespace :tiktok do
