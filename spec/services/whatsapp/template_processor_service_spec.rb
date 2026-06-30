@@ -20,7 +20,7 @@ describe Whatsapp::TemplateProcessorService do
           'components' => [{ 'type' => 'BODY', 'text' => 'Olá {{nome}}!' }]
         }
       end
-      let(:channel) { double(message_templates: [template]) }
+      let(:channel) { instance_double(Channel::Whatsapp, message_templates: [template]) }
       let(:template_params) do
         {
           'name' => 'garantia_lente_arranhada',
@@ -44,7 +44,7 @@ describe Whatsapp::TemplateProcessorService do
           'components' => [{ 'type' => 'BODY', 'text' => 'Olá {{nome}}!' }]
         }
       end
-      let(:channel) { double(message_templates: [template]) }
+      let(:channel) { instance_double(Channel::Whatsapp, message_templates: [template]) }
       let(:template_params) do
         {
           'name' => 'garantia_lente_arranhada',
@@ -61,7 +61,7 @@ describe Whatsapp::TemplateProcessorService do
     end
 
     context 'when the template has not been synced into the channel cache yet' do
-      let(:channel) { double(message_templates: []) }
+      let(:channel) { instance_double(Channel::Whatsapp, message_templates: []) }
       let(:template_params) do
         {
           'name' => 'brand_new_template',
@@ -87,7 +87,7 @@ describe Whatsapp::TemplateProcessorService do
           'components' => [{ 'type' => 'BODY', 'text' => 'Olá {{1}}!' }]
         }
       end
-      let(:channel) { double(message_templates: [template]) }
+      let(:channel) { instance_double(Channel::Whatsapp, message_templates: [template]) }
       let(:template_params) do
         {
           'name' => 'positional_template',

@@ -8,37 +8,13 @@ class Api::V1::Accounts::Instagram::ChannelsController < Api::V1::Accounts::Base
   # for a long-lived token, and posts the resulting credentials here.
   def create
     validate_create_params!
+    create_channel_with_inbox!
 
-    expires_at = Time.current + params[:expires_in].to_i.seconds
-
-    ActiveRecord::Base.transaction do
-      @channel = Channel::Instagram.create!(
-        access_token: params[:access_token],
-        instagram_id: params[:instagram_id].to_s,
-        account: Current.account,
-        expires_at: expires_at
-      )
-
-      @inbox = Current.account.inboxes.create!(
-        channel: @channel,
-        name: params[:username]
-      )
-    end
-
-    render json: {
-      success: true,
-      id: @inbox.id,
-      channel_id: @channel.id,
-      name: @inbox.name,
-      channel_type: 'Channel::Instagram',
-      instagram_id: @channel.instagram_id
-    }
+    render json: create_response
   rescue ActiveRecord::RecordNotUnique
-    render json: {
-      success: false,
-      error: 'This Instagram account is already connected to an inbox.'
-    }, status: :unprocessable_entity
-  rescue ActiveRecord::RecordInvalid => e
+    render json: { success: false, error: 'This Instagram account is already connected to an inbox.' },
+           status: :unprocessable_entity
+  rescue ActiveRecord::RecordInvalid, ArgumentError => e
     render json: { success: false, error: e.message }, status: :unprocessable_entity
   rescue StandardError => e
     Rails.logger.error "[Instagram::ChannelsController#create] #{e.class}: #{e.message}"
@@ -53,22 +29,60 @@ class Api::V1::Accounts::Instagram::ChannelsController < Api::V1::Accounts::Base
   # flag and re-subscribes the webhook with the new token.
   def update
     validate_update_params!
+    find_and_update_channel!
 
-    @channel = Channel::Instagram.find_by!(id: params[:id], account_id: Current.account.id)
+    render json: update_response
+  rescue ActiveRecord::RecordNotFound
+    render json: { success: false, error: 'Instagram channel not found' }, status: :not_found
+  rescue ActiveRecord::RecordInvalid, ArgumentError => e
+    render json: { success: false, error: e.message }, status: :unprocessable_entity
+  rescue StandardError => e
+    Rails.logger.error "[Instagram::ChannelsController#update] #{e.class}: #{e.message}"
+    render json: { success: false, error: e.message }, status: :unprocessable_entity
+  end
 
+  private
+
+  def create_channel_with_inbox!
     expires_at = Time.current + params[:expires_in].to_i.seconds
 
-    @channel.update!(
-      access_token: params[:access_token],
-      expires_at: expires_at
-    )
+    ActiveRecord::Base.transaction do
+      @channel = Channel::Instagram.create!(
+        access_token: params[:access_token],
+        instagram_id: params[:instagram_id].to_s,
+        account: Current.account,
+        expires_at: expires_at
+      )
+
+      @inbox = Current.account.inboxes.create!(channel: @channel, name: params[:username])
+    end
+  end
+
+  def find_and_update_channel!
+    @channel = Channel::Instagram.find_by!(id: params[:id], account_id: Current.account.id)
+    expires_at = Time.current + params[:expires_in].to_i.seconds
+
+    @channel.update!(access_token: params[:access_token], expires_at: expires_at)
 
     @channel.reauthorized! if @channel.respond_to?(:reauthorized!)
     @channel.subscribe if @channel.respond_to?(:subscribe)
 
     @inbox = @channel.inbox
+  end
 
-    render json: {
+  def create_response
+    {
+      success: true,
+      id: @inbox.id,
+      channel_id: @channel.id,
+      name: @inbox.name,
+      channel_type: 'Channel::Instagram',
+      instagram_id: @channel.instagram_id
+    }
+  end
+
+  def update_response
+    {
       success: true,
       id: @inbox&.id,
       channel_id: @channel.id,
@@ -77,18 +91,7 @@ class Api::V1::Accounts::Instagram::ChannelsController < Api::V1::Accounts::Base
       instagram_id: @channel.instagram_id,
       expires_at: @channel.expires_at&.iso8601
     }
-  rescue ActiveRecord::RecordNotFound
-    render json: { success: false, error: 'Instagram channel not found' }, status: :not_found
-  rescue ActiveRecord::RecordInvalid => e
-    render json: { success: false, error: e.message }, status: :unprocessable_entity
-  rescue ArgumentError => e
-    render json: { success: false, error: e.message }, status: :unprocessable_entity
-  rescue StandardError => e
-    Rails.logger.error "[Instagram::ChannelsController#update] #{e.class}: #{e.message}"
-    render json: { success: false, error: e.message }, status: :unprocessable_entity
   end
-
-  private
 
   def validate_create_params!
     missing = []
