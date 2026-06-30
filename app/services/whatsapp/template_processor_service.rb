@@ -37,10 +37,10 @@ class Whatsapp::TemplateProcessorService
       return process_enhanced_template_params(template, normalized_params['processed_params'])
     end
 
-    # Template not in the synced cache yet (e.g. just created in Meta). Trust the
-    # caller-provided enhanced params + parameter_format so sending no longer
-    # depends on the periodic template sync.
-    return if template_params['processed_params'].blank?
+    # Template not in the synced cache yet (e.g. just created in Meta). Only
+    # trust caller-provided enhanced params when the request explicitly carries
+    # a parameter_format hint, so legacy callers still get the safe nil result.
+    return if template_params['parameter_format'].blank? || template_params['processed_params'].blank?
 
     process_enhanced_template_params(template, template_params['processed_params'])
   end
