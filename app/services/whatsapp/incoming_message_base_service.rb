@@ -48,12 +48,31 @@ class Whatsapp::IncomingMessageBaseService
 
   def process_statuses
     status = @processed_params[:statuses].first
-    return unless find_message_by_source_id(status[:id])
+    # [FORK CONNECTEI] Ver modifications/001-repasse-status-whatsapp-connectei.md
+    # `wamid` sem Message aqui = mensagem que o Connectei disparou direto na
+    # Graph API (campanha, agendamento manual, lembrete). O status dela chegava
+    # e era descartado neste `return`; agora é repassado ao ERP, que é o único
+    # que sabe a qual disparo aquele wamid pertence.
+    # NÃO restaure o `return unless ...` num merge de upstream: isso desliga o
+    # repasse sem quebrar teste nenhum (do lado do ERP não chega evento).
+    unless find_message_by_source_id(status[:id])
+      forward_orphan_status_to_erp(status)
+      return
+    end
 
     update_whatsapp_identifiers_from_status(status)
     update_message_with_status(@message, status)
   rescue ArgumentError => e
     Rails.logger.error "Error while processing whatsapp status update #{e.message}"
+  end
+
+  # Enfileira o repasse. Nunca levanta: o repasse é um efeito colateral do
+  # processamento do webhook e não pode derrubá-lo — a Meta já recebeu 200 e o
+  # inbound do atendimento tem prioridade sobre a telemetria do ERP.
+  def forward_orphan_status_to_erp(status)
+    Whatsapp::ForwardMessageStatusToErpJob.perform_later([status.to_h])
+  rescue StandardError => e
+    Rails.logger.error "[WHATSAPP][erp-status-forward] enqueue failed: #{e.message}"
   end
 
   def update_message_with_status(message, status)

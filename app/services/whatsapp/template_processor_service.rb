@@ -37,9 +37,12 @@ class Whatsapp::TemplateProcessorService
       return process_enhanced_template_params(template, normalized_params['processed_params'])
     end
 
+    # [FORK CONNECTEI] Ver modifications/002-fallback-template-nao-sincronizado.md
     # Template not in the synced cache yet (e.g. just created in Meta). Only
     # trust caller-provided enhanced params when the request explicitly carries
     # a parameter_format hint, so legacy callers still get the safe nil result.
+    # As DUAS condições são necessárias: remover a de parameter_format reabre a
+    # regressão da spec upstream do caso "template inexistente".
     return if template_params['parameter_format'].blank? || template_params['processed_params'].blank?
 
     process_enhanced_template_params(template, template_params['processed_params'])

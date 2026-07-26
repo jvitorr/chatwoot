@@ -328,6 +328,7 @@ Rails.application.routes.draw do
 
           namespace :instagram do
             resource :authorization, only: [:create]
+            # [FORK CONNECTEI] Ver modifications/003-rota-registro-instagram.md
             resources :channels, only: [:create, :update]
           end
 
