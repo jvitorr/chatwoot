@@ -1,8 +1,10 @@
 # 004 — Integração com Axiom (exceções, logs e traces)
 
 **Status:** ativo
-**Arquivos do core alterados:** `lib/chatwoot_exception_tracker.rb` (uma linha), `lib/opentelemetry_config.rb` (refatoração), `Gemfile`, `.env.example`
-**Arquivos novos (aditivos):** `lib/axiom.rb`, `lib/axiom/`, `lib/axiom_capture_exceptions.rb`, `app/jobs/axiom/ingest_job.rb`, `config/initializers/axiom.rb`, `spec/support/axiom_env.rb`
+**Commit:** `ca93c0053`
+**Arquivos do core alterados:** `lib/chatwoot_exception_tracker.rb` (uma linha), `lib/opentelemetry_config.rb` (refatoração), `Gemfile` + `Gemfile.lock`, `.env.example`, `package.json` + `config/app.yml` (bump de versão para `4.15.1.1`)
+**Arquivos novos (aditivos):** `lib/axiom.rb`, `lib/axiom/`, `lib/axiom_capture_exceptions.rb`, `app/jobs/axiom/ingest_job.rb`, `config/initializers/axiom.rb`, `spec/support/axiom_env.rb`, `docker-compose.axiom.yaml`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.1-connectei` (e `latest`), `linux/amd64`
 
 ---
 
