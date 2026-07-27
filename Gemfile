@@ -206,6 +206,8 @@ gem 'cld3', '~> 3.7'
 # OpenTelemetry for LLM observability
 gem 'opentelemetry-sdk'
 gem 'opentelemetry-exporter-otlp'
+# loaded only when AXIOM_TRACE_RAILS is set. ref: lib/opentelemetry_config.rb
+gem 'opentelemetry-instrumentation-all', require: false
 
 gem 'shopify_api'
 

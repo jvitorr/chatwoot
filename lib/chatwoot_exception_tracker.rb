@@ -13,6 +13,8 @@ class ChatwootExceptionTracker
 
   def capture_exception
     capture_exception_with_sentry if ENV['SENTRY_DSN'].present?
+    # [FORK CONNECTEI] Ver modifications/004-integracao-axiom.md
+    Axiom::Reporter.report(@exception, user: @user, account: @account)
     Rails.logger.error @exception
   end
 
