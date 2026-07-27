@@ -19,6 +19,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [001](001-repasse-status-whatsapp-connectei.md) | Repasse de status de mensagem WhatsApp para o ERP Connectei | `app/services/whatsapp/incoming_message_base_service.rb` | **Alto** — o gancho fica dentro de um método que o upstream altera com frequência |
 | [002](002-fallback-template-nao-sincronizado.md) | Envio de template ainda não presente no cache de sincronização | `app/services/whatsapp/template_processor_service.rb` | Médio — o método é pequeno, mas a condição é sutil |
 | [003](003-rota-registro-instagram.md) | Rota de registro de canal Instagram | `config/routes.rb` + controller novo | Baixo — adição, sem alterar comportamento existente |
+| [004](004-integracao-axiom.md) | Integração com Axiom (exceções, logs e traces) | `lib/opentelemetry_config.rb`, `lib/chatwoot_exception_tracker.rb`, `Gemfile` | **Alto** — `opentelemetry_config.rb` foi refatorado de single-provider para multi-provider |
 
 ## Convenção para novas modificações
 

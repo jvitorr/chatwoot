@@ -1,0 +1,102 @@
+# Isolated local stack to exercise the Axiom integration end to end.
+# Host ports are shifted so this can run alongside the other chatwoot containers.
+#   docker compose -f docker-compose.axiom.yaml up -d
+#   app: http://localhost:3010   mailhog: http://localhost:8035
+# The explicit project name keeps this stack from colliding with docker-compose.yaml.
+name: chatwoot-axiom
+
+# Extension field, not a service: it only exists to be merged into the ruby services below.
+x-base: &base
+  build:
+    context: .
+    dockerfile: ./docker/dockerfiles/rails.Dockerfile
+    args:
+      BUNDLE_WITHOUT: ''
+      EXECJS_RUNTIME: 'Node'
+      RAILS_ENV: 'development'
+      RAILS_SERVE_STATIC_FILES: 'false'
+  image: chatwoot-rails:development
+  tty: true
+  stdin_open: true
+  env_file: .env
+  volumes:
+    - ./:/app:delegated
+    - node_modules:/app/node_modules
+    - packs:/app/public/packs
+    - cache:/app/tmp/cache
+    - bundle:/usr/local/bundle
+
+services:
+  rails:
+    <<: *base
+    depends_on:
+      - postgres
+      - redis
+      - vite
+      - mailhog
+    ports:
+      - '3010:3000'
+    environment:
+      - VITE_DEV_SERVER_HOST=vite
+    entrypoint: docker/entrypoints/rails.sh
+    command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
+
+  sidekiq:
+    <<: *base
+    depends_on:
+      - postgres
+      - redis
+    entrypoint: docker/entrypoints/rails.sh
+    command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
+
+  vite:
+    <<: *base
+    build:
+      context: .
+      dockerfile: ./docker/dockerfiles/vite.Dockerfile
+      args:
+        BUNDLE_WITHOUT: ''
+        EXECJS_RUNTIME: 'Node'
+        RAILS_ENV: 'development'
+        RAILS_SERVE_STATIC_FILES: 'false'
+    image: chatwoot-vite:development
+    ports:
+      - '3036:3036'
+    environment:
+      - VITE_DEV_SERVER_HOST=0.0.0.0
+    entrypoint: docker/entrypoints/vite.sh
+    command: bin/vite dev
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: always
+    ports:
+      - '5442:5432'
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=chatwoot_dev
+      - POSTGRES_USER=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+
+  redis:
+    image: redis:alpine
+    restart: always
+    ports:
+      - '6390:6379'
+    volumes:
+      - redis:/data
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - '1035:1025'
+      - '8035:8025'
+
+volumes:
+  postgres:
+  redis:
+  packs:
+  node_modules:
+  cache:
+  bundle:
