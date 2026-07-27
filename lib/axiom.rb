@@ -14,6 +14,11 @@ module Axiom
     enabled? && ENV['ENABLE_AXIOM_TRACES'].present?
   end
 
+  # Log shipping has its own switch so exceptions and traces can be adopted first.
+  def logs_enabled?
+    enabled? && ENV['ENABLE_AXIOM_LOGS'].present?
+  end
+
   def trace_rails?
     traces_enabled? && ENV['AXIOM_TRACE_RAILS'].present?
   end

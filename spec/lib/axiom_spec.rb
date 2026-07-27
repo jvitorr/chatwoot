@@ -33,6 +33,26 @@ describe Axiom do
     end
   end
 
+  describe '#logs_enabled?' do
+    it 'is false when only the flag is set' do
+      with_modified_env ENABLE_AXIOM_LOGS: 'true' do
+        expect(described_class).not_to be_logs_enabled
+      end
+    end
+
+    it 'is false with a token but no flag, so logs stay opt-in' do
+      with_modified_env AXIOM_API_TOKEN: 'xaat-token' do
+        expect(described_class).not_to be_logs_enabled
+      end
+    end
+
+    it 'is true when both are set' do
+      with_modified_env AXIOM_API_TOKEN: 'xaat-token', ENABLE_AXIOM_LOGS: 'true' do
+        expect(described_class).to be_logs_enabled
+      end
+    end
+  end
+
   describe '#trace_rails?' do
     it 'requires traces to be enabled' do
       with_modified_env AXIOM_API_TOKEN: 'xaat-token', AXIOM_TRACE_RAILS: 'true' do
