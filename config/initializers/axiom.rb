@@ -25,8 +25,10 @@ if ENV['AXIOM_API_TOKEN'].present?
   end
 
   Rails.application.config.after_initialize do
-    # Ship application logs to Axiom alongside the existing stdout logger.
-    Rails.logger.broadcast_to(Axiom.logger) if Rails.env.production?
+    # Ship application logs to Axiom alongside the existing stdout logger. Gated on its
+    # own flag rather than on Rails.env, so it can be exercised outside production
+    # before being turned on there.
+    Rails.logger.broadcast_to(Axiom.logger) if Axiom.logs_enabled?
 
     # OpentelemetryConfig is lazy by design, but auto-instrumentation has to be
     # installed at boot to wrap Rails/ActiveRecord/HTTP.
