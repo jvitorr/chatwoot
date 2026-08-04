@@ -158,7 +158,7 @@ describe Whatsapp::EmbeddedSignupService do
           account: account,
           inbox_id: inbox_id,
           phone_number_id: params[:phone_number_id],
-          business_id: params[:business_id]
+          waba_id: params[:waba_id]
         ).and_return(reauth_service)
         allow(reauth_service).to receive(:perform).with(access_token, phone_info).and_return(channel)
 
@@ -212,7 +212,7 @@ describe Whatsapp::EmbeddedSignupService do
             account: account,
             inbox_id: inbox.id,
             phone_number_id: params[:phone_number_id],
-            business_id: params[:business_id]
+            waba_id: params[:waba_id]
           ).and_return(reauth_service)
 
           allow(reauth_service).to receive(:perform) do
@@ -232,6 +232,95 @@ describe Whatsapp::EmbeddedSignupService do
                                                                               messaging_limit_tier: 'TIER_1000'
                                                                             })
         end
+      end
+    end
+
+    # End-to-end guard for the reauthorization flow. Everything below the HTTP boundary runs
+    # for real — the service chain, the model validation and the webhook subscription —
+    # because the production incident lived exactly in the value those layers hand to Meta:
+    # `business_account_id` must be the WABA id, not the Business Manager id. With the
+    # Business Manager id, save! fails with "Invalid Credentials" and the webhook is
+    # subscribed on the wrong object.
+    context 'with reauthorization flow reaching Meta' do
+      let(:waba_id) { '1973751103573954' }
+      let(:business_id) { '836920726405540' }
+      let(:phone_number_id) { '874181179121501' }
+      let(:real_channel) do
+        create(:channel_whatsapp, account: account, phone_number: '+5579936182380', provider: 'whatsapp_cloud',
+                                  validate_provider_config: false, sync_templates: false)
+      end
+
+      before do
+        # This context exercises the real service chain, so drop the outer doubles.
+        allow(Whatsapp::TokenExchangeService).to receive(:new).and_call_original
+        allow(Whatsapp::PhoneInfoService).to receive(:new).and_call_original
+
+        stub_request(:get, %r{graph\.facebook\.com/.*/oauth/access_token})
+          .to_return(status: 200, body: { access_token: 'new_access_token' }.to_json,
+                     headers: { 'Content-Type' => 'application/json' })
+
+        stub_request(:get, %r{graph\.facebook\.com/.*/#{waba_id}/phone_numbers})
+          .to_return(status: 200, body: { data: [{ id: phone_number_id, display_phone_number: '+55 79 93618-2380',
+                                                   verified_name: 'Aracaju WhatsApp',
+                                                   code_verification_status: 'VERIFIED' }] }.to_json,
+                     headers: { 'Content-Type' => 'application/json' })
+
+        stub_request(:get, %r{graph\.facebook\.com/.*/#{phone_number_id}})
+          .to_return(status: 200, body: { id: phone_number_id, code_verification_status: 'VERIFIED',
+                                          platform_type: 'CLOUD_API' }.to_json,
+                     headers: { 'Content-Type' => 'application/json' })
+
+        # Credential check (Channel::Whatsapp#validate_provider_config): only the WABA answers.
+        stub_request(:get, %r{graph\.facebook\.com/v14\.0/#{waba_id}/message_templates})
+          .to_return(status: 200, body: { data: [] }.to_json, headers: { 'Content-Type' => 'application/json' })
+        stub_request(:get, %r{graph\.facebook\.com/v14\.0/#{business_id}/message_templates})
+          .to_return(status: 400, body: { error: { message: 'Unsupported get request' } }.to_json,
+                     headers: { 'Content-Type' => 'application/json' })
+
+        stub_request(:post, %r{graph\.facebook\.com/.*/subscribed_apps})
+          .to_return(status: 200, body: { success: true }.to_json, headers: { 'Content-Type' => 'application/json' })
+
+        real_channel.prompt_reauthorization!
+      end
+
+      def perform_reauthorization
+        described_class.new(
+          account: account,
+          params: { code: 'fresh_code', business_id: business_id, waba_id: waba_id, phone_number_id: phone_number_id },
+          inbox_id: real_channel.inbox.id
+        ).perform
+      end
+
+      it 'persists the new credentials against the WABA id' do
+        perform_reauthorization
+
+        expect(real_channel.reload.provider_config).to include(
+          'api_key' => 'new_access_token',
+          'phone_number_id' => phone_number_id,
+          'business_account_id' => waba_id
+        )
+      end
+
+      it 'subscribes the webhook on the WABA and never on the Business Manager id' do
+        perform_reauthorization
+
+        expect(WebMock).to have_requested(:post, "https://graph.facebook.com/v22.0/#{waba_id}/subscribed_apps").twice
+        expect(WebMock).not_to have_requested(:post, %r{graph\.facebook\.com/.*/#{business_id}/subscribed_apps})
+      end
+
+      it 'points the webhook callback at this installation' do
+        perform_reauthorization
+
+        expect(WebMock).to have_requested(:post, "https://graph.facebook.com/v22.0/#{waba_id}/subscribed_apps")
+          .with(body: hash_including('override_callback_uri' => "#{ENV.fetch('FRONTEND_URL', nil)}/webhooks/whatsapp/+5579936182380"))
+      end
+
+      it 'clears the reauthorization flag so the reconnect banner disappears' do
+        expect(real_channel.reauthorization_required?).to be true
+
+        perform_reauthorization
+
+        expect(real_channel.reauthorization_required?).to be false
       end
     end
   end
