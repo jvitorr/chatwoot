@@ -1,9 +1,9 @@
 class Whatsapp::ReauthorizationService
-  def initialize(account:, inbox_id:, phone_number_id:, business_id:)
+  def initialize(account:, inbox_id:, phone_number_id:, waba_id:)
     @account = account
     @inbox_id = inbox_id
     @phone_number_id = phone_number_id
-    @business_id = business_id
+    @waba_id = waba_id
   end
 
   def perform(access_token, phone_info)
@@ -25,12 +25,16 @@ class Whatsapp::ReauthorizationService
 
   private
 
+  # `business_account_id` holds the WABA id (same as ChannelCreationService writes on
+  # create): validate_provider_config hits GET /{business_account_id}/message_templates,
+  # an edge that only exists on a WABA. Writing the Meta Business Manager id here makes
+  # that check fail with "Invalid Credentials" and blocks every reauthorization.
   def update_channel_config(channel, access_token, phone_info)
     current_config = channel.provider_config || {}
     channel.provider_config = current_config.merge(
       'api_key' => access_token,
       'phone_number_id' => @phone_number_id,
-      'business_account_id' => @business_id,
+      'business_account_id' => @waba_id,
       'source' => 'embedded_signup'
     )
     channel.save!
