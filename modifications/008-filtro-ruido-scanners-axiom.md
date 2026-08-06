@@ -3,7 +3,7 @@
 **Status:** ativo
 **Arquivos do core alterados:** `lib/axiom/log_device.rb` (2 linhas no `#write` — arquivo do próprio fork, modificação 004)
 **Arquivos novos (aditivos):** `lib/axiom/log_noise_filter.rb` + specs
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.3-connectei`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.4-connectei`
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Status:** ativo
 **Arquivos do core alterados:** `app/controllers/api/v1/accounts/conversations/messages_controller.rb`
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.3-connectei`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.4-connectei`
 
 ---
 

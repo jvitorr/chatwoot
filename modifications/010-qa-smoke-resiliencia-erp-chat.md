@@ -2,7 +2,7 @@
 
 **Status:** documento de verificação (nenhum arquivo do fork alterado por ele)
 **Escopo:** valida as modificações [006](006-webhook-inbox-api-timeout-retry.md), [007](007-source-id-no-update-de-mensagem.md), [008](008-filtro-ruido-scanners-axiom.md) e [009](009-retry-after-no-throttle.md) — e o lado ERP correspondente
-**Data da execução:** 2026-08-06 · **Imagem sob teste:** `joaoftnunes/chatwoot:4.15.1.3-connectei`
+**Data da execução:** 2026-08-06 · **Imagem sob teste:** `joaoftnunes/chatwoot:4.15.1.4-connectei`
 
 ---
 
@@ -19,7 +19,7 @@ merge de upstream saiba exatamente o que revalidar.
 
 | Peça | Onde |
 |---|---|
-| Fork sob teste | `joaoftnunes/chatwoot:4.15.1.3-connectei` em docker (rails + sidekiq + pgvector + redis) |
+| Fork sob teste | `joaoftnunes/chatwoot:4.15.1.4-connectei` em docker (rails + sidekiq + pgvector + redis) |
 | ERP | branch `fix/chat-upstream-resilience`, `.env_test` + env de e2e |
 | Provider WhatsApp | stub local (nenhuma mensagem real enviada) |
 | Contas | account 1 com dois inboxes `Channel::Api` (um com webhook para o ERP, outro sem) |

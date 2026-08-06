@@ -3,7 +3,7 @@
 **Status:** ativo
 **Arquivos do core alterados:** `lib/webhooks/trigger.rb` (classificador + RetryableError para api_inbox), `app/listeners/webhook_listener.rb` (1 linha — job novo)
 **Arquivos novos (aditivos):** `app/jobs/api_inbox/webhook_job.rb`, specs correspondentes
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.3-connectei`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.4-connectei`
 
 ---
 

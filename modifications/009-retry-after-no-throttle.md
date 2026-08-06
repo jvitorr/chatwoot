@@ -2,7 +2,7 @@
 
 **Status:** ativo
 **Arquivos do core alterados:** `config/initializers/rack_attack.rb` (1 linha)
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.3-connectei`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.4-connectei`
 
 ---
 
