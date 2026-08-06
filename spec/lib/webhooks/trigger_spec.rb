@@ -69,6 +69,81 @@ describe Webhooks::Trigger do
         .to change { message.reload.status }.from('sent').to('failed')
     end
 
+    # [FORK CONNECTEI] modifications/006-webhook-inbox-api-timeout-retry.md
+    context 'when the webhook fails with an ambiguous transport error' do
+      let(:payload) { { event: 'message_created', conversation: { id: conversation.id }, id: message.id } }
+
+      # Reproduz a cadeia de causa real: SafeFetch.fetch faz
+      # `rescue Net::ReadTimeout => e; raise FetchError, e.message`.
+      def fetch_error_caused_by(original_exception)
+        raise original_exception
+      rescue original_exception.class => inner
+        begin
+          raise SafeFetch::FetchError, inner.message
+        rescue SafeFetch::FetchError => wrapped
+          return wrapped
+        end
+      end
+
+      it 'does not mark the message as failed on read timeout (delivery indeterminate)' do
+        expect(SafeFetch).to receive(:fetch).and_raise(fetch_error_caused_by(Net::ReadTimeout.new))
+
+        expect { trigger.execute(url, payload, webhook_type) }.not_to(change { message.reload.status })
+
+        message.reload
+        expect(message.content_attributes['delivery_unconfirmed']).to be true
+        expect(message.content_attributes['delivery_diagnostics']['error']).to include('Net::ReadTimeout')
+        expect(message.content_attributes['external_error']).to be_nil
+      end
+
+      it 'does not mark the message as failed on connection reset' do
+        expect(SafeFetch).to receive(:fetch).and_raise(Errno::ECONNRESET)
+
+        expect { trigger.execute(url, payload, webhook_type) }.not_to(change { message.reload.status })
+        expect(message.reload.content_attributes['delivery_unconfirmed']).to be true
+      end
+
+      it 'classifies by message fragment when the cause chain is unavailable' do
+        expect(SafeFetch).to receive(:fetch)
+          .and_raise(SafeFetch::FetchError.new('Net::ReadTimeout with #<TCPSocket:(closed)>'))
+
+        expect { trigger.execute(url, payload, webhook_type) }.not_to(change { message.reload.status })
+        expect(message.reload.content_attributes['delivery_unconfirmed']).to be true
+      end
+
+      it 'does not dispatch message_updated when recording the diagnostic (no webhook echo)' do
+        allow(Rails.configuration.dispatcher).to receive(:dispatch)
+        expect(SafeFetch).to receive(:fetch).and_raise(fetch_error_caused_by(Net::ReadTimeout.new))
+
+        trigger.execute(url, payload, webhook_type)
+
+        expect(Rails.configuration.dispatcher).not_to have_received(:dispatch)
+      end
+
+      it 'still marks the message as failed when the connection was never established' do
+        expect(SafeFetch).to receive(:fetch).and_raise(fetch_error_caused_by(Net::OpenTimeout.new))
+
+        expect { trigger.execute(url, payload, webhook_type) }
+          .to change { message.reload.status }.from('sent').to('failed')
+      end
+    end
+
+    # [FORK CONNECTEI] modifications/006-webhook-inbox-api-timeout-retry.md
+    context 'when the message already has a source_id (delivery evidence)' do
+      let!(:message) do
+        create(:message, account: account, inbox: inbox, conversation: conversation, source_id: 'WAID:3EB0F9230B5FA4253A1D33')
+      end
+
+      it 'never regresses the message to failed, even on explicit http errors' do
+        payload = { event: 'message_created', conversation: { id: conversation.id }, id: message.id }
+
+        expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('404 Not Found'))
+
+        expect { trigger.execute(url, payload, webhook_type) }.not_to(change { message.reload.status })
+        expect(message.reload.content_attributes['delivery_unconfirmed']).to be true
+      end
+    end
+
     context 'when webhook type is agent bot' do
       let(:webhook_type) { :agent_bot_webhook }
       let!(:pending_conversation) { create(:conversation, inbox: inbox, status: :pending, account: account) }
