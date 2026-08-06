@@ -29,6 +29,9 @@ class Axiom::LogDevice
     # Delivery failures log a warning, which lands back here when this device is
     # broadcast onto Rails.logger. Ignore anything emitted while we are delivering.
     return if Thread.current[:axiom_delivering]
+    # [FORK CONNECTEI] modifications/008: descarta ruido de scanners antes do
+    # buffer (sem I/O — respeita a invariante de nunca bloquear no #write).
+    return if Axiom::LogNoiseFilter.noise?(event)
 
     @mutex.synchronize do
       @buffer << event

@@ -18,6 +18,11 @@ class Rack::Attack
   # TODO: We can use build in connection pool in future upgrade
   Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(redis: $velma, pool: false)
 
+  # [FORK CONNECTEI] modifications/009-retry-after-no-throttle.md
+  # Expõe o header Retry-After na resposta 429 para integradores (ERP)
+  # reagendarem o job com o valor real em vez de chutar um backoff.
+  Rack::Attack.throttled_response_retry_after_header = true
+
   class Request < ::Rack::Request
     # You may need to specify a method to fetch the correct remote IP address
     # if the web server is behind a load balancer.
