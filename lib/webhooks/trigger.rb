@@ -1,6 +1,8 @@
 class Webhooks::Trigger
   SUPPORTED_ERROR_HANDLE_EVENTS = %w[message_created message_updated].freeze
   RETRYABLE_AGENT_BOT_STATUSES = [429, 500].freeze
+  # [FORK CONNECTEI] modifications/006-webhook-inbox-api-timeout-retry.md
+  RETRYABLE_API_INBOX_STATUSES = [429, 500, 502, 503, 504].freeze
 
   # [FORK CONNECTEI] modifications/006-webhook-inbox-api-timeout-retry.md
   # Falhas em que a requisição PODE ter sido recebida e processada pelo destino
@@ -39,7 +41,9 @@ class Webhooks::Trigger
   def execute
     perform_request
   rescue StandardError => e
-    raise RetryableError.new(status: http_status(e), message: e.message) if retryable_agent_bot_error?(e)
+    # [FORK CONNECTEI] modifications/006: falhas transitorias do inbox API
+    # tambem viram RetryableError (consumidas por ApiInbox::WebhookJob).
+    raise RetryableError.new(status: http_status(e), message: e.message) if retryable_agent_bot_error?(e) || retryable_api_inbox_error?(e)
 
     handle_failure(e)
   end
@@ -176,6 +180,20 @@ class Webhooks::Trigger
 
   def retryable_agent_bot_error?(error)
     @webhook_type == :agent_bot_webhook && RETRYABLE_AGENT_BOT_STATUSES.include?(http_status(error))
+  end
+
+  # [FORK CONNECTEI] modifications/006: transporte (timeout/reset/refused) e
+  # 429/5xx sao transitorios -> retry. 4xx e URL invalida/bloqueada falham na
+  # hora (handle_failure aplica a classificacao ambiguo vs definitivo).
+  def retryable_api_inbox_error?(error)
+    @webhook_type == :api_inbox_webhook &&
+      (transport_error?(error) || RETRYABLE_API_INBOX_STATUSES.include?(http_status(error)))
+  end
+
+  def transport_error?(error)
+    return true if error.is_a?(SafeFetch::FetchError) || error.is_a?(Errno::ECONNREFUSED)
+
+    AMBIGUOUS_TRANSPORT_CAUSES.any? { |klass| error.is_a?(klass) }
   end
 
   def http_status(error)

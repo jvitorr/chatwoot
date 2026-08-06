@@ -57,7 +57,7 @@ describe WebhookListener do
           conversation: api_conversation
         )
         api_event = Events::Base.new(event_name, Time.zone.now, message: api_message)
-        expect(WebhookJob).to receive(:perform_later).with(
+        expect(ApiInbox::WebhookJob).to receive(:perform_later).with(
           channel_api.webhook_url, api_message.webhook_data.merge(event: 'message_created'),
           :api_inbox_webhook, secret: channel_api.secret, delivery_id: instance_of(String)
         ).once
@@ -76,7 +76,7 @@ describe WebhookListener do
           conversation: api_conversation
         )
         api_event = Events::Base.new(event_name, Time.zone.now, message: api_message)
-        expect(WebhookJob).not_to receive(:perform_later)
+        expect(ApiInbox::WebhookJob).not_to receive(:perform_later)
         listener.message_created(api_event)
       end
     end
@@ -120,7 +120,7 @@ describe WebhookListener do
         api_inbox = channel_api.inbox
         api_conversation = create(:conversation, account: account, inbox: api_inbox, assignee: user)
         api_event = Events::Base.new(event_name, Time.zone.now, conversation: api_conversation)
-        expect(WebhookJob).to receive(:perform_later).with(
+        expect(ApiInbox::WebhookJob).to receive(:perform_later).with(
           channel_api.webhook_url,
           api_conversation.webhook_data.merge(event: 'conversation_created'),
           :api_inbox_webhook, secret: channel_api.secret, delivery_id: instance_of(String)
@@ -133,7 +133,7 @@ describe WebhookListener do
         api_inbox = channel_api.inbox
         api_conversation = create(:conversation, account: account, inbox: api_inbox, assignee: user)
         api_event = Events::Base.new(event_name, Time.zone.now, conversation: api_conversation)
-        expect(WebhookJob).not_to receive(:perform_later)
+        expect(ApiInbox::WebhookJob).not_to receive(:perform_later)
         listener.conversation_created(api_event)
       end
     end
@@ -368,7 +368,7 @@ describe WebhookListener do
           is_private: false
         }
 
-        expect(WebhookJob).to receive(:perform_later).with(
+        expect(ApiInbox::WebhookJob).to receive(:perform_later).with(
           channel_api.webhook_url, payload, :api_inbox_webhook,
           secret: channel_api.secret, delivery_id: instance_of(String)
         ).once
