@@ -357,6 +357,7 @@ RSpec.describe 'Conversation Messages API', type: :request do
         end
 
         # [FORK CONNECTEI] modifications/007-source-id-no-update-de-mensagem.md
+        # rubocop:disable RSpec/NestedGroups -- espelha a estrutura auth/inbox existente
         context 'with source_id in the payload' do
           it 'writes source_id when the message has none' do
             patch api_v1_account_conversation_message_url(
@@ -425,6 +426,7 @@ RSpec.describe 'Conversation Messages API', type: :request do
             expect(message.status).to eq('sent')
           end
         end
+        # rubocop:enable RSpec/NestedGroups
       end
     end
   end

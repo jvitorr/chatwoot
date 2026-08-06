@@ -30,9 +30,9 @@ describe Webhooks::Trigger do
   # SafeFetch.fetch faz `rescue Net::ReadTimeout => e; raise FetchError, e.message`.
   def fetch_error_caused_by(original_exception)
     raise original_exception
-  rescue original_exception.class => inner
+  rescue original_exception.class => e
     begin
-      raise SafeFetch::FetchError, inner.message
+      raise SafeFetch::FetchError, e.message
     rescue SafeFetch::FetchError => wrapped
       return wrapped
     end
@@ -42,9 +42,9 @@ describe Webhooks::Trigger do
   # do erro original (o bloco de esgotamento do job recebe essa exceção).
   def retryable_error_wrapping(original_error)
     raise original_error
-  rescue original_error.class => inner
+  rescue original_error.class => e
     begin
-      raise Webhooks::Trigger::RetryableError.new(status: nil, message: inner.message)
+      raise Webhooks::Trigger::RetryableError.new(status: nil, message: e.message)
     rescue Webhooks::Trigger::RetryableError => wrapped
       return wrapped
     end
@@ -70,7 +70,7 @@ describe Webhooks::Trigger do
       trigger.execute(url, payload, webhook_type)
     end
 
-# [FORK CONNECTEI] modifications/006: 5xx no inbox API agora levanta
+    # [FORK CONNECTEI] modifications/006: 5xx no inbox API agora levanta
     # RetryableError (consumida por ApiInbox::WebhookJob) em vez de marcar
     # failed na primeira falha. O veredicto acontece no esgotamento (ver
     # describe '#handle_failure').

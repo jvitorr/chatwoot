@@ -20,7 +20,9 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     return if source_id_conflict?
 
     apply_source_id
-    Messages::StatusUpdateService.new(message, permitted_params[:status], permitted_params[:external_error]).perform if permitted_params[:status].present?
+    if permitted_params[:status].present?
+      Messages::StatusUpdateService.new(message, permitted_params[:status], permitted_params[:external_error]).perform
+    end
     @message = message.reload
   end
 
