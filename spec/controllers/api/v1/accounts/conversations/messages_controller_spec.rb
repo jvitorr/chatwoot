@@ -355,6 +355,76 @@ RSpec.describe 'Conversation Messages API', type: :request do
           expect(message.reload.status).to eq('failed')
           expect(message.reload.external_error).to eq('err123')
         end
+
+        # [FORK CONNECTEI] modifications/007-source-id-no-update-de-mensagem.md
+        context 'with source_id in the payload' do
+          it 'writes source_id when the message has none' do
+            patch api_v1_account_conversation_message_url(
+              account_id: account.id,
+              conversation_id: conversation.display_id,
+              id: message.id
+            ), params: { source_id: 'WAID:ABC123' }, headers: agent.create_new_auth_token, as: :json
+
+            expect(response).to have_http_status(:success)
+            message.reload
+            expect(message.source_id).to eq('WAID:ABC123')
+            expect(message.status).to eq('sent')
+          end
+
+          it 'revives a message failed by webhook timeout: sent + source_id clears the diagnostics' do
+            message.update!(
+              status: :failed,
+              content_attributes: {
+                external_error: 'Net::ReadTimeout with #<TCPSocket:(closed)>',
+                delivery_unconfirmed: true,
+                delivery_diagnostics: { error: 'Net::ReadTimeout' }
+              }
+            )
+
+            patch api_v1_account_conversation_message_url(
+              account_id: account.id,
+              conversation_id: conversation.display_id,
+              id: message.id
+            ), params: { status: 'sent', source_id: 'WAID:ABC123' }, headers: agent.create_new_auth_token, as: :json
+
+            expect(response).to have_http_status(:success)
+            message.reload
+            expect(message.status).to eq('sent')
+            expect(message.source_id).to eq('WAID:ABC123')
+            expect(message.content_attributes['external_error']).to be_nil
+            expect(message.content_attributes['delivery_unconfirmed']).to be_nil
+            expect(message.content_attributes['delivery_diagnostics']).to be_nil
+          end
+
+          it 'is idempotent for the same source_id value' do
+            message.update!(source_id: 'WAID:ABC123')
+
+            patch api_v1_account_conversation_message_url(
+              account_id: account.id,
+              conversation_id: conversation.display_id,
+              id: message.id
+            ), params: { source_id: 'WAID:ABC123', status: 'sent' }, headers: agent.create_new_auth_token, as: :json
+
+            expect(response).to have_http_status(:success)
+            expect(message.reload.source_id).to eq('WAID:ABC123')
+          end
+
+          it 'rejects a conflicting source_id with 422 without touching the message' do
+            message.update!(source_id: 'WAID:ORIGINAL')
+
+            patch api_v1_account_conversation_message_url(
+              account_id: account.id,
+              conversation_id: conversation.display_id,
+              id: message.id
+            ), params: { source_id: 'WAID:OTHER', status: 'failed', external_error: 'x' },
+               headers: agent.create_new_auth_token, as: :json
+
+            expect(response).to have_http_status(:unprocessable_entity)
+            message.reload
+            expect(message.source_id).to eq('WAID:ORIGINAL')
+            expect(message.status).to eq('sent')
+          end
+        end
       end
     end
   end

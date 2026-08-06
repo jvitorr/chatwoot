@@ -13,9 +13,15 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     render_could_not_create_error(e.message)
   end
 
+  # [FORK CONNECTEI] modifications/007-source-id-no-update-de-mensagem.md
+  # Aceita source_id (WAID) alem de status/external_error, para o ERP confirmar
+  # a entrega apos o envio ao provider. Restrito a inbox API (ensure_api_inbox).
   def update
-    Messages::StatusUpdateService.new(message, permitted_params[:status], permitted_params[:external_error]).perform
-    @message = message
+    return if source_id_conflict?
+
+    apply_source_id
+    Messages::StatusUpdateService.new(message, permitted_params[:status], permitted_params[:external_error]).perform if permitted_params[:status].present?
+    @message = message.reload
   end
 
   def destroy
@@ -65,7 +71,31 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
   end
 
   def permitted_params
-    params.permit(:id, :target_language, :status, :external_error)
+    # [FORK CONNECTEI] modifications/007: + :source_id
+    params.permit(:id, :target_language, :status, :external_error, :source_id)
+  end
+
+  # [FORK CONNECTEI] modifications/007: source_id divergente do existente e um
+  # bug do integrador — falhar alto em vez de sobrescrever evidencia de entrega.
+  def source_id_conflict?
+    new_source_id = permitted_params[:source_id]
+    return false if new_source_id.blank?
+    return false if message.source_id.blank? || message.source_id == new_source_id
+
+    render json: { error: 'source_id already set with a different value' }, status: :unprocessable_entity
+    true
+  end
+
+  def apply_source_id
+    new_source_id = permitted_params[:source_id]
+    return if new_source_id.blank? || message.source_id == new_source_id
+
+    # WAID recebido = entrega confirmada: limpa o diagnostico de entrega
+    # nao confirmada gravado pelo Webhooks::Trigger (modifications/006).
+    message.update!(
+      source_id: new_source_id,
+      content_attributes: message.content_attributes.except('delivery_unconfirmed', 'delivery_diagnostics')
+    )
   end
 
   def already_translated_content_available?
