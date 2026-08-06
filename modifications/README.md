@@ -25,6 +25,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [007](007-source-id-no-update-de-mensagem.md) | `source_id` no update de mensagem de inbox API (ack do ERP) | `app/controllers/api/v1/accounts/conversations/messages_controller.rb` | Médio |
 | [008](008-filtro-ruido-scanners-axiom.md) | Filtro de ruído de scanners no envio de logs ao Axiom | arquivos do fork (mod. 004) | Nulo |
 | [009](009-retry-after-no-throttle.md) | `Retry-After` nas respostas 429 do Rack::Attack | `config/initializers/rack_attack.rb` (1 linha) | Baixo |
+| [010](010-qa-smoke-resiliencia-erp-chat.md) | QA de resiliência ERP ↔ chat: evidências de não-regressão dos canais (Instagram/WhatsApp/API) | nenhum — documento de verificação | — |
 
 ## Convenção para novas modificações
 
