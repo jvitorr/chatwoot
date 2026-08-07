@@ -26,6 +26,30 @@ describe Webhooks::Trigger do
     allow(GlobalConfig).to receive(:get_value).with('DEPLOYMENT_ENV').and_return(nil)
   end
 
+  # [FORK CONNECTEI] modifications/006: reproduz a cadeia de causa real —
+  # SafeFetch.fetch faz `rescue Net::ReadTimeout => e; raise FetchError, e.message`.
+  def fetch_error_caused_by(original_exception)
+    raise original_exception
+  rescue original_exception.class => e
+    begin
+      raise SafeFetch::FetchError, e.message
+    rescue SafeFetch::FetchError => wrapped
+      return wrapped
+    end
+  end
+
+  # Reproduz o que o execute faz ao levantar RetryableError dentro do rescue
+  # do erro original (o bloco de esgotamento do job recebe essa exceção).
+  def retryable_error_wrapping(original_error)
+    raise original_error
+  rescue original_error.class => e
+    begin
+      raise Webhooks::Trigger::RetryableError.new(status: nil, message: e.message)
+    rescue Webhooks::Trigger::RetryableError => wrapped
+      return wrapped
+    end
+  end
+
   after do
     clear_enqueued_jobs
     clear_performed_jobs
@@ -46,18 +70,33 @@ describe Webhooks::Trigger do
       trigger.execute(url, payload, webhook_type)
     end
 
-    it 'updates message status if webhook fails for message-created event' do
+    # [FORK CONNECTEI] modifications/006: 5xx no inbox API agora levanta
+    # RetryableError (consumida por ApiInbox::WebhookJob) em vez de marcar
+    # failed na primeira falha. O veredicto acontece no esgotamento (ver
+    # describe '#handle_failure').
+    it 'raises RetryableError on 500 for message-created event without touching the message' do
       payload = { event: 'message_created', conversation: { id: conversation.id }, id: message.id }
 
       expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('500 Internal Server Error'))
 
-      expect { trigger.execute(url, payload, webhook_type) }.to change { message.reload.status }.from('sent').to('failed')
+      expect { trigger.execute(url, payload, webhook_type) }
+        .to raise_error(Webhooks::Trigger::RetryableError) { |error| expect(error.status).to eq(500) }
+      expect(message.reload.status).to eq('sent')
     end
 
-    it 'updates message status if webhook fails for message-updated event' do
+    it 'raises RetryableError on 500 for message-updated event without touching the message' do
       payload = { event: 'message_updated', conversation: { id: conversation.id }, id: message.id }
 
       expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('500 Internal Server Error'))
+
+      expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+      expect(message.reload.status).to eq('sent')
+    end
+
+    it 'marks the message failed without retry on explicit 4xx' do
+      payload = { event: 'message_created', conversation: { id: conversation.id }, id: message.id }
+
+      expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('404 Not Found'))
 
       expect { trigger.execute(url, payload, webhook_type) }.to change { message.reload.status }.from('sent').to('failed')
     end
@@ -67,6 +106,49 @@ describe Webhooks::Trigger do
 
       expect { trigger.execute('http://127.0.0.1/webhook', payload, webhook_type) }
         .to change { message.reload.status }.from('sent').to('failed')
+    end
+
+    # [FORK CONNECTEI] modifications/006-webhook-inbox-api-timeout-retry.md
+    context 'when the webhook fails with a transport error' do
+      let(:payload) { { event: 'message_created', conversation: { id: conversation.id }, id: message.id } }
+
+      it 'raises RetryableError on read timeout so ApiInbox::WebhookJob retries before any verdict' do
+        expect(SafeFetch).to receive(:fetch).and_raise(fetch_error_caused_by(Net::ReadTimeout.new))
+
+        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+
+        message.reload
+        expect(message.status).to eq('sent')
+        expect(message.content_attributes['delivery_unconfirmed']).to be_nil
+      end
+
+      it 'raises RetryableError on raw connection reset' do
+        expect(SafeFetch).to receive(:fetch).and_raise(Errno::ECONNRESET)
+
+        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+      end
+
+      it 'raises RetryableError on connection refused' do
+        expect(SafeFetch).to receive(:fetch).and_raise(Errno::ECONNREFUSED)
+
+        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+      end
+    end
+
+    # [FORK CONNECTEI] modifications/006-webhook-inbox-api-timeout-retry.md
+    context 'when the message already has a source_id (delivery evidence)' do
+      let!(:message) do
+        create(:message, account: account, inbox: inbox, conversation: conversation, source_id: 'WAID:3EB0F9230B5FA4253A1D33')
+      end
+
+      it 'never regresses the message to failed, even on explicit http errors' do
+        payload = { event: 'message_created', conversation: { id: conversation.id }, id: message.id }
+
+        expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('404 Not Found'))
+
+        expect { trigger.execute(url, payload, webhook_type) }.not_to(change { message.reload.status })
+        expect(message.reload.content_attributes['delivery_unconfirmed']).to be true
+      end
     end
 
     context 'when webhook type is agent bot' do
@@ -165,13 +247,83 @@ describe Webhooks::Trigger do
       end
     end
 
-    it 'handles 500 without raising for non-agent webhooks' do
+    it 'handles 500 without raising for account webhooks (upstream behavior intact)' do
       payload = { event: 'message_created', conversation: { id: conversation.id }, id: message.id }
 
       expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('500 Internal Server Error'))
 
-      expect { trigger.execute(url, payload, webhook_type) }.not_to raise_error
-      expect(message.reload.status).to eq('failed')
+      expect { trigger.execute(url, payload, :account_webhook) }.not_to raise_error
+      expect(message.reload.status).to eq('sent')
+    end
+  end
+
+  # [FORK CONNECTEI] modifications/006: o bloco de esgotamento do
+  # ApiInbox::WebhookJob chama handle_failure com a exceção final — é aqui que
+  # o veredicto (failed vs delivery_unconfirmed) é decidido.
+  describe '#handle_failure (verdict after retries are exhausted)' do
+    let(:payload) { { event: 'message_created', conversation: { id: conversation.id }, id: message.id } }
+    let(:instance) { described_class.new(url, payload, webhook_type) }
+
+    it 'records delivery_unconfirmed instead of failed on read timeout (delivery indeterminate)' do
+      expect { instance.handle_failure(fetch_error_caused_by(Net::ReadTimeout.new)) }
+        .not_to(change { message.reload.status })
+
+      message.reload
+      expect(message.content_attributes['delivery_unconfirmed']).to be true
+      expect(message.content_attributes['delivery_diagnostics']['error']).to include('Net::ReadTimeout')
+      expect(message.content_attributes['external_error']).to be_nil
+    end
+
+    it 'classifies through the RetryableError wrapper (as raised by execute)' do
+      wrapped = retryable_error_wrapping(fetch_error_caused_by(Net::ReadTimeout.new))
+
+      expect { instance.handle_failure(wrapped) }.not_to(change { message.reload.status })
+      expect(message.reload.content_attributes['delivery_unconfirmed']).to be true
+    end
+
+    it 'records delivery_unconfirmed on raw connection reset' do
+      expect { instance.handle_failure(Errno::ECONNRESET.new) }.not_to(change { message.reload.status })
+      expect(message.reload.content_attributes['delivery_unconfirmed']).to be true
+    end
+
+    it 'classifies by message fragment when the cause chain is unavailable' do
+      error = SafeFetch::FetchError.new('Net::ReadTimeout with #<TCPSocket:(closed)>')
+
+      expect { instance.handle_failure(error) }.not_to(change { message.reload.status })
+      expect(message.reload.content_attributes['delivery_unconfirmed']).to be true
+    end
+
+    it 'does not dispatch message_updated when recording the diagnostic (no webhook echo)' do
+      allow(Rails.configuration.dispatcher).to receive(:dispatch)
+
+      instance.handle_failure(fetch_error_caused_by(Net::ReadTimeout.new))
+
+      expect(Rails.configuration.dispatcher).not_to have_received(:dispatch)
+    end
+
+    it 'marks the message as failed when the connection was never established (open timeout)' do
+      expect { instance.handle_failure(fetch_error_caused_by(Net::OpenTimeout.new)) }
+        .to change { message.reload.status }.from('sent').to('failed')
+    end
+
+    it 'marks the message as failed on persistent http 500 after exhaustion' do
+      wrapped = retryable_error_wrapping(SafeFetch::HttpError.new('500 Internal Server Error'))
+
+      expect { instance.handle_failure(wrapped) }
+        .to change { message.reload.status }.from('sent').to('failed')
+    end
+
+    context 'when the message already has a source_id (delivery evidence)' do
+      let!(:message) do
+        create(:message, account: account, inbox: inbox, conversation: conversation, source_id: 'WAID:3EB0F9230B5FA4253A1D33')
+      end
+
+      it 'never regresses to failed even on persistent http 500' do
+        wrapped = retryable_error_wrapping(SafeFetch::HttpError.new('500 Internal Server Error'))
+
+        expect { instance.handle_failure(wrapped) }.not_to(change { message.reload.status })
+        expect(message.reload.content_attributes['delivery_unconfirmed']).to be true
+      end
     end
   end
 
@@ -260,9 +412,20 @@ describe Webhooks::Trigger do
   it 'does not update message status if webhook fails for other events' do
     payload = { event: 'conversation_created', conversation: { id: conversation.id }, id: message.id }
 
-    expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('500 Internal Server Error'))
+    expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('404 Not Found'))
 
     expect { trigger.execute(url, payload, webhook_type) }.not_to(change { message.reload.status })
+  end
+
+  # [FORK CONNECTEI] modifications/006: eventos não-message também são
+  # retentados em 5xx (inócuo — o consumidor é idempotente), sem tocar status.
+  it 'raises RetryableError on 500 for other events without touching message status' do
+    payload = { event: 'conversation_created', conversation: { id: conversation.id }, id: message.id }
+
+    expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('500 Internal Server Error'))
+
+    expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+    expect(message.reload.status).to eq('sent')
   end
 
   context 'when webhook timeout configuration is blank' do

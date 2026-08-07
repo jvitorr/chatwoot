@@ -121,8 +121,9 @@ class WebhookListener < BaseListener
     return unless inbox.channel_type == 'Channel::Api'
     return if inbox.channel.webhook_url.blank?
 
-    WebhookJob.perform_later(inbox.channel.webhook_url, payload, :api_inbox_webhook,
-                             secret: inbox.channel.secret, delivery_id: SecureRandom.uuid)
+    # [FORK CONNECTEI] modifications/006: job com retry para o inbox API.
+    ApiInbox::WebhookJob.perform_later(inbox.channel.webhook_url, payload, :api_inbox_webhook,
+                                       secret: inbox.channel.secret, delivery_id: SecureRandom.uuid)
   end
 
   def deliver_webhook_payloads(payload, inbox)

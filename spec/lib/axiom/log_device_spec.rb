@@ -45,6 +45,14 @@ describe Axiom::LogDevice do
     ensure
       Thread.current[:axiom_delivering] = nil
     end
+
+    # [FORK CONNECTEI] modifications/008-filtro-ruido-scanners-axiom.md
+    it 'drops scanner RoutingError noise before buffering' do
+      device.write({ message: 'ActionController::RoutingError (No route matches [GET] "/wp-includes/Text"):' })
+      device.write({ message: 'a real event' })
+
+      expect(buffer).to eq [{ message: 'a real event' }]
+    end
   end
 
   describe '#flush' do
