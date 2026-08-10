@@ -1,0 +1,75 @@
+# 012 — `connectei-conversations/filter`: listagem do painel resolvida no banco
+
+**Status:** ativo
+**Arquivos do core alterados:** `config/routes.rb` (bloco de rota, junto da modificação 011)
+**Arquivos novos:** `app/controllers/api/v1/accounts/connectei_conversations_controller.rb`, `app/services/connectei/conversations_query.rb`, `app/services/connectei/conversation_sql.rb`, `db/migrate/20260810120000_add_connectei_conversation_listing_indexes.rb`, `spec/controllers/api/v1/accounts/connectei_conversations_controller_spec.rb`
+**Risco no merge:** Baixo para o código (tudo aditivo) — **atenção ao índice** (ver seção final)
+
+---
+
+## O que muda
+
+Endpoint novo:
+
+```
+POST /api/v1/accounts/:account_id/connectei-conversations/filter
+```
+
+Corpo (todos os campos opcionais):
+
+| Campo | Efeito |
+|---|---|
+| `inbox_ids[]` | Canais (múltiplos). Canal de outra conta ⇒ **422**, nunca lista vazia |
+| `status` | `open` / `pending` / `resolved` / `snoozed` / `all` |
+| `unassigned` | `true` ⇒ só sem atendente (a aba "Pendentes" do ERP é `status=open` + `unassigned=true`) |
+| `assignee_ids[]` | Atendentes (múltiplos) |
+| `labels[]` | Etiquetas com semântica **E** (a conversa precisa ter todas) |
+| `exclude_labels[]` | Etiquetas que **excluem** a conversa (é como o ERP esconde grupos) |
+| `display_ids[]` | Deep-link por id de conversa |
+| `q` | Busca em **nome, telefone e e-mail do contato** e em **conteúdo de mensagem** |
+| `sort_by` | `last_activity_at_asc|desc`, `created_at_asc|desc` |
+| `pinned_display_ids[]` | Conversas fixadas — sobem para o topo **na ordenação**, não por recorte |
+| `page`, `per_page` | Paginação (`per_page` até 100) |
+
+Resposta: `meta` (`all_count` coerente com os filtros, `page`, `per_page`, `total_pages`) e `payload[]` com contato, etiquetas, `unread_count` e `last_message` já embutidos.
+
+## Por que
+
+O `/conversations/filter` oficial resolve parte dos filtros, mas deixa quatro buracos — e o cliente tapava cada um **em memória, sobre a página de 25 itens que acabou de receber**. Isso não é detalhe de implementação: um filtro aplicado depois da paginação simplesmente devolve resultado errado assim que existe mais de uma página.
+
+| Buraco no upstream | O que o cliente fazia | O que passa a acontecer |
+|---|---|---|
+| Ordenação fixa em `last_activity_at DESC` (`Conversations::FilterService#conversations`) — `sort_by` é ignorado | Reordenava a página recebida | `ORDER BY` no banco |
+| `content`, `name`, `phone_number` **não são atributos válidos** (respondem 422; ver `lib/filters/filter_keys.yml`) e o serviço não faz JOIN com `contacts`/`messages` | Chamava `/contacts/search` e depois filtrava por `contact_id` — 2 chamadas, e sem buscar conteúdo de mensagem | `q` único, com `ILIKE` sobre contato **ou** `EXISTS` sobre mensagens |
+| Conversas fixadas são conceito do ERP | Buscava os fixados à parte e concatenava no topo | `CASE WHEN display_id IN (...) THEN 0 ELSE 1 END` como primeira chave do `ORDER BY` |
+| `all_count` conta linhas que o cliente esconde depois (ex.: grupos) e custa **3 COUNTs** | Exibia total impreciso no rodapé | `exclude_labels` entra no `WHERE`; total sai de um `COUNT` sobre a mesma relação |
+
+Além disso o payload já traz `unread_count` (subconsulta correlacionada) e `last_message` (`LEFT JOIN LATERAL`), que antes exigiriam uma chamada por conversa.
+
+### Por que endpoint novo em vez de estender o oficial
+
+O `README` deste diretório pede modificação **aditiva** sempre que possível. Estender `Conversations::FilterService` significaria mexer num serviço que o dashboard do próprio Chatwoot usa, com risco de regressão silenciosa e conflito garantido a cada sync. O endpoint novo custa um arquivo de rota e não toca nenhum caminho existente.
+
+### Detalhes que não são óbvios
+
+- **`EXISTS` em vez de `JOIN` com `messages`**: um JOIN exigiria `DISTINCT`. É exatamente o que falta no `/conversations/search` oficial — lá, uma conversa com N mensagens casando aparece N vezes e o `LIMIT 25` corta o resto.
+- **Fixadas como ordenação, não como recorte**: se fossem concatenadas depois, sumiriam da página 2 em diante.
+- **Visibilidade por papel no `WHERE`**: agente comum vê o próprio quadro e a fila sem dono; administrador vê tudo. Filtrar isso na resposta deixaria vazar contagem.
+- **`ILIKE '%termo%'`** usa os índices GIN trigram que já existem em `contacts (name, email, phone_number, identifier)` e em `messages (content)`.
+
+## Índices adicionados
+
+`db/migrate/20260810120000_add_connectei_conversation_listing_indexes.rb`:
+
+- `(account_id, inbox_id, last_activity_at DESC)` — **não existia nenhum índice em `last_activity_at`**, apesar de ser a ordenação padrão da listagem, inclusive a do `/conversations/filter` oficial. Cada página pedia um sort completo do conjunto filtrado;
+- `(account_id, status, assignee_id)` — o quadro por atendente sem filtro de canal (modificação 011). O índice existente `(account_id, inbox_id, status, assignee_id)` só serve com `inbox_id` no `WHERE`.
+
+Ambos com `algorithm: :concurrently` e `if_not_exists`, seguindo o padrão do repositório (ex.: `20250805160307_add_notifications_performance_index.rb`).
+
+## Comportamento no merge de upstream
+
+- **Código**: sem conflito esperado — os arquivos são novos e não há monkey patch. O único ponto compartilhado é o bloco de rotas (ver modificação 011).
+- **Índice**: se um sync trouxer uma migration do upstream que crie índice equivalente em `last_activity_at`, o `if_not_exists` evita erro, mas vale remover o nosso para não manter índice duplicado (custo de escrita).
+- **Enum de status**: `Conversation.statuses` é lido para traduzir `status`. Renomeação no upstream quebra o filtro — o spec cobre `open`/`resolved`/`pending`.
+
+Após um sync, rode `bundle exec rspec spec/controllers/api/v1/accounts/connectei_conversations_controller_spec.rb` (16 exemplos, incluindo busca por contato, busca por conteúdo sem duplicar, etiqueta E, exclusão de etiqueta, fixadas no topo e paginação).

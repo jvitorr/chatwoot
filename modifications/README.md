@@ -26,6 +26,9 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [008](008-filtro-ruido-scanners-axiom.md) | Filtro de ruído de scanners no envio de logs ao Axiom | arquivos do fork (mod. 004) | Nulo |
 | [009](009-retry-after-no-throttle.md) | `Retry-After` nas respostas 429 do Rack::Attack | `config/initializers/rack_attack.rb` (1 linha) | Baixo |
 | [010](010-qa-smoke-resiliencia-erp-chat.md) | QA de resiliência ERP ↔ chat: evidências de não-regressão dos canais (Instagram/WhatsApp/API) | nenhum — documento de verificação | — |
+| [011](011-dashboard-attendants.md) | `dashboard-attendants`: quadro de atendimento agregado (contagens + conversas por atendente) numa chamada | `config/routes.rb` + controller novo | Baixo — adição |
+| [012](012-connectei-conversations-filter.md) | `connectei-conversations/filter`: listagem do painel resolvida no banco (busca, ordenação, fixadas, total) + índices | `config/routes.rb` + serviços/controller novos + migration | Baixo — adição |
+| [013](013-room-channel-inscricao-explicita.md) | `RoomChannel`: inscrição confirma ou rejeita, nunca silencia; token de agente basta | `app/channels/room_channel.rb` | **Médio** — o upstream mexe no arquivo |
 
 ## Convenção para novas modificações
 

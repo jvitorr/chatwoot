@@ -130,6 +130,13 @@ Rails.application.routes.draw do
           end
           resources :campaigns, only: [:index, :create, :show, :update, :destroy]
           resources :dashboard_apps, only: [:index, :show, :create, :update, :destroy]
+          # Connectei — ver modifications/011 e 012 (endpoints aditivos do ERP).
+          resources :dashboard_attendants, only: [:index], path: 'dashboard-attendants'
+          resources :connectei_conversations, only: [], path: 'connectei-conversations' do
+            collection do
+              post :filter
+            end
+          end
           namespace :channels do
             resource :twilio_channel, only: [:create]
           end
