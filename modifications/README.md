@@ -30,6 +30,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [012](012-connectei-conversations-filter.md) | `connectei-conversations/filter`: listagem do painel resolvida no banco (busca, ordenação, fixadas, total) + índices | `config/routes.rb` + serviços/controller novos + migration | Baixo — adição |
 | [013](013-room-channel-inscricao-explicita.md) | `RoomChannel`: inscrição confirma ou rejeita, nunca silencia; token de agente basta | `app/channels/room_channel.rb` | **Médio** — o upstream mexe no arquivo |
 | [014](014-deploy-4.15.1.5.md) | Deploy da 4.15.1.5: migration de índices, verificação e rollback | nenhum — documento operacional | — |
+| [015](015-script-de-deploy-portainer.md) | `scripts/deploy-portainer.sh`: atualização via Portainer (migration, serviços e definição do stack) | nenhum — script novo | Nulo |
 
 ## Convenção para novas modificações
 

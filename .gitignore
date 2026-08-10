@@ -104,3 +104,6 @@ CLAUDE.local.md
 .pnpm-store/*
 local/
 Procfile.worktree
+
+# Estado salvo pelo scripts/deploy-portainer.sh antes de cada deploy
+portainer-estado-antes-*.tsv
