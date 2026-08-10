@@ -43,6 +43,11 @@ set -euo pipefail
 IMAGE_REPO="${IMAGE_REPO:-joaoftnunes/chatwoot}"
 SERVICE_PREFIX="${SERVICE_PREFIX:-chatwoot}"
 MIGRATION_SERVICE="connectei_migrate_$$"
+# Tetos de espera em SEGUNDOS. O padrão da migration é alto de propósito: em
+# produção os índices sobem com CONCURRENTLY sobre uma tabela grande, e o custo
+# de esperar demais é zero perto do de desistir cedo.
+MIGRATION_TIMEOUT="${MIGRATION_TIMEOUT:-3600}"
+SERVICE_TIMEOUT="${SERVICE_TIMEOUT:-600}"
 DRY_RUN=false
 SKIP_MIGRATION=false
 ASSUME_YES=false
@@ -279,9 +284,10 @@ import json;d=json.load(open('$TMP/criado.json'))
 print('  serviço criado:', d.get('ID') or d)
 " || true
 
-  echo "  aguardando…"
+  echo "  aguardando… (teto: ${MIGRATION_TIMEOUT}s)"
   ESTADO=""
-  for _ in $(seq 1 60); do
+  INICIO=$SECONDS
+  while [ $((SECONDS - INICIO)) -lt "$MIGRATION_TIMEOUT" ]; do
     api GET "/endpoints/$ENDPOINT_ID/docker/tasks?filters=%7B%22service%22%3A%5B%22$MIGRATION_SERVICE%22%5D%7D" > "$TMP/tasks.json"
     ESTADO="$(python3 -c "
 import json
@@ -306,7 +312,29 @@ for l in txt.splitlines():
         print('   ', l.strip())
 PY
 
-  api DELETE "/endpoints/$ENDPOINT_ID/docker/services/$MIGRATION_SERVICE" >/dev/null || true
+  # Só remove o serviço se a task chegou a um estado TERMINAL. Apagar um
+  # serviço ainda rodando mata a task, e um CREATE INDEX CONCURRENTLY morto no
+  # meio deixa o índice INVÁLIDO: o Postgres passa a mantê-lo em toda escrita e
+  # nunca o usa em leitura. Em banco pequeno isso nunca acontece — foi por isso
+  # que o teto de 5 minutos original passou despercebido no ambiente de teste.
+  case "$ESTADO" in
+    complete|failed|rejected)
+      api DELETE "/endpoints/$ENDPOINT_ID/docker/services/$MIGRATION_SERVICE" >/dev/null || true
+      ;;
+    *)
+      vermelho "  migration ainda em '$ESTADO' após ${MIGRATION_TIMEOUT}s — serviço NÃO removido"
+      echo "  Provavelmente é só um índice grande demorando. NÃO apague o serviço"
+      echo "  '$MIGRATION_SERVICE' enquanto ele roda: isso abortaria o índice pela"
+      echo "  metade. Acompanhe pelo log dele e remova quando terminar."
+      echo
+      echo "  Índice inválido, se algo morrer no meio:"
+      echo "    SELECT indexrelid::regclass, indisvalid FROM pg_index WHERE NOT indisvalid;"
+      echo
+      echo "  Os serviços NÃO foram atualizados. Rode de novo depois — a migration"
+      echo "  é idempotente (if_not_exists)."
+      exit 1
+      ;;
+  esac
 
   if [ "$ESTADO" != "complete" ]; then
     vermelho "  migration terminou como '$ESTADO' — os serviços NÃO foram atualizados"
@@ -348,7 +376,8 @@ PY
   fi
 
   printf '  %-40s ' "$nome"
-  for _ in $(seq 1 40); do
+  INICIO=$SECONDS
+  while [ $((SECONDS - INICIO)) -lt "$SERVICE_TIMEOUT" ]; do
     api GET "/endpoints/$ENDPOINT_ID/docker/services/$nome" > "$TMP/svc.json"
     ESTADO="$(python3 -c "
 import json
@@ -376,6 +405,9 @@ arq=json.load(open(sys.argv[1])); meta=json.load(open(sys.argv[2]))
 repo=sys.argv[3]; versao=sys.argv[4]; saida=sys.argv[5]
 conteudo=arq.get('StackFileContent','')
 # troca qualquer tag/digest do nosso repositório pela versão nova
+refs=re.findall(rf'{re.escape(repo)}:[^\s"\']+', conteudo)
+if not refs:
+    raise SystemExit(4)   # o compose não fala do nosso repositório
 novo=re.sub(rf'{re.escape(repo)}:[^\s"\']+', f'{repo}:{versao}', conteudo)
 if novo == conteudo:
     raise SystemExit(3)   # nada a trocar — o stack já está na versão
@@ -384,9 +416,23 @@ json.dump({'StackFileContent': novo, 'Env': meta.get('Env') or [],
            'Prune': False, 'PullImage': True}, open(saida,'w'))
 PY
     then
-      echo "  $snome: já estava em $VERSION"
-      continue
+      RC=0
+    else
+      RC=$?
     fi
+
+    # Distinguir os dois motivos importa: "já está na versão" é sucesso, mas
+    # "o compose não cita o repositório" quer dizer que este stack sobe a imagem
+    # de outro lugar — e tratar isso como sucesso esconde exatamente o
+    # desencontro que o passo 7 existe para evitar.
+    case "$RC" in
+      0) ;;
+      3) echo "  $snome: já estava em $VERSION"; continue ;;
+      4) amarelo "  $snome: o compose não referencia $IMAGE_REPO — nada a trocar"
+         echo "       confira à mão de onde este stack tira a imagem"
+         continue ;;
+      *) vermelho "  $snome: falha ao preparar a atualização (rc=$RC)"; continue ;;
+    esac
 
     HTTP="$(curl -sS -o "$TMP/resp.json" -w '%{http_code}' -m 600 -X PUT \
       -H "X-API-Key: $PORTAINER_TOKEN" -H 'Content-Type: application/json' \
@@ -440,6 +486,36 @@ print(f"  {'✔' if ok else '✘'} stack {nome:<34} {', '.join(sorted(set(refs))
 PY
   done < "$TMP/stacks-alvo.txt"
 fi
+
+# O "✔" acima le o Spec, ou seja: o Swarm ACEITOU a imagem nova. Nao e o
+# mesmo que ela estar no ar. Em teste a diferenca some (pull instantaneo, 1
+# replica); em producao a imagem e maior e o pull demora, entao sem olhar a task
+# o script diria "pronto" com os containers ainda subindo - ou reiniciando em
+# laco.
+titulo "Tasks em execucao"
+
+api GET "/endpoints/$ENDPOINT_ID/docker/tasks" > "$TMP/tasks-fim.json"
+python3 - "$TMP/depois.json" "$TMP/tasks-fim.json" "$SERVICE_PREFIX" "$DIGEST" <<'PYTASK'
+import json,sys
+services=json.load(open(sys.argv[1])); tasks=json.load(open(sys.argv[2]))
+prefixo=sys.argv[3]; digest=sys.argv[4]
+nomes={s['ID']: s['Spec']['Name'] for s in services if s['Spec']['Name'].startswith(prefixo)}
+pendentes=[]
+for sid, nome in sorted(nomes.items(), key=lambda kv: kv[1]):
+    minhas=[t for t in tasks if t.get('ServiceID')==sid and t.get('DesiredState')=='running']
+    na_nova=[t for t in minhas
+             if t.get('Status',{}).get('State')=='running'
+             and digest in (t.get('Spec',{}).get('ContainerSpec',{}).get('Image') or '')]
+    estados=sorted({t.get('Status',{}).get('State','?') for t in minhas}) or ['sem task']
+    marca='\u2714' if na_nova else '\u2718'
+    print(f"  {marca} {nome:<40} {', '.join(estados)}")
+    if not na_nova: pendentes.append(nome)
+if pendentes:
+    print()
+    print('  SEM task rodando na imagem nova: ' + ', '.join(pendentes))
+    print('  Pull em andamento explica isso nos primeiros minutos. Se persistir,')
+    print('  leia o log do servico: a imagem trocou, mas o processo nao subiu.')
+PYTASK
 
 titulo "Pronto"
 cat <<EOF

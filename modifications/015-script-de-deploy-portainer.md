@@ -73,3 +73,47 @@ aceite, para o `--dry-run` não sujar nada. O padrão está no `.gitignore`.
 Rodar o script de novo informando a versão anterior. Os índices criados pela
 migration podem ficar: são inertes para o código antigo, e derrubá-los só custa
 recriar depois.
+
+---
+
+## Revisão para produção (2026-08-10)
+
+O script nasceu contra o `chat-test`, e três suposições vieram do tamanho
+daquele ambiente. Corrigidas antes do primeiro uso em produção.
+
+### 1. Teto de espera da migration matava o índice pela metade
+
+O laço original esperava `60 × 5s` = 5 minutos e, **fora do `if`**, apagava o
+serviço efêmero. No teste (22 MB, 117 conversas) a migration terminava na hora.
+Em produção os dois índices sobem com `CREATE INDEX CONCURRENTLY` sobre uma
+tabela grande e podem passar disso — e aí o script apagava o serviço com o
+índice em construção. Matar um `CONCURRENTLY` no meio deixa o índice
+**inválido**: o Postgres o mantém em toda escrita e nunca o usa em leitura.
+
+Agora o teto é `MIGRATION_TIMEOUT` (1 h por padrão) e a remoção do serviço só
+acontece em estado **terminal**. Se estourar, o script diz para não apagar o
+serviço, mostra a consulta de índice inválido e sai sem tocar nos serviços —
+rodar de novo é seguro, a migration é `if_not_exists`.
+
+### 2. A conferência olhava o desejado, não o que está no ar
+
+O `✔` lia `Spec.TaskTemplate.ContainerSpec.Image`, que é o que o Swarm
+**aceitou**. Com pull instantâneo isso equivale ao que roda; com imagem maior,
+não. Foi acrescentada uma conferência de **tasks**: só marca `✔` quando existe
+task em `running` com o digest novo. Pega inclusive o caso pior — task
+`running`, porém ainda na imagem antiga.
+
+### 3. "Já estava na versão" era dito também quando o compose não cita o repo
+
+A troca no compose usa regex sobre `IMAGE_REPO`. Sem nenhuma ocorrência, o
+resultado é idêntico à entrada, e o script concluía "já estava em X". São
+coisas diferentes: a segunda quer dizer que o stack tira a imagem de outro
+lugar. Agora os dois casos têm códigos de saída distintos e mensagens
+distintas.
+
+### O que só o ambiente responde
+
+`SERVICE_PREFIX` (padrão `chatwoot`), quantidade de endpoints e o casamento
+`<stack>_<serviço>` dependem de como produção foi nomeada. `--dry-run` faz
+só chamadas GET e imprime exatamente isso, sem alterar nada — é o primeiro
+passo em qualquer ambiente novo.
