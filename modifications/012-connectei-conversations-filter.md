@@ -73,3 +73,22 @@ Ambos com `algorithm: :concurrently` e `if_not_exists`, seguindo o padrão do re
 - **Enum de status**: `Conversation.statuses` é lido para traduzir `status`. Renomeação no upstream quebra o filtro — o spec cobre `open`/`resolved`/`pending`.
 
 Após um sync, rode `bundle exec rspec spec/controllers/api/v1/accounts/connectei_conversations_controller_spec.rb` (16 exemplos, incluindo busca por contato, busca por conteúdo sem duplicar, etiqueta E, exclusão de etiqueta, fixadas no topo e paginação).
+
+## Consumo pelo ERP (validado localmente)
+
+O proxy do ERP tenta primeiro este endpoint e, ao receber **404**, cai no
+caminho legado e memoiza a ausência por 5 minutos — assim uma instância que
+ainda não recebeu o fork continua servindo o painel, e passa a usar o caminho
+escalável sozinha assim que o deploy sobe, sem reiniciar o ERP.
+
+Verificado num E2E com o Rails deste fork rodando local (18 verificações,
+todas verdes): abas de situação, filtro de canal/etiqueta/atendente, busca por
+nome e por conteúdo, ordenação nos dois sentidos, paginação com total coerente,
+preview e não-lidas embutidos no item, quadro do dashboard, hidratação do board
+por ids e isolamento de canal de outra loja. Na mesma rodada, a instância de
+teste **sem** o fork foi exercitada e caiu no caminho legado sem quebrar.
+
+Uma armadilha que o E2E pegou e vale registrar: cliente HTTP que serializa
+array sem colchetes (`inbox_ids=1&inbox_ids=2`) faz o Rails ficar **só com o
+último valor** — o quadro sai escopado num canal só, sem erro nenhum. Os
+parâmetros de canal precisam ir como `inbox_ids[]`.
