@@ -1,7 +1,7 @@
 # 012 — `connectei-conversations/filter`: listagem do painel resolvida no banco
 
 **Status:** ativo
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.5-connectei`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.6-connectei`
 **Arquivos do core alterados:** `config/routes.rb` (bloco de rota, junto da modificação 011)
 **Arquivos novos:** `app/controllers/api/v1/accounts/connectei_conversations_controller.rb`, `app/services/connectei/conversations_query.rb`, `app/services/connectei/conversation_sql.rb`, `db/migrate/20260810120000_add_connectei_conversation_listing_indexes.rb`, `spec/controllers/api/v1/accounts/connectei_conversations_controller_spec.rb`
 **Risco no merge:** Baixo para o código (tudo aditivo) — **atenção ao índice** (ver seção final)
@@ -27,7 +27,7 @@ Corpo (todos os campos opcionais):
 | `labels[]` | Etiquetas com semântica **E** (a conversa precisa ter todas) |
 | `exclude_labels[]` | Etiquetas que **excluem** a conversa (é como o ERP esconde grupos) |
 | `display_ids[]` | Deep-link por id de conversa |
-| `q` | Busca em **nome, telefone e e-mail do contato** e em **conteúdo de mensagem** |
+| `q` | Busca na **identidade do contato**: nome, e-mail, telefone e `identifier` (o handle da rede social) |
 | `sort_by` | `last_activity_at_asc|desc`, `created_at_asc|desc` |
 | `pinned_display_ids[]` | Conversas fixadas — sobem para o topo **na ordenação**, não por recorte |
 | `page`, `per_page` | Paginação (`per_page` até 100) |
@@ -41,7 +41,7 @@ O `/conversations/filter` oficial resolve parte dos filtros, mas deixa quatro bu
 | Buraco no upstream | O que o cliente fazia | O que passa a acontecer |
 |---|---|---|
 | Ordenação fixa em `last_activity_at DESC` (`Conversations::FilterService#conversations`) — `sort_by` é ignorado | Reordenava a página recebida | `ORDER BY` no banco |
-| `content`, `name`, `phone_number` **não são atributos válidos** (respondem 422; ver `lib/filters/filter_keys.yml`) e o serviço não faz JOIN com `contacts`/`messages` | Chamava `/contacts/search` e depois filtrava por `contact_id` — 2 chamadas, e sem buscar conteúdo de mensagem | `q` único, com `ILIKE` sobre contato **ou** `EXISTS` sobre mensagens |
+| `name`, `phone_number` **não são atributos válidos** (respondem 422; ver `lib/filters/filter_keys.yml`) e o serviço não faz JOIN com `contacts` | Chamava `/contacts/search` e depois filtrava por `contact_id` — 2 chamadas | `q` único, com `ILIKE` sobre os campos do contato numa consulta só |
 | Conversas fixadas são conceito do ERP | Buscava os fixados à parte e concatenava no topo | `CASE WHEN display_id IN (...) THEN 0 ELSE 1 END` como primeira chave do `ORDER BY` |
 | `all_count` conta linhas que o cliente esconde depois (ex.: grupos) e custa **3 COUNTs** | Exibia total impreciso no rodapé | `exclude_labels` entra no `WHERE`; total sai de um `COUNT` sobre a mesma relação |
 
@@ -53,7 +53,7 @@ O `README` deste diretório pede modificação **aditiva** sempre que possível.
 
 ### Detalhes que não são óbvios
 
-- **`EXISTS` em vez de `JOIN` com `messages`**: um JOIN exigiria `DISTINCT`. É exatamente o que falta no `/conversations/search` oficial — lá, uma conversa com N mensagens casando aparece N vezes e o `LIMIT 25` corta o resto.
+- **A busca é por PESSOA, não por texto da conversa.** A primeira versão varria também o conteúdo das mensagens, e o resultado foi ruim de um jeito que só aparece com dado real: mensagem de grupo chega com o nome de quem enviou em **negrito** no início do texto, então procurar alguém trazia todo grupo em que essa pessoa já falou — mais toda conversa em que alguém a mencionou. Na loja piloto, buscar "Amanda" devolvia 12 conversas das quais 2 eram dela. Os campos são os mesmos quatro do `contacts_controller` do core (`name`, `email`, `phone_number`, `identifier`), então o resultado bate com a busca de contatos do próprio Chatwoot. Se a busca em conteúdo voltar, precisa ser parâmetro próprio (`q_content`), nunca misturada.
 - **Fixadas como ordenação, não como recorte**: se fossem concatenadas depois, sumiriam da página 2 em diante.
 - **Visibilidade por papel no `WHERE`**: agente comum vê o próprio quadro e a fila sem dono; administrador vê tudo. Filtrar isso na resposta deixaria vazar contagem.
 - **`ILIKE '%termo%'`** usa os índices GIN trigram que já existem em `contacts (name, email, phone_number, identifier)` e em `messages (content)`.

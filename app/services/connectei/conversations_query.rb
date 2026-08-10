@@ -103,9 +103,11 @@ class Connectei::ConversationsQuery
   def apply_search(scope)
     return scope if search_term.blank?
 
+    # A busca é por identidade do contato — nome, e-mail, telefone, identifier.
+    # Conteúdo de mensagem não participa (ver ConversationSql#search_condition).
     scope.joins(:contact).where(
       Connectei::ConversationSql.search_condition,
-      term: "%#{search_term}%", content_types: Connectei::ConversationSql::CONTENT_MESSAGE_TYPES
+      term: "%#{search_term}%"
     )
   end
 

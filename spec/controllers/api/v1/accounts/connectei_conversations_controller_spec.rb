@@ -114,15 +114,37 @@ RSpec.describe 'Connectei Conversations API', type: :request do
       expect(display_ids).to eq([target.display_id])
     end
 
-    it 'searches by message content without duplicating the conversation' do
-      target = create(:conversation, account: account, inbox: inbox, status: :open)
-      create(:message, account: account, inbox: inbox, conversation: target, content: 'orçamento da lente', message_type: :incoming)
-      create(:message, account: account, inbox: inbox, conversation: target, content: 'lente pronta', message_type: :outgoing)
+    it 'searches by contact identifier — the social handle (WhatsApp JID, Instagram id)' do
+      contact = create(:contact, account: account, name: 'Sem nome útil', identifier: 'amandakarolina_')
+      target = create(:conversation, account: account, inbox: inbox, contact: contact, status: :open)
       create(:conversation, account: account, inbox: inbox, status: :open)
 
-      filter({ q: 'lente' })
+      filter({ q: 'amandakarolina' })
 
       expect(display_ids).to eq([target.display_id])
+    end
+
+    # Regressão: a busca chegou a varrer conteúdo de mensagem também. Mensagem
+    # de grupo carrega o nome de quem enviou em negrito no começo do texto,
+    # então procurar uma pessoa trazia todo grupo em que ela falou e toda
+    # conversa em que alguém a mencionou — buscar "Amanda" devolvia 12
+    # conversas das quais só 2 eram dela.
+    it 'does NOT match on message content — only contact identity' do
+      contact = create(:contact, account: account, name: 'Amanda Nunes')
+      da_amanda = create(:conversation, account: account, inbox: inbox, contact: contact, status: :open)
+
+      grupo = create(:conversation, account: account, inbox: inbox, status: :open)
+      create(:message, account: account, inbox: inbox, conversation: grupo,
+                       content: '**Amanda Nunes** Lindo demais ficou', message_type: :incoming)
+
+      mencao = create(:conversation, account: account, inbox: inbox, status: :open)
+      create(:message, account: account, inbox: inbox, conversation: mencao,
+                       content: 'Amanda me passou seu contato', message_type: :incoming)
+
+      filter({ q: 'amanda' })
+
+      expect(display_ids).to eq([da_amanda.display_id])
+      expect(display_ids).not_to include(grupo.display_id, mencao.display_id)
     end
 
     it 'sorts by last activity in both directions' do

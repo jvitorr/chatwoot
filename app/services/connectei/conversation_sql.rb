@@ -20,21 +20,25 @@ module Connectei::ConversationSql
     SQL
   end
 
-  # EXISTS em vez de JOIN com messages: sem ele seria preciso DISTINCT, que é
-  # justamente o que falta no `/conversations/search` oficial e faz uma
-  # conversa aparecer repetida quando várias mensagens casam com a busca.
+  # Busca por IDENTIDADE DO CONTATO — os mesmos quatro campos que o
+  # `contacts_controller` do core usa, para o resultado bater com a busca de
+  # contatos do próprio Chatwoot. `identifier` é onde mora o handle da rede
+  # social (o JID no WhatsApp, o id da conta no Instagram/Facebook).
+  #
+  # Conteúdo de mensagem NÃO entra aqui, e a razão é concreta: mensagem de
+  # grupo chega com o nome de quem enviou em negrito no começo do texto, então
+  # procurar uma pessoa trazia todo grupo em que ela um dia falou — além de
+  # qualquer conversa onde alguém mencionou o nome dela. Buscar "Amanda"
+  # devolvia 12 conversas, das quais só 2 eram da Amanda.
+  #
+  # Se um dia a busca em conteúdo voltar, precisa ser um parâmetro próprio
+  # (ex.: `q_content`), nunca misturada com a busca por pessoa.
   def search_condition
     <<~SQL.squish
       contacts.name ILIKE :term
-      OR contacts.phone_number ILIKE :term
       OR contacts.email ILIKE :term
-      OR EXISTS (
-        SELECT 1 FROM messages
-        WHERE messages.conversation_id = conversations.id
-          AND messages.private = false
-          AND messages.message_type IN (:content_types)
-          AND messages.content ILIKE :term
-      )
+      OR contacts.phone_number ILIKE :term
+      OR contacts.identifier ILIKE :term
     SQL
   end
 
