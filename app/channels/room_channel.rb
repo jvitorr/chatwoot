@@ -7,6 +7,14 @@ class RoomChannel < ApplicationCable::Channel
     ensure_stream
     update_subscription
     broadcast_presence
+  # Connectei — ver modifications/013. Sem este rescue, uma identificação que
+  # falha aqui vira apenas uma linha de log: ActionCable engole a exceção em
+  # Connection::Subscriptions#execute_command e o cliente NÃO recebe nem
+  # confirm_subscription nem reject_subscription. O socket fica aberto
+  # recebendo só heartbeat, e quem depende do canal degrada em silêncio.
+  rescue ActiveRecord::RecordNotFound => e
+    Rails.logger.warn("[RoomChannel] subscription rejected: #{e.class} - #{e.message}")
+    reject
   end
 
   def update_presence
@@ -39,11 +47,16 @@ class RoomChannel < ApplicationCable::Channel
     @pubsub_token ||= params[:pubsub_token]
   end
 
+  # Connectei — ver modifications/013: sem `user_id` o upstream assume que o
+  # token é de contato e falha para token de agente. Como o token já é único e
+  # secreto, resolvemos o agente por ele quando nenhum contato casar — assim
+  # `{channel, pubsub_token}` basta para assinar, sem expor ids no cliente.
   def current_user
-    @current_user ||= if params[:user_id].blank?
-                        ContactInbox.find_by!(pubsub_token: pubsub_token).contact
-                      else
+    @current_user ||= if params[:user_id].present?
                         User.find_by!(pubsub_token: pubsub_token, id: params[:user_id])
+                      else
+                        ContactInbox.find_by(pubsub_token: pubsub_token)&.contact ||
+                          User.find_by!(pubsub_token: pubsub_token)
                       end
   end
 
@@ -53,7 +66,17 @@ class RoomChannel < ApplicationCable::Channel
     @current_account ||= if @current_user.is_a? Contact
                            @current_user.account
                          else
-                           @current_user.accounts.find(params[:account_id])
+                           resolve_user_account
                          end
+  end
+
+  # Connectei — ver modifications/013: `account_id` continua sendo respeitado
+  # quando enviado; sem ele, um agente de conta única assina do mesmo jeito em
+  # vez de quebrar (`accounts.find(nil)` levantava RecordNotFound).
+  def resolve_user_account
+    return @current_user.accounts.find(params[:account_id]) if params[:account_id].present?
+
+    accounts = @current_user.accounts
+    accounts.first if accounts.count == 1
   end
 end
