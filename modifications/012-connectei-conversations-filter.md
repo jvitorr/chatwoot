@@ -1,7 +1,7 @@
 # 012 — `connectei-conversations/filter`: listagem do painel resolvida no banco
 
 **Status:** ativo
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.6-connectei`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.7-connectei`
 **Arquivos do core alterados:** `config/routes.rb` (bloco de rota, junto da modificação 011)
 **Arquivos novos:** `app/controllers/api/v1/accounts/connectei_conversations_controller.rb`, `app/services/connectei/conversations_query.rb`, `app/services/connectei/conversation_sql.rb`, `db/migrate/20260810120000_add_connectei_conversation_listing_indexes.rb`, `spec/controllers/api/v1/accounts/connectei_conversations_controller_spec.rb`
 **Risco no merge:** Baixo para o código (tudo aditivo) — **atenção ao índice** (ver seção final)

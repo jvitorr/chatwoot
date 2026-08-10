@@ -31,6 +31,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [013](013-room-channel-inscricao-explicita.md) | `RoomChannel`: inscrição confirma ou rejeita, nunca silencia; token de agente basta | `app/channels/room_channel.rb` | **Médio** — o upstream mexe no arquivo |
 | [014](014-deploy-4.15.1.5.md) | Deploy da 4.15.1.5: migration de índices, verificação e rollback | nenhum — documento operacional | — |
 | [015](015-script-de-deploy-portainer.md) | `scripts/deploy-portainer.sh`: atualização via Portainer (migration, serviços e definição do stack) | nenhum — script novo | Nulo |
+| [016](016-skipemail-interceptor.md) | `skipemail`: nenhuma mensagem sai para endereço de identidade do ERP | nenhum — interceptor em initializer próprio | Nulo |
 
 ## Convenção para novas modificações
 
