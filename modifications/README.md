@@ -29,6 +29,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [011](011-dashboard-attendants.md) | `dashboard-attendants`: quadro de atendimento agregado (contagens + conversas por atendente) numa chamada | `config/routes.rb` + controller novo | Baixo — adição |
 | [012](012-connectei-conversations-filter.md) | `connectei-conversations/filter`: listagem do painel resolvida no banco (busca, ordenação, fixadas, total) + índices | `config/routes.rb` + serviços/controller novos + migration | Baixo — adição |
 | [013](013-room-channel-inscricao-explicita.md) | `RoomChannel`: inscrição confirma ou rejeita, nunca silencia; token de agente basta | `app/channels/room_channel.rb` | **Médio** — o upstream mexe no arquivo |
+| [014](014-deploy-4.15.1.5.md) | Deploy da 4.15.1.5: migration de índices, verificação e rollback | nenhum — documento operacional | — |
 
 ## Convenção para novas modificações
 
