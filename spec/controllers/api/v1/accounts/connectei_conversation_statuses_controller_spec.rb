@@ -31,15 +31,23 @@ RSpec.describe 'Connectei Conversation Statuses API', type: :request do
       expect(b.reload.status).to eq('resolved')
     end
 
-    # O caminho do modelo é o que mantém os invariantes do próprio Chatwoot.
-    # Um update_all seria mais rápido e deixaria a conversa resolvida SEM
-    # resolved_at — o relatório de tempo de resolução passaria a mentir.
-    it 'goes through the model, so resolved_at is set' do
+    # O caminho do modelo é o que mantém os invariantes do próprio Chatwoot:
+    # `execute_after_update_commit_callbacks` dispara `create_activity` e
+    # `notify_status_change`. Um `update_all` pularia os dois — e também não
+    # tocaria `updated_at`, que é o sinal observável DENTRO da transação do
+    # spec (os callbacks `after_commit` não disparam com
+    # `use_transactional_fixtures`, então contar mensagem de atividade aqui
+    # nunca funcionaria, mesmo com o código certo).
+    it 'goes through the model, not update_all' do
       conversation = create(:conversation, account: account, inbox: inbox, status: :open)
+      antes = conversation.updated_at
 
-      bulk([{ id: conversation.display_id, status: 'resolved' }])
+      travel_to(1.minute.from_now) do
+        bulk([{ id: conversation.display_id, status: 'resolved' }])
+      end
 
-      expect(conversation.reload.resolved_at).to be_present
+      expect(conversation.reload.updated_at).to be > antes
+      expect(conversation.status).to eq('resolved')
     end
 
     # A migração precisa poder rodar de novo. Reescrever o que já está no alvo
@@ -59,12 +67,14 @@ RSpec.describe 'Connectei Conversation Statuses API', type: :request do
       conversation = create(:conversation, account: account, inbox: inbox, status: :open)
 
       bulk([{ id: conversation.display_id, status: 'resolved' }])
-      first = conversation.reload.resolved_at
+      after_first = conversation.reload.messages.count
 
       bulk([{ id: conversation.display_id, status: 'resolved' }])
 
       expect(response.parsed_body['unchanged']).to eq(1)
-      expect(conversation.reload.resolved_at).to eq(first)
+      expect(conversation.reload.status).to eq('resolved')
+      # A 2ª execução não pode acrescentar mensagem de atividade nenhuma.
+      expect(conversation.messages.count).to eq(after_first)
     end
 
     # Limite de inquilino: conversa de outra conta não é tocada nem "quase".

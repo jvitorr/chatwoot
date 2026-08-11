@@ -29,10 +29,16 @@ POST /api/v1/accounts/2/connectei-conversation-statuses
 
 **Passa pelo modelo, não por `update_all`.** Cada conversa é salva pelo
 ActiveRecord, como no `toggle_status` oficial, para os invariantes do Chatwoot
-continuarem de pé: `resolved_at`, mensagem de atividade, eventos de relatório.
-Um `update_all` seria mais rápido e deixaria conversa resolvida **sem**
-`resolved_at` — o relatório de tempo de resolução passaria a mentir. O ganho
-buscado aqui é o número de requisições, não atalho no domínio.
+continuarem de pé: `execute_after_update_commit_callbacks` dispara
+`create_activity` (a mensagem de atividade na própria conversa) e
+`notify_status_change` (o evento para quem escuta). Um `update_all` seria mais
+rápido e pularia os dois — a conversa mudaria de status sem registro e sem
+evento. O ganho buscado aqui é o número de requisições, não atalho no domínio.
+
+> Não existe coluna `resolved_at` em `conversations` nesta versão; quem guarda
+> o rastro é a mensagem de atividade e o evento. Os specs verificam o caminho
+> pelo `updated_at`, porque `use_transactional_fixtures` impede os callbacks
+> `after_commit` de rodarem no teste.
 
 **`unchanged` é separado de `updated`.** Conversa que já está no alvo não é
 salva: reescrever geraria mensagem de atividade e evento de relatório a cada
