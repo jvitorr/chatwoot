@@ -137,8 +137,6 @@ Rails.application.routes.draw do
               post :filter
             end
           end
-          # Connectei — ver modifications/017: status em lote para a migração.
-          resources :connectei_conversation_statuses, only: [:create], path: 'connectei-conversation-statuses'
           namespace :channels do
             resource :twilio_channel, only: [:create]
           end
