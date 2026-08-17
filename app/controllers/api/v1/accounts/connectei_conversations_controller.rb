@@ -5,6 +5,7 @@
 # tudo resolvido no banco (ver Connectei::ConversationsQuery).
 class Api::V1::Accounts::ConnecteiConversationsController < Api::V1::Accounts::BaseController
   before_action :validate_inbox_ids!
+  before_action :validate_date_ranges!
 
   def filter
     result = Connectei::ConversationsQuery.new(
@@ -85,9 +86,29 @@ class Api::V1::Accounts::ConnecteiConversationsController < Api::V1::Accounts::B
     render json: { error: "inbox_ids not found in this account: #{unknown.join(',')}" }, status: :unprocessable_entity
   end
 
+  # Data mal-formada é erro explícito (422), nunca filtro ignorado em
+  # silêncio — mesma regra do inbox_ids acima. Sem isso um `Date.parse`
+  # solto no service derrubaria a listagem com 500 no primeiro valor inválido.
+  DATE_RANGE_PARAMS = %i[created_from created_to last_activity_from last_activity_to].freeze
+
+  def validate_date_ranges!
+    invalid = DATE_RANGE_PARAMS.select { |key| params[key].present? && !valid_iso_date?(params[key]) }
+    return if invalid.blank?
+
+    render json: { error: "invalid date (expected YYYY-MM-DD): #{invalid.join(',')}" }, status: :unprocessable_entity
+  end
+
+  def valid_iso_date?(value)
+    Date.iso8601(value)
+    true
+  rescue ArgumentError, TypeError
+    false
+  end
+
   def permitted_params
     params.permit(
       :status, :unassigned, :q, :sort_by, :page, :per_page,
+      :created_from, :created_to, :last_activity_from, :last_activity_to,
       inbox_ids: [], assignee_ids: [], display_ids: [], pinned_display_ids: [], labels: [], exclude_labels: []
     )
   end

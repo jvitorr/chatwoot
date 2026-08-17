@@ -58,6 +58,8 @@ class Connectei::ConversationsQuery
       scope = apply_display_ids(scope)
       scope = apply_labels(scope)
       scope = apply_excluded_labels(scope)
+      scope = apply_created_range(scope)
+      scope = apply_activity_range(scope)
       apply_search(scope)
     end
   end
@@ -98,6 +100,22 @@ class Connectei::ConversationsQuery
 
   def apply_excluded_labels(scope)
     excluded_labels.reduce(scope) { |relation, label| relation.where("NOT EXISTS (#{Connectei::ConversationSql.label_exists})", label) }
+  end
+
+  # "Intervalo de criação do chat" — quando o lead entrou em contato pela
+  # primeira vez, distinto de `apply_activity_range` (última interação).
+  def apply_created_range(scope)
+    scope = scope.where(created_at: created_from..) if created_from
+    scope = scope.where(created_at: ..created_to) if created_to
+    scope
+  end
+
+  # "Intervalo de interação do chat" — qualquer atividade (mensagem, mudança
+  # de status) dentro da janela, não só a abertura da conversa.
+  def apply_activity_range(scope)
+    scope = scope.where(last_activity_at: activity_from..) if activity_from
+    scope = scope.where(last_activity_at: ..activity_to) if activity_to
+    scope
   end
 
   def apply_search(scope)
@@ -174,6 +192,31 @@ class Connectei::ConversationsQuery
 
   def search_term
     @search_term ||= params[:q].to_s.strip
+  end
+
+  # O controller já rejeitou (422) qualquer valor que não seja `YYYY-MM-DD`
+  # válido — aqui só resolve o boundary do dia (`from` = início, `to` = fim),
+  # já que o front manda data pura, sem hora.
+  def created_from
+    @created_from ||= parse_day_boundary(params[:created_from])&.beginning_of_day
+  end
+
+  def created_to
+    @created_to ||= parse_day_boundary(params[:created_to])&.end_of_day
+  end
+
+  def activity_from
+    @activity_from ||= parse_day_boundary(params[:last_activity_from])&.beginning_of_day
+  end
+
+  def activity_to
+    @activity_to ||= parse_day_boundary(params[:last_activity_to])&.end_of_day
+  end
+
+  def parse_day_boundary(value)
+    return nil if value.blank?
+
+    Date.iso8601(value).in_time_zone
   end
 
   def page

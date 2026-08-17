@@ -1,7 +1,7 @@
 # 016 — `skipemail`: nenhuma mensagem sai para endereço de identidade do ERP
 
 **Status:** ativo
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.7-connectei`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.8-connectei`
 **Arquivos do core alterados:** nenhum
 **Arquivos novos:** `lib/connectei/skip_email_interceptor.rb`, `config/initializers/connectei_skip_email.rb`, `spec/lib/connectei/skip_email_interceptor_spec.rb`
 **Risco no merge:** Nulo — interceptor registrado num initializer próprio

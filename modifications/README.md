@@ -32,6 +32,9 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [014](014-deploy-4.15.1.5.md) | Deploy da 4.15.1.5: migration de índices, verificação e rollback | nenhum — documento operacional | — |
 | [015](015-script-de-deploy-portainer.md) | `scripts/deploy-portainer.sh`: atualização via Portainer (migration, serviços e definição do stack) | nenhum — script novo | Nulo |
 | [016](016-skipemail-interceptor.md) | `skipemail`: nenhuma mensagem sai para endereço de identidade do ERP | nenhum — interceptor em initializer próprio | Nulo |
+| [017](017-e2e-local-canal-api.md) | Como testar uma feature de chat ponta a ponta local (canal de API + ERP local) | nenhum — documento operacional | — |
+| [018](018-deploy-4.15.1.8.md) | Deploy da 4.15.1.8: filtros de intervalo de criação/interação em `connectei-conversations/filter` | nenhum — documento operacional | — |
+| [019](019-connectei-lead-analytics.md) | `connectei-lead-analytics/filter`: agregação de leads (novo × recorrente) por canal e série temporal | `config/routes.rb` + controller/serviço novos | Baixo — adição |
 
 ## Convenção para novas modificações
 
