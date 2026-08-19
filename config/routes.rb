@@ -130,9 +130,14 @@ Rails.application.routes.draw do
           end
           resources :campaigns, only: [:index, :create, :show, :update, :destroy]
           resources :dashboard_apps, only: [:index, :show, :create, :update, :destroy]
-          # Connectei — ver modifications/011 e 012 (endpoints aditivos do ERP).
+          # Connectei — ver modifications/011, 012 e 019 (endpoints aditivos do ERP).
           resources :dashboard_attendants, only: [:index], path: 'dashboard-attendants'
           resources :connectei_conversations, only: [], path: 'connectei-conversations' do
+            collection do
+              post :filter
+            end
+          end
+          resources :connectei_lead_analytics, only: [], path: 'connectei-lead-analytics' do
             collection do
               post :filter
             end

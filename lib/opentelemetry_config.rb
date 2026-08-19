@@ -6,9 +6,30 @@ require 'base64'
 # Ver modifications/004-integracao-axiom.md antes de reconciliar um merge de upstream.
 module OpentelemetryConfig
   # These instrumentations raise during install on Rails 7.1, so they are opted out of use_all.
+  #
+  # ActionView entrou depois e por outro motivo: ele não quebra o boot, quebra o
+  # CONTEXTO. Os spans dele vêm de `ActiveSupport::Notifications`
+  # (`render_template.action_view`, `render_partial.action_view`) via
+  # SpanSubscriber, que faz `Context.attach` no start e `detach` no finish — e o
+  # fanout de notificação não garante que os finishes cheguem na ordem inversa
+  # dos starts. Com as views jbuilder da API, que aninham parciais em coleção, o
+  # detach chega com a pilha noutra altura e o SDK loga
+  # "calls to detach should match corresponding calls to attach" a cada render.
+  #
+  # O erro é barulhento e não derruba requisição (o `detach` dá pop de qualquer
+  # jeito), mas a pilha desbalanceada emparenta span errado e vaza contexto para
+  # trabalho que veio depois — ou seja, corrompe justamente o trace que a
+  # instrumentação existe para produzir. Medido local: 26 de 31 ocorrências num
+  # burst de 8 mensagens saíam daqui, e as outras 5 eram o Sidekiq/ActiveJob
+  # desempilhando por cima da pilha já torta.
+  #
+  # ActionPack, o irmão de camada, já está desligado — perder o span de render
+  # de template não muda o que se enxerga do fluxo (controller, ActiveRecord,
+  # HTTP client, Sidekiq e ActiveJob seguem instrumentados).
   UNSUPPORTED_INSTRUMENTATIONS = {
     'OpenTelemetry::Instrumentation::ActionMailer' => { enabled: false },
     'OpenTelemetry::Instrumentation::ActionPack' => { enabled: false },
+    'OpenTelemetry::Instrumentation::ActionView' => { enabled: false },
     'OpenTelemetry::Instrumentation::ActiveStorage' => { enabled: false }
   }.freeze
 

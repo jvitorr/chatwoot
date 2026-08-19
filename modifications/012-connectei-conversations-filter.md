@@ -1,7 +1,7 @@
 # 012 — `connectei-conversations/filter`: listagem do painel resolvida no banco
 
 **Status:** ativo
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.7-connectei`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.10-connectei`
 **Arquivos do core alterados:** `config/routes.rb` (bloco de rota, junto da modificação 011)
 **Arquivos novos:** `app/controllers/api/v1/accounts/connectei_conversations_controller.rb`, `app/services/connectei/conversations_query.rb`, `app/services/connectei/conversation_sql.rb`, `db/migrate/20260810120000_add_connectei_conversation_listing_indexes.rb`, `spec/controllers/api/v1/accounts/connectei_conversations_controller_spec.rb`
 **Risco no merge:** Baixo para o código (tudo aditivo) — **atenção ao índice** (ver seção final)
@@ -29,6 +29,8 @@ Corpo (todos os campos opcionais):
 | `display_ids[]` | Deep-link por id de conversa |
 | `q` | Busca na **identidade do contato**: nome, e-mail, telefone e `identifier` (o handle da rede social) |
 | `sort_by` | `last_activity_at_asc|desc`, `created_at_asc|desc` |
+| `created_from`, `created_to` | Intervalo de **entrada do lead**: a conversa foi aberta na janela **e** é a primeira conversa desse contato na conta. Contato que já tinha falado antes fica de fora, mesmo abrindo conversa nova hoje. Mesma regra do lead analytics (mod. 019). `YYYY-MM-DD`; `from` = início do dia, `to` = fim do dia. Formato inválido ⇒ **422** |
+| `last_activity_from`, `last_activity_to` | Intervalo de **interação do chat**: `EXISTS` de mensagem humana (`incoming`/`outgoing`, sem nota privada) em `messages` dentro da janela. Não usa `last_activity_at` — essa coluna guarda só a ÚLTIMA mensagem e apagava quem falou dentro da janela e voltou a falar depois. Conversa sem nenhuma mensagem não tem interação. Mesmo formato/boundary de `created_from`/`created_to` |
 | `pinned_display_ids[]` | Conversas fixadas — sobem para o topo **na ordenação**, não por recorte |
 | `page`, `per_page` | Paginação (`per_page` até 100) |
 
