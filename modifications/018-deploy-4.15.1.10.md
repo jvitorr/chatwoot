@@ -1,7 +1,7 @@
-# 018 — Deploy da 4.15.1.9
+# 018 — Deploy da 4.15.1.10
 
 **Status:** operacional (não altera código)
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.9-connectei` (e `latest`), `linux/amd64` + `linux/arm64`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.10-connectei` (e `latest`), `linux/amd64` + `linux/arm64`
 
 ---
 
@@ -39,8 +39,22 @@ Também entra o endpoint novo `connectei-lead-analytics/filter` (modificação
 por canal e série temporal, consumido por `GET /api/v1/analytics/leads(/channels)`
 no ERP. Aditivo, sem migration.
 
+Entra também a modificação [020](020-detach-error-action-view.md): `ActionView`
+sai do `use_all` do OpenTelemetry. Sem ela, cada render de parcial desbalanceava
+a pilha de contexto e o log de produção recebia
+`calls to detach should match corresponding calls to attach` sem parar — com o
+efeito silencioso de emparentar span errado. Só tem efeito com
+`AXIOM_TRACE_RAILS` ligado.
+
 Verificado ponta a ponta local antes de publicar — runbook em
 [017](017-e2e-local-canal-api.md) / `ERP-backend/tasks/e2e-chat-local-api-channel.md`.
+Suítes verdes nas duas passadas da [005](005-rodar-suite-local.md) (7310 exemplos
+no rspec, 357 arquivos no vitest).
+
+> **A tag `4.15.1.9-connectei` existe no Docker Hub e não deve ser usada.** Ela
+> foi publicada em 19/08/2026 e substituída no mesmo dia, antes de qualquer
+> deploy, pela 4.15.1.10 — que é a mesma coisa mais a correção da 020. Nenhum
+> ambiente chegou a rodar a .9.
 
 ## Deploy
 
@@ -67,7 +81,9 @@ do `payload` da resposta — só a instância nova filtra de verdade.
 
 ## Rollback
 
-Voltar para `4.15.1.7-connectei`: os dois filtros novos somem (o ERP
+Voltar para `4.15.1.7-connectei`: os dois filtros novos somem, e o
+`DetachError` da modificação 020 volta a poluir o log (barulho, sem quebrar
+requisição). Além disso: (o ERP
 simplesmente para de enviar `createdFrom`/`createdTo`/`lastActivityFrom`/
 `lastActivityTo` no corpo da chamada nativa quando o usuário não os define —
 nada quebra, os botões da UI continuam existindo mas passam a não ter efeito

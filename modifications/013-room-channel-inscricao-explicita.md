@@ -1,7 +1,7 @@
 # 013 — `RoomChannel`: inscrição que confirma ou rejeita, nunca silencia
 
 **Status:** ativo
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.9-connectei`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.10-connectei`
 **Arquivos do core alterados:** `app/channels/room_channel.rb` (rescue + resolução de usuário/conta)
 **Arquivos novos:** nenhum — specs adicionados ao `spec/channels/room_channel_spec.rb` existente
 **Risco no merge:** Médio — o arquivo é pequeno, mas o upstream mexe nele; o `rescue` fica no fim do `subscribed`

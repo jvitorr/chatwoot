@@ -126,6 +126,8 @@ Traces usam `POST /v1/traces` com header `X-AXIOM-DATASET`, e esse sim bate com 
 
 **`UNSUPPORTED_INSTRUMENTATIONS` não é preciosismo.** As instrumentações de `ActionMailer`, `ActionPack` e `ActiveStorage` do `opentelemetry-instrumentation-all` **levantam durante o install** no Rails 7.1 e enchem o boot de stacktrace. Ficam desligadas. Vale revisitar num upgrade de Rails.
 
+`ActionView` entrou na mesma lista depois, por outro motivo: ela não quebra o boot, quebra o **contexto** — `attach`/`detach` desbalanceados a cada render de parcial, poluindo o log com `DetachError` e emparentando span errado. Diagnóstico e medição na modificação [020](020-detach-error-action-view.md).
+
 **`spec/support/axiom_env.rb` neutraliza as `AXIOM_*` na suíte inteira.** O Dotenv carrega `.env` em todos os ambientes, inclusive test. Sem isso, qualquer dev com Axiom configurado localmente vê a suíte ficar vermelha. Specs que precisam da integração ligada optam por ela via `with_modified_env`.
 
 ---
