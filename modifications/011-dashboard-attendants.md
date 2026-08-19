@@ -1,7 +1,7 @@
 # 011 — `dashboard-attendants`: quadro de atendimento agregado para o ERP
 
 **Status:** ativo
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.8-connectei`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.9-connectei`
 **Arquivos do core alterados:** `config/routes.rb` (5 linhas de rota)
 **Arquivos novos:** `app/controllers/api/v1/accounts/dashboard_attendants_controller.rb`, `spec/controllers/api/v1/accounts/dashboard_attendants_controller_spec.rb`
 **Risco no merge:** Baixo — adição isolada; o único ponto de conflito é o bloco de rotas

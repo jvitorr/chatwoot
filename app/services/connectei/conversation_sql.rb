@@ -80,6 +80,44 @@ module Connectei::ConversationSql
     )
   end
 
+  # "Houve mensagem humana na janela" — o recorte de interação.
+  #
+  # A atividade individual mora em `messages`; `conversations.last_activity_at`
+  # guarda só a ÚLTIMA (Message#450 sobrescreve a cada mensagem, e mudança de
+  # status nem toca nela). Comparar a janela com aquela coluna apagava quem
+  # falou dentro do intervalo e voltou a falar depois — conversa com mensagem
+  # em 02/08 e 03/08 sumia da janela 01–05/08 por ter falado de novo em 19/08.
+  #
+  # Tipos: os mesmos do preview e do não-lidas (`incoming`/`outgoing`, sem
+  # nota privada) — atividade de sistema e auto-resolve não são interação.
+  # O índice (conversation_id, account_id, message_type, created_at) cobre, e
+  # o EXISTS para no primeiro acerto.
+  def message_in_window_exists(from:, to:)
+    conditions = [
+      'messages.conversation_id = conversations.id',
+      'messages.private = false',
+      ActiveRecord::Base.sanitize_sql_array(['messages.message_type IN (?)', CONTENT_MESSAGE_TYPES])
+    ]
+    conditions << ActiveRecord::Base.sanitize_sql_array(['messages.created_at >= ?', from]) if from
+    conditions << ActiveRecord::Base.sanitize_sql_array(['messages.created_at <= ?', to]) if to
+    "SELECT 1 FROM messages WHERE #{conditions.join(' AND ')}"
+  end
+
+  # "Esta conversa é a PRIMEIRA deste contato na conta" — a definição de lead
+  # novo do painel (ver ConversationsQuery#apply_created_range).
+  #
+  # Escrito contra o `created_at` da própria linha, e não contra a borda da
+  # janela, para valer também quando o filtro tem só um dos lados (`created_to`
+  # sozinho). O índice `index_conversations_on_contact_id` cobre a busca.
+  def earlier_conversation_exists
+    <<~SQL.squish
+      SELECT 1 FROM conversations earlier
+      WHERE earlier.contact_id = conversations.contact_id
+        AND earlier.account_id = conversations.account_id
+        AND earlier.created_at < conversations.created_at
+    SQL
+  end
+
   # Fixadas primeiro é ordenação, não recorte — assim sobrevive à paginação.
   def pinned_first(display_ids)
     ActiveRecord::Base.sanitize_sql_array(

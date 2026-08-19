@@ -102,20 +102,42 @@ class Connectei::ConversationsQuery
     excluded_labels.reduce(scope) { |relation, label| relation.where("NOT EXISTS (#{Connectei::ConversationSql.label_exists})", label) }
   end
 
-  # "Intervalo de criação do chat" — quando o lead entrou em contato pela
-  # primeira vez, distinto de `apply_activity_range` (última interação).
+  # "Intervalo de entrada do lead" — a conversa foi aberta na janela E é a
+  # PRIMEIRA conversa desse contato na conta. Só contato novo mesmo entra.
+  #
+  # Duas leituras foram descartadas no caminho, e vale saber por quê:
+  #
+  # - `conversations.created_at` sozinho respondia "que conversa abriu na
+  #   janela" — e conversa nova de contato antigo é o caso mais comum do
+  #   painel (chat resolvido que volta a falar meses depois abre conversa
+  #   nova). Trazia recorrente como se fosse lead.
+  # - `contacts.created_at` respondia "quem foi cadastrado na janela" — mas o
+  #   cadastro nasce também de importação em massa e de disparo ativo, que
+  #   carimbam a data do dia sem ninguém ter chegado; e uma base migrada
+  #   inteira aparecia como lead novo do dia da carga.
+  #
+  # A primeira conversa é o evento que de fato marca a chegada do lead, e é a
+  # MESMA regra do lead analytics (mod. 019, `MIN(conversations.created_at)`
+  # por contato) — a lista e o gráfico contam a mesma coisa.
   def apply_created_range(scope)
+    return scope unless created_from || created_to
+
     scope = scope.where(created_at: created_from..) if created_from
     scope = scope.where(created_at: ..created_to) if created_to
-    scope
+    scope.where("NOT EXISTS (#{Connectei::ConversationSql.earlier_conversation_exists})")
   end
 
-  # "Intervalo de interação do chat" — qualquer atividade (mensagem, mudança
-  # de status) dentro da janela, não só a abertura da conversa.
+  # "Intervalo de interação do chat" — houve MENSAGEM na janela, não "a última
+  # mensagem caiu na janela". A diferença aparece em toda janela do passado:
+  # quem falou dentro dela e voltou a falar depois tem `last_activity_at` na
+  # data nova e sumia do recorte antigo, em silêncio.
+  #
+  # `last_activity_at` continua sendo o que ordena e o que a lista mostra —
+  # muda só o recorte, que agora consulta `messages` (ver ConversationSql).
   def apply_activity_range(scope)
-    scope = scope.where(last_activity_at: activity_from..) if activity_from
-    scope = scope.where(last_activity_at: ..activity_to) if activity_to
-    scope
+    return scope unless activity_from || activity_to
+
+    scope.where("EXISTS (#{Connectei::ConversationSql.message_in_window_exists(from: activity_from, to: activity_to)})")
   end
 
   def apply_search(scope)

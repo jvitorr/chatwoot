@@ -1,7 +1,7 @@
-# 018 — Deploy da 4.15.1.8
+# 018 — Deploy da 4.15.1.9
 
 **Status:** operacional (não altera código)
-**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.8-connectei` (e `latest`), `linux/amd64` + `linux/arm64`
+**Imagem publicada:** `joaoftnunes/chatwoot:4.15.1.9-connectei` (e `latest`), `linux/amd64` + `linux/arm64`
 
 ---
 
@@ -9,12 +9,30 @@
 
 `connectei-conversations/filter` (modificação [012](012-connectei-conversations-filter.md))
 ganha quatro parâmetros novos: `created_from`/`created_to` (intervalo de
-**criação** do chat — primeiro contato do lead) e `last_activity_from`/
-`last_activity_to` (intervalo de **interação** — qualquer atividade na
-janela). São os filtros por trás dos botões "Criação" e "Interação" do painel
-do ERP no modo direto. Aditivo, sem migration: os dois campos filtrados
-(`conversations.created_at`, `conversations.last_activity_at`) já existem e já
-têm índice via a migration da modificação 012.
+**entrada do lead**) e `last_activity_from`/`last_activity_to` (intervalo de
+**interação**). São os filtros por trás dos botões "Novos leads" e "Interação"
+do painel do ERP no modo direto. Aditivo, sem migration: o recorte de entrada
+usa `index_conversations_on_contact_id` e o de interação usa
+`(conversation_id, account_id, message_type, created_at)` de `messages` — os
+dois já existem no core.
+
+"Entrada do lead" = a conversa foi aberta na janela **E** é a primeira
+conversa desse contato na conta. Contato recorrente — chat resolvido que volta
+a falar meses depois, abrindo conversa nova — NÃO aparece no filtro de hoje,
+que era justamente o defeito relatado. É a mesma regra que o lead analytics
+(mod. 019) usa para classificar novo × recorrente, então lista e gráfico
+contam a mesma coisa.
+
+Duas leituras foram descartadas: `conversations.created_at` sozinho (traz
+conversa nova de contato antigo) e `contacts.created_at` (importação em massa
+e disparo ativo carimbam cadastro sem ninguém ter chegado).
+
+"Interação" é `EXISTS` de mensagem humana em `messages` dentro da janela, e
+não um recorte sobre `conversations.last_activity_at`: aquela coluna guarda
+só a última mensagem, então conversa com mensagem em 02/08 e 03/08 sumia da
+janela 01–05/08 por ter falado de novo em 19/08. Efeito colateral aceito:
+conversa sem nenhuma mensagem (aberta por API/agente e nunca respondida) não
+aparece em nenhuma janela de interação — não houve interação.
 
 Também entra o endpoint novo `connectei-lead-analytics/filter` (modificação
 [019](019-connectei-lead-analytics.md)) — agregação de leads novo × recorrente
