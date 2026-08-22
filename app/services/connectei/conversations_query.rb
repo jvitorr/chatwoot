@@ -55,6 +55,7 @@ class Connectei::ConversationsQuery
       scope = apply_visibility(scope)
       scope = apply_status(scope)
       scope = apply_assignee(scope)
+      scope = apply_teams(scope)
       scope = apply_display_ids(scope)
       scope = apply_labels(scope)
       scope = apply_excluded_labels(scope)
@@ -85,6 +86,17 @@ class Connectei::ConversationsQuery
     return scope if assignee_ids.blank?
 
     scope.where(assignee_id: assignee_ids)
+  end
+
+  # Recorte por TIME, opcional: o ERP manda `team_ids` quando o perfil do
+  # atendente tem a regra "ver apenas conversas dos seus times". Vazio = sem
+  # recorte, que é o padrão. Resolvido aqui, no banco, para o total do rodapé e
+  # a paginação continuarem coerentes com o que a tela mostra — pós-filtrar a
+  # página daria contagem errada a partir da segunda.
+  def apply_teams(scope)
+    return scope if team_ids.blank?
+
+    scope.where(team_id: team_ids)
   end
 
   def apply_display_ids(scope)
@@ -194,6 +206,10 @@ class Connectei::ConversationsQuery
 
   def assignee_ids
     @assignee_ids ||= integer_list(params[:assignee_ids])
+  end
+
+  def team_ids
+    @team_ids ||= integer_list(params[:team_ids])
   end
 
   def display_ids
