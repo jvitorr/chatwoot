@@ -20,9 +20,19 @@ class Connectei::ConversationsQuery
   MAX_DISPLAY_IDS = 100
   MAX_PINNED_IDS = 50
 
+  # `last_activity_at_*` ordena pela ÚLTIMA MENSAGEM REAL (a mesma que o
+  # LATERAL `connectei_last_message` devolve como preview), não pela coluna
+  # `conversations.last_activity_at`. A coluna é bumpada por qualquer mensagem,
+  # inclusive as de atividade (`message_type = 2`: "marcada como resolvida",
+  # etiqueta, atribuição) — então uma resolução em lote jogava dezenas de
+  # conversas de duas semanas atrás para o topo, exibindo a data antiga na
+  # sidebar. Ordenar pelo mesmo campo que a sidebar mostra elimina a
+  # divergência. Conversa sem mensagem real cai na coluna (COALESCE).
+  LAST_MESSAGE_AT = 'COALESCE(connectei_last_message.created_at, conversations.last_activity_at)'.freeze
+
   SORT_COLUMNS = {
-    'last_activity_at_desc' => 'conversations.last_activity_at DESC',
-    'last_activity_at_asc' => 'conversations.last_activity_at ASC',
+    'last_activity_at_desc' => "#{LAST_MESSAGE_AT} DESC",
+    'last_activity_at_asc' => "#{LAST_MESSAGE_AT} ASC",
     'created_at_desc' => 'conversations.created_at DESC',
     'created_at_asc' => 'conversations.created_at ASC'
   }.freeze
@@ -132,8 +142,8 @@ class Connectei::ConversationsQuery
   # quem falou dentro dela e voltou a falar depois tem `last_activity_at` na
   # data nova e sumia do recorte antigo, em silêncio.
   #
-  # `last_activity_at` continua sendo o que ordena e o que a lista mostra —
-  # muda só o recorte, que agora consulta `messages` (ver ConversationSql).
+  # O recorte consulta `messages` (ver ConversationSql); a ordenação e a data
+  # que a lista mostra seguem a última mensagem real (ver `LAST_MESSAGE_AT`).
   def apply_activity_range(scope)
     return scope unless activity_from || activity_to
 
@@ -218,7 +228,9 @@ class Connectei::ConversationsQuery
 
   # O controller já rejeitou (422) qualquer valor que não seja `YYYY-MM-DD`
   # válido — aqui só resolve o boundary do dia (`from` = início, `to` = fim),
-  # já que o front manda data pura, sem hora.
+  # já que o front manda data pura, sem hora. O dia é resolvido no fuso de
+  # `timezone` (IANA, já validado pelo controller); sem ele, `Time.zone`
+  # (UTC) — que para uma loja no Brasil faz "hoje" começar às 21h de ontem.
   def created_from
     @created_from ||= parse_day_boundary(params[:created_from])&.beginning_of_day
   end
@@ -238,7 +250,11 @@ class Connectei::ConversationsQuery
   def parse_day_boundary(value)
     return nil if value.blank?
 
-    Date.iso8601(value).in_time_zone
+    Date.iso8601(value).in_time_zone(day_zone)
+  end
+
+  def day_zone
+    @day_zone ||= ActiveSupport::TimeZone[params[:timezone].to_s] || Time.zone
   end
 
   def page

@@ -158,6 +158,32 @@ RSpec.describe 'Connectei Conversations API', type: :request do
       expect(display_ids).to eq([newer.display_id, older.display_id])
     end
 
+    # Regressão: `conversations.last_activity_at` é bumpada por mensagens de
+    # atividade ("marcada como resolvida", etiqueta, atribuição). Uma resolução
+    # em lote jogava conversas de duas semanas atrás para o topo, enquanto a
+    # sidebar exibia a data da última mensagem real — a lista parecia fora de
+    # ordem. A ordenação segue a última mensagem real, a mesma do preview.
+    it 'sorts by the last REAL message, ignoring activity messages that bump last_activity_at' do
+      stale = create(:conversation, account: account, inbox: inbox, status: :resolved, last_activity_at: 1.minute.ago)
+      create(:message, account: account, inbox: inbox, conversation: stale, content: 'antiga', message_type: :incoming,
+                       created_at: 14.days.ago)
+      create(:message, account: account, inbox: inbox, conversation: stale, content: 'Conversation was marked resolved',
+                       message_type: :activity, created_at: 1.minute.ago)
+
+      fresh = create(:conversation, account: account, inbox: inbox, status: :open, last_activity_at: 2.hours.ago)
+      create(:message, account: account, inbox: inbox, conversation: fresh, content: 'recente', message_type: :incoming,
+                       created_at: 2.hours.ago)
+
+      # Sem nenhuma mensagem real a conversa cai na coluna `last_activity_at`.
+      empty = create(:conversation, account: account, inbox: inbox, status: :open, last_activity_at: 1.day.ago)
+
+      filter({ sort_by: 'last_activity_at_desc' })
+      expect(display_ids).to eq([fresh.display_id, empty.display_id, stale.display_id])
+
+      filter({ sort_by: 'last_activity_at_asc' })
+      expect(display_ids).to eq([stale.display_id, empty.display_id, fresh.display_id])
+    end
+
     it 'keeps pinned conversations on top of the sort, across pagination' do
       newest = create(:conversation, account: account, inbox: inbox, status: :open, last_activity_at: 1.minute.ago)
       pinned = create(:conversation, account: account, inbox: inbox, status: :open, last_activity_at: 10.days.ago)
@@ -165,6 +191,51 @@ RSpec.describe 'Connectei Conversations API', type: :request do
       filter({ pinned_display_ids: [pinned.display_id] })
 
       expect(display_ids).to eq([pinned.display_id, newest.display_id])
+    end
+
+    # Regressão: `created_from=created_to=2026-08-24` resolvia o dia em UTC.
+    # Para uma loja em São Paulo (UTC-3) isso é 23/08 21:00 → 24/08 20:59:
+    # a lista "de hoje" trazia chats de ontem à noite e escondia os de hoje
+    # depois das 21h. `timezone` diz em que fuso o dia inteiro é resolvido.
+    describe 'created_from/created_to resolved in the requested timezone' do
+      let!(:ontem_a_noite_sp) do
+        # 24/08 01:00Z = 23/08 22:00 em São Paulo
+        create(:conversation, account: account, inbox: inbox, status: :open, created_at: Time.utc(2026, 8, 24, 1, 0))
+      end
+      let!(:hoje_a_noite_sp) do
+        # 25/08 02:00Z = 24/08 23:00 em São Paulo
+        create(:conversation, account: account, inbox: inbox, status: :open, created_at: Time.utc(2026, 8, 25, 2, 0))
+      end
+
+      it 'without timezone keeps the UTC day (backward compatible)' do
+        filter({ created_from: '2026-08-24', created_to: '2026-08-24' })
+
+        expect(display_ids).to eq([ontem_a_noite_sp.display_id])
+      end
+
+      it 'with timezone=America/Sao_Paulo returns only the São Paulo day' do
+        filter({ created_from: '2026-08-24', created_to: '2026-08-24', timezone: 'America/Sao_Paulo' })
+
+        expect(display_ids).to eq([hoje_a_noite_sp.display_id])
+      end
+
+      it 'applies the timezone to last_activity_from/last_activity_to too' do
+        create(:message, account: account, inbox: inbox, conversation: hoje_a_noite_sp, message_type: :incoming,
+                         content: 'oi', created_at: Time.utc(2026, 8, 25, 2, 30))
+        create(:message, account: account, inbox: inbox, conversation: ontem_a_noite_sp, message_type: :incoming,
+                         content: 'oi', created_at: Time.utc(2026, 8, 24, 1, 30))
+
+        filter({ last_activity_from: '2026-08-24', last_activity_to: '2026-08-24', timezone: 'America/Sao_Paulo' })
+
+        expect(display_ids).to eq([hoje_a_noite_sp.display_id])
+      end
+
+      it 'rejects an unknown timezone with 422 instead of silently falling back to UTC' do
+        filter({ created_from: '2026-08-24', timezone: 'Mars/Olympus' })
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.parsed_body['error']).to include('invalid timezone')
+      end
     end
 
     it 'paginates with a client-defined page size' do

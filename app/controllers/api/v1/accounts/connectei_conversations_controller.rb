@@ -6,6 +6,7 @@
 class Api::V1::Accounts::ConnecteiConversationsController < Api::V1::Accounts::BaseController
   before_action :validate_inbox_ids!
   before_action :validate_date_ranges!
+  before_action :validate_timezone!
 
   def filter
     result = Connectei::ConversationsQuery.new(
@@ -105,10 +106,20 @@ class Api::V1::Accounts::ConnecteiConversationsController < Api::V1::Accounts::B
     false
   end
 
+  # `timezone` (IANA, ex.: America/Sao_Paulo) diz em que fuso as datas puras
+  # acima viram "o dia inteiro". Sem ele o dia é resolvido em UTC, e para uma
+  # loja no Brasil "hoje" começa às 21h de ontem. Valor desconhecido é 422,
+  # nunca fallback silencioso para UTC — isso devolveria o mesmo bug sem erro.
+  def validate_timezone!
+    return if params[:timezone].blank? || ActiveSupport::TimeZone[params[:timezone].to_s].present?
+
+    render json: { error: "invalid timezone (expected IANA name): #{params[:timezone]}" }, status: :unprocessable_entity
+  end
+
   def permitted_params
     params.permit(
       :status, :unassigned, :q, :sort_by, :page, :per_page,
-      :created_from, :created_to, :last_activity_from, :last_activity_to,
+      :created_from, :created_to, :last_activity_from, :last_activity_to, :timezone,
       inbox_ids: [], assignee_ids: [], display_ids: [], pinned_display_ids: [], labels: [], exclude_labels: []
     )
   end
