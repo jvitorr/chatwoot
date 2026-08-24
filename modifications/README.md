@@ -36,6 +36,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [018](018-deploy-4.15.1.10.md) | Deploy da 4.15.1.10: filtros de entrada do lead/interação em `connectei-conversations/filter` + correção do `DetachError` | nenhum — documento operacional | — |
 | [019](019-connectei-lead-analytics.md) | `connectei-lead-analytics/filter`: agregação de leads (novo × recorrente) por canal e série temporal | `config/routes.rb` + controller/serviço novos | Baixo — adição |
 | [020](020-detach-error-action-view.md) | `ActionView` fora do `use_all`: fim do `DetachError` de contexto do OpenTelemetry | nenhum — lista do próprio fork (mod. 004) | Nulo — arquivo exclusivo do fork |
+| [021](021-ordenacao-por-ultima-mensagem.md) | `connectei-conversations/filter`: `sort_by=last_activity_at_*` ordena pela última mensagem real, não pela coluna bumpada por atividades | nenhum — arquivo do fork (012) | Nulo |
 
 ## Convenção para novas modificações
 

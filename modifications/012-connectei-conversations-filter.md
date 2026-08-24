@@ -28,7 +28,7 @@ Corpo (todos os campos opcionais):
 | `exclude_labels[]` | Etiquetas que **excluem** a conversa (é como o ERP esconde grupos) |
 | `display_ids[]` | Deep-link por id de conversa |
 | `q` | Busca na **identidade do contato**: nome, e-mail, telefone e `identifier` (o handle da rede social) |
-| `sort_by` | `last_activity_at_asc|desc`, `created_at_asc|desc` |
+| `sort_by` | `last_activity_at_asc|desc`, `created_at_asc|desc`. **`last_activity_at_*` ordena pela data da última mensagem real** (a mesma de `last_message`), não pela coluna `conversations.last_activity_at` — ver [021](021-ordenacao-por-ultima-mensagem.md) |
 | `created_from`, `created_to` | Intervalo de **entrada do lead**: a conversa foi aberta na janela **e** é a primeira conversa desse contato na conta. Contato que já tinha falado antes fica de fora, mesmo abrindo conversa nova hoje. Mesma regra do lead analytics (mod. 019). `YYYY-MM-DD`; `from` = início do dia, `to` = fim do dia. Formato inválido ⇒ **422** |
 | `last_activity_from`, `last_activity_to` | Intervalo de **interação do chat**: `EXISTS` de mensagem humana (`incoming`/`outgoing`, sem nota privada) em `messages` dentro da janela. Não usa `last_activity_at` — essa coluna guarda só a ÚLTIMA mensagem e apagava quem falou dentro da janela e voltou a falar depois. Conversa sem nenhuma mensagem não tem interação. Mesmo formato/boundary de `created_from`/`created_to` |
 | `pinned_display_ids[]` | Conversas fixadas — sobem para o topo **na ordenação**, não por recorte |
@@ -54,6 +54,8 @@ Além disso o payload já traz `unread_count` (subconsulta correlacionada) e `la
 O `README` deste diretório pede modificação **aditiva** sempre que possível. Estender `Conversations::FilterService` significaria mexer num serviço que o dashboard do próprio Chatwoot usa, com risco de regressão silenciosa e conflito garantido a cada sync. O endpoint novo custa um arquivo de rota e não toca nenhum caminho existente.
 
 ### Detalhes que não são óbvios
+
+- **`last_activity_at_*` não ordena pela coluna de mesmo nome.** `conversations.last_activity_at` é bumpada por qualquer mensagem, inclusive as de atividade (`message_type = 2`: resolvida, etiqueta, atribuição). A sidebar do ERP exibe a data da última mensagem **real** (`last_message.created_at`), então uma resolução em lote colocava no topo dezenas de conversas mostrando data de duas semanas atrás. O `ORDER BY` usa `COALESCE(connectei_last_message.created_at, conversations.last_activity_at)` — o mesmo campo exibido. O nome do parâmetro foi mantido para não quebrar o contrato com o ERP. Ver [021](021-ordenacao-por-ultima-mensagem.md).
 
 - **A busca é por PESSOA, não por texto da conversa.** A primeira versão varria também o conteúdo das mensagens, e o resultado foi ruim de um jeito que só aparece com dado real: mensagem de grupo chega com o nome de quem enviou em **negrito** no início do texto, então procurar alguém trazia todo grupo em que essa pessoa já falou — mais toda conversa em que alguém a mencionou. Na loja piloto, buscar "Amanda" devolvia 12 conversas das quais 2 eram dela. Os campos são os mesmos quatro do `contacts_controller` do core (`name`, `email`, `phone_number`, `identifier`), então o resultado bate com a busca de contatos do próprio Chatwoot. Se a busca em conteúdo voltar, precisa ser parâmetro próprio (`q_content`), nunca misturada.
 - **Fixadas como ordenação, não como recorte**: se fossem concatenadas depois, sumiriam da página 2 em diante.

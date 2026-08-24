@@ -158,6 +158,32 @@ RSpec.describe 'Connectei Conversations API', type: :request do
       expect(display_ids).to eq([newer.display_id, older.display_id])
     end
 
+    # Regressão: `conversations.last_activity_at` é bumpada por mensagens de
+    # atividade ("marcada como resolvida", etiqueta, atribuição). Uma resolução
+    # em lote jogava conversas de duas semanas atrás para o topo, enquanto a
+    # sidebar exibia a data da última mensagem real — a lista parecia fora de
+    # ordem. A ordenação segue a última mensagem real, a mesma do preview.
+    it 'sorts by the last REAL message, ignoring activity messages that bump last_activity_at' do
+      stale = create(:conversation, account: account, inbox: inbox, status: :resolved, last_activity_at: 1.minute.ago)
+      create(:message, account: account, inbox: inbox, conversation: stale, content: 'antiga', message_type: :incoming,
+                       created_at: 14.days.ago)
+      create(:message, account: account, inbox: inbox, conversation: stale, content: 'Conversation was marked resolved',
+                       message_type: :activity, created_at: 1.minute.ago)
+
+      fresh = create(:conversation, account: account, inbox: inbox, status: :open, last_activity_at: 2.hours.ago)
+      create(:message, account: account, inbox: inbox, conversation: fresh, content: 'recente', message_type: :incoming,
+                       created_at: 2.hours.ago)
+
+      # Sem nenhuma mensagem real a conversa cai na coluna `last_activity_at`.
+      empty = create(:conversation, account: account, inbox: inbox, status: :open, last_activity_at: 1.day.ago)
+
+      filter({ sort_by: 'last_activity_at_desc' })
+      expect(display_ids).to eq([fresh.display_id, empty.display_id, stale.display_id])
+
+      filter({ sort_by: 'last_activity_at_asc' })
+      expect(display_ids).to eq([stale.display_id, empty.display_id, fresh.display_id])
+    end
+
     it 'keeps pinned conversations on top of the sort, across pagination' do
       newest = create(:conversation, account: account, inbox: inbox, status: :open, last_activity_at: 1.minute.ago)
       pinned = create(:conversation, account: account, inbox: inbox, status: :open, last_activity_at: 10.days.ago)
