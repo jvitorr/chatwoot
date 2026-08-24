@@ -31,6 +31,7 @@ Corpo (todos os campos opcionais):
 | `sort_by` | `last_activity_at_asc|desc`, `created_at_asc|desc`. **`last_activity_at_*` ordena pela data da última mensagem real** (a mesma de `last_message`), não pela coluna `conversations.last_activity_at` — ver [021](021-ordenacao-por-ultima-mensagem.md) |
 | `created_from`, `created_to` | Intervalo de **entrada do lead**: a conversa foi aberta na janela **e** é a primeira conversa desse contato na conta. Contato que já tinha falado antes fica de fora, mesmo abrindo conversa nova hoje. Mesma regra do lead analytics (mod. 019). `YYYY-MM-DD`; `from` = início do dia, `to` = fim do dia. Formato inválido ⇒ **422** |
 | `last_activity_from`, `last_activity_to` | Intervalo de **interação do chat**: `EXISTS` de mensagem humana (`incoming`/`outgoing`, sem nota privada) em `messages` dentro da janela. Não usa `last_activity_at` — essa coluna guarda só a ÚLTIMA mensagem e apagava quem falou dentro da janela e voltou a falar depois. Conversa sem nenhuma mensagem não tem interação. Mesmo formato/boundary de `created_from`/`created_to` |
+| `timezone` | IANA (ex.: `America/Sao_Paulo`). Fuso em que `created_from/to` e `last_activity_from/to` viram "o dia inteiro". Ausente ⇒ UTC; inválido ⇒ 422. Ver [022](022-fuso-dos-filtros-de-data.md) |
 | `pinned_display_ids[]` | Conversas fixadas — sobem para o topo **na ordenação**, não por recorte |
 | `page`, `per_page` | Paginação (`per_page` até 100) |
 

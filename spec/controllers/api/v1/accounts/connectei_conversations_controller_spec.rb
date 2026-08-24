@@ -193,6 +193,51 @@ RSpec.describe 'Connectei Conversations API', type: :request do
       expect(display_ids).to eq([pinned.display_id, newest.display_id])
     end
 
+    # Regressão: `created_from=created_to=2026-08-24` resolvia o dia em UTC.
+    # Para uma loja em São Paulo (UTC-3) isso é 23/08 21:00 → 24/08 20:59:
+    # a lista "de hoje" trazia chats de ontem à noite e escondia os de hoje
+    # depois das 21h. `timezone` diz em que fuso o dia inteiro é resolvido.
+    describe 'created_from/created_to resolved in the requested timezone' do
+      let!(:ontem_a_noite_sp) do
+        # 24/08 01:00Z = 23/08 22:00 em São Paulo
+        create(:conversation, account: account, inbox: inbox, status: :open, created_at: Time.utc(2026, 8, 24, 1, 0))
+      end
+      let!(:hoje_a_noite_sp) do
+        # 25/08 02:00Z = 24/08 23:00 em São Paulo
+        create(:conversation, account: account, inbox: inbox, status: :open, created_at: Time.utc(2026, 8, 25, 2, 0))
+      end
+
+      it 'without timezone keeps the UTC day (backward compatible)' do
+        filter({ created_from: '2026-08-24', created_to: '2026-08-24' })
+
+        expect(display_ids).to eq([ontem_a_noite_sp.display_id])
+      end
+
+      it 'with timezone=America/Sao_Paulo returns only the São Paulo day' do
+        filter({ created_from: '2026-08-24', created_to: '2026-08-24', timezone: 'America/Sao_Paulo' })
+
+        expect(display_ids).to eq([hoje_a_noite_sp.display_id])
+      end
+
+      it 'applies the timezone to last_activity_from/last_activity_to too' do
+        create(:message, account: account, inbox: inbox, conversation: hoje_a_noite_sp, message_type: :incoming,
+                         content: 'oi', created_at: Time.utc(2026, 8, 25, 2, 30))
+        create(:message, account: account, inbox: inbox, conversation: ontem_a_noite_sp, message_type: :incoming,
+                         content: 'oi', created_at: Time.utc(2026, 8, 24, 1, 30))
+
+        filter({ last_activity_from: '2026-08-24', last_activity_to: '2026-08-24', timezone: 'America/Sao_Paulo' })
+
+        expect(display_ids).to eq([hoje_a_noite_sp.display_id])
+      end
+
+      it 'rejects an unknown timezone with 422 instead of silently falling back to UTC' do
+        filter({ created_from: '2026-08-24', timezone: 'Mars/Olympus' })
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.parsed_body['error']).to include('invalid timezone')
+      end
+    end
+
     it 'paginates with a client-defined page size' do
       create_list(:conversation, 3, account: account, inbox: inbox, status: :open)
 

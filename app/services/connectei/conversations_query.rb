@@ -228,7 +228,9 @@ class Connectei::ConversationsQuery
 
   # O controller já rejeitou (422) qualquer valor que não seja `YYYY-MM-DD`
   # válido — aqui só resolve o boundary do dia (`from` = início, `to` = fim),
-  # já que o front manda data pura, sem hora.
+  # já que o front manda data pura, sem hora. O dia é resolvido no fuso de
+  # `timezone` (IANA, já validado pelo controller); sem ele, `Time.zone`
+  # (UTC) — que para uma loja no Brasil faz "hoje" começar às 21h de ontem.
   def created_from
     @created_from ||= parse_day_boundary(params[:created_from])&.beginning_of_day
   end
@@ -248,7 +250,11 @@ class Connectei::ConversationsQuery
   def parse_day_boundary(value)
     return nil if value.blank?
 
-    Date.iso8601(value).in_time_zone
+    Date.iso8601(value).in_time_zone(day_zone)
+  end
+
+  def day_zone
+    @day_zone ||= ActiveSupport::TimeZone[params[:timezone].to_s] || Time.zone
   end
 
   def page
