@@ -43,7 +43,9 @@ class Webhooks::Trigger
   rescue StandardError => e
     # [FORK CONNECTEI] modifications/006: falhas transitorias do inbox API
     # tambem viram RetryableError (consumidas por ApiInbox::WebhookJob).
-    raise RetryableError.new(status: http_status(e), message: e.message) if retryable_agent_bot_error?(e) || retryable_api_inbox_error?(e)
+    # [FORK CONNECTEI] modifications/023: idem para o webhook de conta
+    # (consumida pelo retry_on do proprio WebhookJob).
+    raise RetryableError.new(status: http_status(e), message: e.message) if retryable_error?(e)
 
     handle_failure(e)
   end
@@ -178,6 +180,12 @@ class Webhooks::Trigger
     timeout&.positive? ? timeout : 5
   end
 
+  # [FORK CONNECTEI] modifications/006 + 023: cada tipo decide o proprio retry;
+  # tipos fora desta lista (e erros nao transitorios) seguem para handle_failure.
+  def retryable_error?(error)
+    retryable_agent_bot_error?(error) || retryable_api_inbox_error?(error) || retryable_account_webhook_error?(error)
+  end
+
   def retryable_agent_bot_error?(error)
     @webhook_type == :agent_bot_webhook && RETRYABLE_AGENT_BOT_STATUSES.include?(http_status(error))
   end
@@ -187,6 +195,16 @@ class Webhooks::Trigger
   # hora (handle_failure aplica a classificacao ambiguo vs definitivo).
   def retryable_api_inbox_error?(error)
     @webhook_type == :api_inbox_webhook &&
+      (transport_error?(error) || RETRYABLE_API_INBOX_STATUSES.include?(http_status(error)))
+  end
+
+  # [FORK CONNECTEI] modifications/023-webhook-de-conta-retry.md
+  # O webhook de conta e o canal de eventos do ERP (message_created etc.).
+  # Mesma classificacao do inbox API (006), de proposito: e o mesmo consumidor.
+  # ERP fora do ar (deploy/restart -> refused/timeout) ou 503 deliberado (Redis
+  # fora) -> retry; 4xx e URL invalida/bloqueada seguem falhando na hora.
+  def retryable_account_webhook_error?(error)
+    @webhook_type == :account_webhook &&
       (transport_error?(error) || RETRYABLE_API_INBOX_STATUSES.include?(http_status(error)))
   end
 

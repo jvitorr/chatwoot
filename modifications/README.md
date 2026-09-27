@@ -38,6 +38,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [020](020-detach-error-action-view.md) | `ActionView` fora do `use_all`: fim do `DetachError` de contexto do OpenTelemetry | nenhum — lista do próprio fork (mod. 004) | Nulo — arquivo exclusivo do fork |
 | [021](021-ordenacao-por-ultima-mensagem.md) | `connectei-conversations/filter`: `sort_by=last_activity_at_*` ordena pela última mensagem real, não pela coluna bumpada por atividades | nenhum — arquivo do fork (012) | Nulo |
 | [022](022-fuso-dos-filtros-de-data.md) | `connectei-conversations/filter`: `timezone` resolve o dia dos filtros de data no fuso da loja (antes: UTC) | nenhum — arquivos do fork (012) | Nulo |
+| [023](023-webhook-de-conta-retry.md) | Webhook de conta (canal de eventos do ERP): retry em transporte/429/5xx — ERP em deploy ou 503 não perde mais a mensagem do cliente | `lib/webhooks/trigger.rb`, `app/jobs/webhook_job.rb` | **Médio/alto** — mesmo `trigger.rb` da 006; `retry_on` no job base do upstream |
 
 ## Convenção para novas modificações
 

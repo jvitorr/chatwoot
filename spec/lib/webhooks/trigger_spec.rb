@@ -247,13 +247,101 @@ describe Webhooks::Trigger do
       end
     end
 
-    it 'handles 500 without raising for account webhooks (upstream behavior intact)' do
-      payload = { event: 'message_created', conversation: { id: conversation.id }, id: message.id }
+    # [FORK CONNECTEI] modifications/023-webhook-de-conta-retry.md
+    # O webhook de conta é o canal de eventos do ERP. Antes, qualquer falha ia
+    # direto para handle_failure (só log) e o evento se perdia.
+    context 'when webhook type is account webhook' do
+      let(:webhook_type) { :account_webhook }
+      let(:payload) { { event: 'message_created', conversation: { id: conversation.id }, id: message.id } }
 
-      expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('500 Internal Server Error'))
+      it 'raises RetryableError on connection refused (ERP restarting) without touching the message' do
+        expect(SafeFetch).to receive(:fetch)
+          .and_raise(Errno::ECONNREFUSED.new('Failed to open TCP connection to erp.example.com:443'))
 
-      expect { trigger.execute(url, payload, :account_webhook) }.not_to raise_error
-      expect(message.reload.status).to eq('sent')
+        expect { trigger.execute(url, payload, webhook_type) }
+          .to raise_error(Webhooks::Trigger::RetryableError) { |error| expect(error.status).to be_nil }
+        expect(message.reload.status).to eq('sent')
+      end
+
+      it 'raises RetryableError on open timeout (ERP unreachable)' do
+        expect(SafeFetch).to receive(:fetch).and_raise(fetch_error_caused_by(Net::OpenTimeout.new))
+
+        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+      end
+
+      it 'raises RetryableError on read timeout' do
+        expect(SafeFetch).to receive(:fetch).and_raise(fetch_error_caused_by(Net::ReadTimeout.new))
+
+        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+      end
+
+      it 'raises RetryableError on connection reset' do
+        expect(SafeFetch).to receive(:fetch).and_raise(Errno::ECONNRESET)
+
+        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+      end
+
+      it 'raises RetryableError on 503 (ERP asking to retry: Redis/queue outage) without touching the message' do
+        expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('503 Service Unavailable'))
+
+        expect { trigger.execute(url, payload, webhook_type) }
+          .to raise_error(Webhooks::Trigger::RetryableError) { |error| expect(error.status).to eq(503) }
+        expect(message.reload.status).to eq('sent')
+      end
+
+      [429, 500, 502, 504].each do |status|
+        it "raises RetryableError on #{status}" do
+          expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new("#{status} Error"))
+
+          expect { trigger.execute(url, payload, webhook_type) }
+            .to raise_error(Webhooks::Trigger::RetryableError) { |error| expect(error.status).to eq(status) }
+        end
+      end
+
+      [400, 401, 404, 422].each do |status|
+        it "fails immediately without retry on #{status} and never touches the message" do
+          expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new("#{status} Error"))
+          allow(Rails.logger).to receive(:warn)
+
+          expect { trigger.execute(url, payload, webhook_type) }.not_to raise_error
+          expect(Rails.logger).to have_received(:warn).with(/Exception: Invalid webhook URL #{url} : #{status} Error/)
+          expect(message.reload.status).to eq('sent')
+        end
+      end
+
+      it 'fails immediately without retry when the URL is blocked (private network)' do
+        allow(Rails.logger).to receive(:warn)
+
+        expect { trigger.execute('http://127.0.0.1/webhook', payload, webhook_type) }.not_to raise_error
+        expect(Rails.logger).to have_received(:warn).with(/Exception: Invalid webhook URL/)
+        expect(message.reload.status).to eq('sent')
+      end
+
+      it 'fails immediately without retry when the URL is invalid' do
+        allow(Rails.logger).to receive(:warn)
+
+        expect { trigger.execute('ftp://example.com/webhook', payload, webhook_type) }.not_to raise_error
+        expect(Rails.logger).to have_received(:warn).with(/Exception: Invalid webhook URL/)
+      end
+    end
+
+    # [FORK CONNECTEI] modifications/023: a extensão do retry é guardada por
+    # webhook_type — a política do agent bot (upstream) não muda.
+    context 'when webhook type is agent bot (policy unchanged by 023)' do
+      let(:webhook_type) { :agent_bot_webhook }
+      let(:payload) { { event: 'message_created', conversation: { id: conversation.id }, id: message.id } }
+
+      it 'does not retry transport errors' do
+        expect(SafeFetch).to receive(:fetch).and_raise(Errno::ECONNREFUSED)
+
+        expect { trigger.execute(url, payload, webhook_type) }.not_to raise_error
+      end
+
+      it 'does not retry 503 (only 429/500 are retryable for agent bots)' do
+        expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('503 Service Unavailable'))
+
+        expect { trigger.execute(url, payload, webhook_type) }.not_to raise_error
+      end
     end
   end
 
@@ -311,6 +399,21 @@ describe Webhooks::Trigger do
 
       expect { instance.handle_failure(wrapped) }
         .to change { message.reload.status }.from('sent').to('failed')
+    end
+
+    # [FORK CONNECTEI] modifications/023: no esgotamento do WebhookJob o
+    # webhook de conta só registra o log — nunca mexe no status da mensagem.
+    context 'when webhook type is account webhook' do
+      let(:webhook_type) { :account_webhook }
+
+      it 'only logs after retries are exhausted, never touching the message' do
+        allow(Rails.logger).to receive(:warn)
+        wrapped = retryable_error_wrapping(SafeFetch::HttpError.new('503 Service Unavailable'))
+
+        expect { instance.handle_failure(wrapped) }.not_to(change { message.reload.status })
+        expect(message.reload.content_attributes['delivery_unconfirmed']).to be_nil
+        expect(Rails.logger).to have_received(:warn).with("Exception: Invalid webhook URL #{url} : 503 Service Unavailable")
+      end
     end
 
     context 'when the message already has a source_id (delivery evidence)' do

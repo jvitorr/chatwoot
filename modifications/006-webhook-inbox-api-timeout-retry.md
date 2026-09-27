@@ -28,12 +28,12 @@ O ERP (Brasil) e este Chatwoot (Hetzner/EUA) conversam pela internet pública. ~
 - `retryable_api_inbox_error?`: transporte (FetchError/ECONNREFUSED/ECONNRESET/EPIPE/IOError) e HTTP 429/500/502/503/504 levantam `RetryableError` quando `webhook_type == :api_inbox_webhook`.
 - Novo `ApiInbox::WebhookJob < WebhookJob` (espelho exato de `AgentBots::WebhookJob`): `retry_on RetryableError, wait: :polynomially_longer, attempts: 5` (~3s, 18s, 83s, 258s ≈ 6 min de janela). No esgotamento, o bloco chama `handle_failure(error)`, que aplica a classificação acima.
 - `webhook_listener.rb#deliver_api_inbox_webhooks` passa a enfileirar o job novo (1 linha).
-- `:account_webhook` fica **intacto** (sem retry — comportamento upstream preservado; o `raise` é guardado por `webhook_type`).
+- `:account_webhook` fica **intacto** (sem retry — comportamento upstream preservado; o `raise` é guardado por `webhook_type`). **Atualizado pela [023](023-webhook-de-conta-retry.md)**: o webhook de conta passou a ter a mesma classificação e política de retry.
 - Redelivery é segura: o ERP é idempotente por `chatwootMessageId` (jobId determinístico no BullMQ + tabela `bot_chat_message`).
 
 ## Alternativas descartadas
 
-- **Retry generalizado no `WebhookJob`**: mudaria a semântica de webhooks de conta para todas as integrações — escopo mínimo escolhido.
+- **Retry generalizado no `WebhookJob`**: mudaria a semântica de webhooks de conta para todas as integrações — escopo mínimo escolhido. (Revisto na [023](023-webhook-de-conta-retry.md): o webhook de conta é o canal de eventos do ERP e perdia mensagens em deploy.)
 - **Guarda de `source_id` no `Messages::StatusUpdateService`**: o service tem 10+ call sites (Line/Instagram/TikTok/Twilio/Email) onde `failed` com `source_id` presente é legítimo (a Meta envia failed real com WAID). No Trigger o contexto é inequívoco.
 - **Mudar `WEBHOOK_TIMEOUT` default no `config/installation_config.yml`**: inócuo — a linha já existente na tabela `installation_configs` de produção vence o YAML. A mudança é operacional (abaixo).
 - **`attempts: 8` como o forward job da modificação 001**: aqui há um humano esperando o desfecho do envio; ~6 min cobre blip/deploy sem segurar o veredicto por horas.
