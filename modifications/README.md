@@ -38,6 +38,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [020](020-detach-error-action-view.md) | `ActionView` fora do `use_all`: fim do `DetachError` de contexto do OpenTelemetry | nenhum — lista do próprio fork (mod. 004) | Nulo — arquivo exclusivo do fork |
 | [021](021-ordenacao-por-ultima-mensagem.md) | `connectei-conversations/filter`: `sort_by=last_activity_at_*` ordena pela última mensagem real, não pela coluna bumpada por atividades | nenhum — arquivo do fork (012) | Nulo |
 | [022](022-fuso-dos-filtros-de-data.md) | `connectei-conversations/filter`: `timezone` resolve o dia dos filtros de data no fuso da loja (antes: UTC) | nenhum — arquivos do fork (012) | Nulo |
+| [023](023-backport-instagram-upstream.md) | Backport de 4 commits de Instagram do upstream (#14937, #15575, #14237, #15932) | job de eventos, `Channel::Instagram`, serviços de envio, OAuth (patch idêntico ao upstream) | Baixo — o merge vê o mesmo patch dos dois lados |
 
 ## Convenção para novas modificações
 
