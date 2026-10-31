@@ -49,7 +49,8 @@ class Channel::Instagram < ApplicationRecord
       query: {
         subscribed_fields: %w[messages message_reactions messaging_seen],
         access_token: access_token
-      }
+      },
+      **Connectei::Instagram::Graph::TIMEOUTS # [FORK CONNECTEI] modifications/028
     )
   rescue StandardError => e
     Rails.logger.debug { "Rescued: #{e.inspect}" }
@@ -61,7 +62,8 @@ class Channel::Instagram < ApplicationRecord
       "#{base_uri}/#{instagram_id}/subscribed_apps",
       query: {
         access_token: access_token
-      }
+      },
+      **Connectei::Instagram::Graph::TIMEOUTS # [FORK CONNECTEI] modifications/028
     )
     true
   rescue StandardError => e
@@ -76,6 +78,6 @@ class Channel::Instagram < ApplicationRecord
   private
 
   def base_uri
-    "https://graph.instagram.com/#{GlobalConfigService.load('INSTAGRAM_API_VERSION', 'v22.0')}"
+    Connectei::Instagram::Graph.versioned_base_url # [FORK CONNECTEI] modifications/028
   end
 end

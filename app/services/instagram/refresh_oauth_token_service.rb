@@ -49,13 +49,14 @@ class Instagram::RefreshOauthTokenService
   # @return [Hash] Response data containing new access_token and expires_in values
   # @raise [RuntimeError] If API request fails
   def refresh_long_lived_token
-    endpoint = 'https://graph.instagram.com/refresh_access_token'
+    endpoint = "#{Connectei::Instagram::Graph.base_url}/refresh_access_token" # [FORK CONNECTEI] modifications/028
     params = {
       grant_type: 'ig_refresh_token',
       access_token: channel[:access_token]
     }
 
-    response = HTTParty.get(endpoint, query: params, headers: { 'Accept' => 'application/json' })
+    response = HTTParty.get(endpoint, query: params, headers: { 'Accept' => 'application/json' },
+                                      **Connectei::Instagram::Graph::TIMEOUTS) # [FORK CONNECTEI] modifications/028
 
     unless response.success?
       Rails.logger.error "Failed to refresh Instagram token: #{response.body}"

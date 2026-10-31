@@ -8,7 +8,7 @@ class Messages::Instagram::MessageBuilder < Messages::Instagram::BaseMessageBuil
   def get_story_object_from_source_id(source_id)
     url = "#{base_uri}/#{source_id}?fields=story,from&access_token=#{@inbox.channel.access_token}"
 
-    response = HTTParty.get(url)
+    response = HTTParty.get(url, **Connectei::Instagram::Graph::TIMEOUTS) # [FORK CONNECTEI] modifications/028
 
     return JSON.parse(response.body).with_indifferent_access if response.success?
 
@@ -37,6 +37,6 @@ class Messages::Instagram::MessageBuilder < Messages::Instagram::BaseMessageBuil
   end
 
   def base_uri
-    "https://graph.instagram.com/#{GlobalConfigService.load('INSTAGRAM_API_VERSION', 'v22.0')}"
+    Connectei::Instagram::Graph.versioned_base_url # [FORK CONNECTEI] modifications/028
   end
 end

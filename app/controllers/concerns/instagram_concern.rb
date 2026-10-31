@@ -26,7 +26,7 @@ module InstagramConcern
   end
 
   def exchange_for_long_lived_token(short_lived_token)
-    endpoint = 'https://graph.instagram.com/access_token'
+    endpoint = "#{Connectei::Instagram::Graph.base_url}/access_token" # [FORK CONNECTEI] modifications/028
     params = {
       grant_type: 'ig_exchange_token',
       client_secret: client_secret,
@@ -38,7 +38,7 @@ module InstagramConcern
   end
 
   def fetch_instagram_user_details(access_token)
-    endpoint = "https://graph.instagram.com/#{GlobalConfigService.load('INSTAGRAM_API_VERSION', 'v22.0')}/me"
+    endpoint = "#{Connectei::Instagram::Graph.versioned_base_url}/me" # [FORK CONNECTEI] modifications/028
     params = {
       fields: 'id,username,user_id,name,profile_picture_url,account_type',
       access_token: access_token

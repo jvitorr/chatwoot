@@ -13,9 +13,10 @@ class Instagram::SendOnInstagramService < Instagram::BaseSendService
     instagram_id = channel.instagram_id.presence || 'me'
 
     response = HTTParty.post(
-      "https://graph.instagram.com/#{GlobalConfigService.load('INSTAGRAM_API_VERSION', 'v22.0')}/#{instagram_id}/messages",
+      "#{Connectei::Instagram::Graph.versioned_base_url}/#{instagram_id}/messages", # [FORK CONNECTEI] modifications/028
       body: message_content,
-      query: query
+      query: query,
+      **Connectei::Instagram::Graph::TIMEOUTS # [FORK CONNECTEI] modifications/028
     )
 
     process_response(response, message_content)
