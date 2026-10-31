@@ -38,6 +38,14 @@ RSpec.describe 'Conversation Messages API — flow_effect_key idempotency', type
     expect(conversation.messages.count).to eq(2)
   end
 
+  it 'recognizes keys with characters that JSON escapes or that are LIKE wildcards' do
+    ['fx:<a>&"b"', 'fx_1%', "fx:ação\u2028"].each do |key|
+      2.times { post_message({ content: 'Oi', content_attributes: { flow_effect_key: key } }) }
+    end
+
+    expect(conversation.messages.count).to eq(3)
+  end
+
   it 'scopes the key to the conversation' do
     other = create(:conversation, inbox: inbox, account: account)
 

@@ -58,7 +58,12 @@ que **já existe nesta conversa** devolve **200 com a mensagem existente** (o me
 - A consulta não usa `->> 'flow_effect_key'`: `content_attributes` é `json` com
   `store … coder: JSON`, então o banco guarda uma **string** JSON contendo o objeto, e o
   operador não enxerga a chave. O pré-filtro é textual (só as mensagens da conversa) e a
-  igualdade exata é conferida no objeto decodificado.
+  igualdade exata é conferida no objeto decodificado. Chave com caractere que o JSON escapa
+  (aspas, `\`, `<>&`, controle) ou curinga do `LIKE` pula o pré-filtro e a conversa é varrida
+  inteira — mais lento, nunca errado. As chaves do ERP (`flow-outbound:<execução>:<nó>:<n>`)
+  ficam no caminho rápido.
+- O spec de concorrência roda sem a transação do exemplo e apaga só o que commitou
+  (`spec/support/connectei_committed_records.rb`, ver mod 026).
 
 ## Por quê — e alternativas descartadas
 

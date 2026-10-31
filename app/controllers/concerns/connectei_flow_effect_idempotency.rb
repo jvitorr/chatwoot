@@ -21,6 +21,9 @@
 module ConnecteiFlowEffectIdempotency
   extend ActiveSupport::Concern
 
+  # Caracteres que o JSON nunca escapa: a chave aparece literal no texto gravado.
+  LITERAL_JSON_KEY = %r{\A[0-9A-Za-z_:./@#=+-]+\z}
+
   included do
     # `if:` em vez de `only:` — o filtro mora no concern, e a ação, no controller.
     around_action :connectei_idempotent_message_create, if: -> { action_name == 'create' }
@@ -46,11 +49,13 @@ module ConnecteiFlowEffectIdempotency
   # `content_attributes` é `json` com `store … coder: JSON`: o banco guarda uma
   # STRING JSON contendo o objeto, então `->> 'flow_effect_key'` não enxerga a
   # chave. O pré-filtro é textual (barato: só as mensagens desta conversa) e a
-  # igualdade exata é conferida no objeto já decodificado.
+  # igualdade exata é conferida no objeto já decodificado. Chave com caractere que
+  # o JSON escapa (aspas, barra invertida, `<>&`, controle) não aparece literal no
+  # texto gravado: aí o filtro textual é pulado e a conversa é varrida inteira.
   def connectei_message_with_flow_effect_key(key)
-    pattern = "%#{ActiveRecord::Base.sanitize_sql_like(key)}%"
-    @conversation.messages.where('messages.content_attributes::text LIKE ?', pattern).reorder(:id)
-                 .find { |candidate| candidate.content_attributes['flow_effect_key'].to_s == key }
+    scope = @conversation.messages.unscope(:order)
+    scope = scope.where('messages.content_attributes::text LIKE ?', "%#{ActiveRecord::Base.sanitize_sql_like(key)}%") if key.match?(LITERAL_JSON_KEY)
+    scope.find_each.find { |candidate| candidate.content_attributes['flow_effect_key'].to_s == key }
   end
 
   def connectei_lock_flow_effect!(key)
