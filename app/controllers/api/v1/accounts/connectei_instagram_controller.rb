@@ -45,10 +45,14 @@ class Api::V1::Accounts::ConnecteiInstagramController < Api::V1::Accounts::BaseC
     render json: { id: body['id'] }
   end
 
-  # GET comments/:comment_id/replies — releitura que resolve um `ambiguous`.
+  # GET comments/:comment_id/replies — releitura que resolve um `ambiguous`. Só as
+  # respostas DA PRÓPRIA CONTA: o ERP confere se a resposta pública dele saiu, e um
+  # comentário de outra pessoa com o mesmo texto não pode contar como entrega.
   def comment_replies
     body = graph.get("#{required_id(:comment_id)}/replies", query: { fields: REPLY_FIELDS, limit: 50 })
-    render json: { data: Array(body['data']).map { |reply| reply.slice(*REPLY_KEYS) } }
+    own_id = @inbox.channel.instagram_id.to_s
+    own = Array(body['data']).select { |reply| own_id.present? && reply.dig('from', 'id').to_s == own_id }
+    render json: { data: own.map { |reply| reply.slice(*REPLY_KEYS) } }
   end
 
   # GET media?limit=24&after=<cursor>

@@ -217,14 +217,17 @@ RSpec.describe 'Connectei Instagram API', type: :request do
   end
 
   describe 'GET comments/:comment_id/replies' do
-    it 'reads the first page (50) of replies' do
+    it 'reads the first page (50) of replies, keeping only the account own replies' do
+      own = { id: 'r1', text: 'oi', from: { id: '17841400000000000', username: 'loja' }, timestamp: '2026-10-31T12:00:05+0000', extra: 'x' }
+      someone_else = { id: 'r2', text: 'oi', from: { id: '9', username: 'cliente' }, timestamp: '2026-10-31T12:00:06+0000' }
+      without_author = { id: 'r3', text: 'oi' }
       stub_request(:get, %r{#{graph}/1789/replies}).with(query: hash_including(fields: 'id,text,from,timestamp', limit: '50'))
-                                                   .to_return(graph_json(200, { data: [{ id: 'r1', text: 'oi', from: { id: '9', username: 'loja' },
-                                                                                         timestamp: '2026-10-31T12:00:05+0000', extra: 'x' }] }))
+                                                   .to_return(graph_json(200, { data: [own, someone_else, without_author] }))
 
       get "#{base_path}/comments/1789/replies", headers: token_headers
 
-      expect(response.parsed_body).to eq('data' => [{ 'id' => 'r1', 'text' => 'oi', 'from' => { 'id' => '9', 'username' => 'loja' },
+      expect(response.parsed_body).to eq('data' => [{ 'id' => 'r1', 'text' => 'oi',
+                                                      'from' => { 'id' => '17841400000000000', 'username' => 'loja' },
                                                       'timestamp' => '2026-10-31T12:00:05+0000' }])
     end
 

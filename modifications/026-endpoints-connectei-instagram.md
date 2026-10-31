@@ -21,7 +21,7 @@ pelo `api_access_token` de usuário (token de bot não entra: o controller não 
 |---|---|---|
 | `POST comment-threads` `{igsid, username, comment_id}` | — (não chama a Graph) | `{conversation_id (display_id), conversation_status, contact_id, contact_inbox_id, source_id, created}` |
 | `POST comments/:comment_id/replies` `{message}` | `POST /{comment_id}/replies?message=…` (passa pelo limitador por segundo) | `{id}` |
-| `GET comments/:comment_id/replies` | `GET /{comment_id}/replies?fields=id,text,from,timestamp&limit=50` | `{data: [{id, text, from, timestamp}]}` |
+| `GET comments/:comment_id/replies` | `GET /{comment_id}/replies?fields=id,text,from,timestamp&limit=50` | `{data: [{id, text, from, timestamp}]}` — **só as respostas da própria conta** (`from.id == channel.instagram_id`): o ERP usa a releitura para saber se a resposta pública DELE saiu, e um comentário de outra pessoa com o mesmo texto não pode contar como entrega |
 | `GET media?limit=24&after=…` | `GET /me/media?fields=…` | `{data, paging: {after}}` — `after` só quando há `paging.next` |
 | `GET media/:media_id` | `GET /{media_id}?fields=…` | o objeto |
 | `GET/PUT/DELETE ice-breakers` | `GET/POST/DELETE /me/messenger_profile` (`platform=instagram`, `locale=default`) | `{ice_breakers: [{question, payload}]}` |

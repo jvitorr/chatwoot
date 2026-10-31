@@ -28,7 +28,7 @@ armadilha da mod 001 (o banco vence a env) **não** se aplica a elas.
 
 | Variável | Padrão | Efeito |
 |---|---|---|
-| `CONNECTEI_INSTAGRAM_EVENTS_URL` | vazio | URL do receptor do ERP (`…/v1/chatwoot-public/instagram-events`). Vazia: comentário/referral **não** são repassados (o fork registra `info` uma vez e segue normal). |
+| `CONNECTEI_INSTAGRAM_EVENTS_URL` | vazio | URL do receptor do ERP (`…/api/v1/instagram-events`). Vazia: comentário/referral **não** são repassados (o fork registra `info` uma vez e segue normal). |
 | `CONNECTEI_INSTAGRAM_EVENTS_SECRET` | vazio | Segredo do HMAC. É o `INSTAGRAM_EVENTS_HMAC_SECRET` do ERP — **o mesmo valor**. Vazio: repasse desligado. |
 | `INSTAGRAM_GRAPH_BASE_URL` | `https://graph.instagram.com` | Host da Graph do Instagram. **Em produção, não defina** (ou use o padrão). Existe para o E2E/carga apontarem para um stub. |
 | `CONNECTEI_IG_PRIVATE_REPLY_PER_HOUR` | `720` | Teto de private replies por conta do Instagram, janela deslizante de 1h (a Meta aceita 750). |
@@ -66,7 +66,7 @@ ordem "migration antes da imagem" (a do `deploy-portainer.sh`, mod 015) não tem
    mod 003 já reinscreve). `comments` só aparece em canal com
    `instagram_business_manage_comments` gravado em `connectei_granted_scopes`.
 3. **ERP**, com `INSTAGRAM_EVENTS_HMAC_SECRET` configurado e o receptor
-   `POST /v1/chatwoot-public/instagram-events` no ar.
+   `POST /api/v1/instagram-events` no ar.
 4. **Só então** defina `CONNECTEI_INSTAGRAM_EVENTS_URL` e `CONNECTEI_INSTAGRAM_EVENTS_SECRET`
    no fork e recicle os serviços. Por quê esta ordem: o repasse **não** tenta de novo em 4xx —
    um 404 (rota que ainda não existe) perderia o evento. 503 (ERP sem segredo) e 5xx tentam de

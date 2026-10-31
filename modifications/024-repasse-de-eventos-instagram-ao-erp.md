@@ -12,7 +12,7 @@
 **Specs do upstream ajustados (mudança intencional dos campos assinados):** `spec/factories/channel/channel_instagram.rb`
 (o stub do subscribe passa a usar `SubscribedFields.fields_for`), `spec/controllers/instagram/callbacks_controller_spec.rb`
 (a URL exata do stub ganha `messaging_postbacks` e `messaging_referral`)
-**Contrato:** `ERP-backend/docs/instagram/contrato-fork-erp.md` §1 e §5 · **Receptor no ERP:** `POST /v1/chatwoot-public/instagram-events`
+**Contrato:** `ERP-backend/docs/instagram/contrato-fork-erp.md` §1 e §5 · **Receptor no ERP:** `POST /api/v1/instagram-events`
 
 ---
 
