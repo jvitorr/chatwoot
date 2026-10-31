@@ -1,4 +1,6 @@
 class Messages::Instagram::BaseMessageBuilder < Messages::Messenger::MessageBuilder
+  prepend Connectei::Instagram::InboundAttributesExtension # [FORK CONNECTEI] modifications/025
+
   attr_reader :messaging
 
   def initialize(messaging, inbox, outgoing_echo: false)

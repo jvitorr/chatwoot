@@ -1,4 +1,6 @@
 class Messages::Instagram::MessageBuilder < Messages::Instagram::BaseMessageBuilder
+  prepend Connectei::Instagram::StoryFetchGuard # [FORK CONNECTEI] modifications/025
+
   def initialize(messaging, inbox, outgoing_echo: false)
     super(messaging, inbox, outgoing_echo: outgoing_echo)
   end
