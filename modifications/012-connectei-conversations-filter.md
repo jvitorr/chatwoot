@@ -24,6 +24,8 @@ Corpo (todos os campos opcionais):
 | `status` | `open` / `pending` / `resolved` / `snoozed` / `all` |
 | `unassigned` | `true` ⇒ só sem atendente (a aba "Pendentes" do ERP é `status=open` + `unassigned=true`) |
 | `assignee_ids[]` | Atendentes (múltiplos) |
+| `team_ids[]` | Times (múltiplos). Recorte OPCIONAL: o ERP só manda quando o perfil do atendente tem a regra "ver apenas conversas dos seus times". Vazio/ausente = sem recorte, que é o padrão |
+| `team_assignee_id` | Exceção do responsável (ADR 0071 do ERP): junto do `team_ids`, a conversa atribuída a esse agente também entra, mesmo fora dos times — `(team_id IN team_ids) OR (assignee_id = team_assignee_id)`, com os demais filtros valendo nos dois lados. `meta.team_assignee_filter: true` anuncia a capacidade |
 | `labels[]` | Etiquetas com semântica **E** (a conversa precisa ter todas) |
 | `exclude_labels[]` | Etiquetas que **excluem** a conversa (é como o ERP esconde grupos) |
 | `display_ids[]` | Deep-link por id de conversa |

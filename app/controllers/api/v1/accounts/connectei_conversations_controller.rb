@@ -34,7 +34,16 @@ class Api::V1::Accounts::ConnecteiConversationsController < Api::V1::Accounts::B
       page: result[:page],
       per_page: result[:per_page],
       total_pages: (result[:count].to_f / result[:per_page]).ceil,
-      scope: administrator? ? 'account' : 'self'
+      scope: administrator? ? 'account' : 'self',
+      # Negociação de capacidade: o `team_ids` chegou depois do endpoint, então
+      # existe instância com um e sem o outro. Sem este marcador o cliente não
+      # tem como distinguir "recortou por time" de "ignorou o parâmetro" — e
+      # ignorar em silêncio, numa restrição de visibilidade, é o pior desfecho.
+      team_filter: true,
+      # Idem para a exceção do responsável (`team_assignee_id`), que chegou
+      # depois do `team_ids`: sem o marcador, uma instância que só conhece o
+      # recorte esconderia do responsável a conversa dele fora dos times.
+      team_assignee_filter: true
     }
   end
 
@@ -44,6 +53,9 @@ class Api::V1::Accounts::ConnecteiConversationsController < Api::V1::Accounts::B
     {
       id: conversation.display_id,
       inbox_id: conversation.inbox_id,
+      # Devolvido para o cliente poder conferir o recorte na própria página
+      # (defesa em profundidade), não só confiar no WHERE.
+      team_id: conversation.team_id,
       status: conversation.status,
       assignee_id: conversation.assignee_id,
       created_at: conversation.created_at,
@@ -118,9 +130,9 @@ class Api::V1::Accounts::ConnecteiConversationsController < Api::V1::Accounts::B
 
   def permitted_params
     params.permit(
-      :status, :unassigned, :q, :sort_by, :page, :per_page,
+      :status, :unassigned, :q, :sort_by, :page, :per_page, :team_assignee_id,
       :created_from, :created_to, :last_activity_from, :last_activity_to, :timezone,
-      inbox_ids: [], assignee_ids: [], display_ids: [], pinned_display_ids: [], labels: [], exclude_labels: []
+      inbox_ids: [], assignee_ids: [], team_ids: [], display_ids: [], pinned_display_ids: [], labels: [], exclude_labels: []
     )
   end
 end

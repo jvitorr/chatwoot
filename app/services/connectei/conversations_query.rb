@@ -65,6 +65,7 @@ class Connectei::ConversationsQuery
       scope = apply_visibility(scope)
       scope = apply_status(scope)
       scope = apply_assignee(scope)
+      scope = apply_teams(scope)
       scope = apply_display_ids(scope)
       scope = apply_labels(scope)
       scope = apply_excluded_labels(scope)
@@ -95,6 +96,26 @@ class Connectei::ConversationsQuery
     return scope if assignee_ids.blank?
 
     scope.where(assignee_id: assignee_ids)
+  end
+
+  # Recorte por TIME, opcional: o ERP manda `team_ids` quando o perfil do
+  # atendente tem a regra "ver apenas conversas dos seus times". Vazio = sem
+  # recorte, que é o padrão. Resolvido aqui, no banco, para o total do rodapé e
+  # a paginação continuarem coerentes com o que a tela mostra — pós-filtrar a
+  # página daria contagem errada a partir da segunda.
+  #
+  # `team_assignee_id` é a exceção do responsável (ADR 0071 do ERP): a conversa
+  # atribuída a esse agente passa mesmo fora dos times dele — atribuir a alguém
+  # de outro time sem trocar o time escondia a conversa justamente de quem tinha
+  # de responder. O OU fica aqui, junto dos demais filtros, pelo mesmo motivo
+  # do recorte: total e paginação certos.
+  def apply_teams(scope)
+    return scope if team_ids.blank? && team_assignee_id.nil?
+
+    by_team = scope.where(team_id: team_ids)
+    return by_team if team_assignee_id.nil?
+
+    by_team.or(scope.where(assignee_id: team_assignee_id))
   end
 
   def apply_display_ids(scope)
@@ -204,6 +225,14 @@ class Connectei::ConversationsQuery
 
   def assignee_ids
     @assignee_ids ||= integer_list(params[:assignee_ids])
+  end
+
+  def team_ids
+    @team_ids ||= integer_list(params[:team_ids])
+  end
+
+  def team_assignee_id
+    @team_assignee_id ||= params[:team_assignee_id].to_i.then { |id| id if id.positive? }
   end
 
   def display_ids
