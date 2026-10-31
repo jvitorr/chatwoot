@@ -3,7 +3,7 @@ require 'rails_helper'
 # [FORK CONNECTEI] modifications/027b — dois POST simultâneos com a mesma `flow_effect_key`.
 #
 # Precisa de duas conexões com dados COMMITADOS: sem a transação do exemplo, com
-# limpeza do banco no fim.
+# limpeza só do que o exemplo commitou.
 RSpec.describe 'Conversation Messages API — concurrent flow_effect_key', type: :request do
   self.use_transactional_tests = false
 
@@ -13,10 +13,8 @@ RSpec.describe 'Conversation Messages API — concurrent flow_effect_key', type:
   let(:conversation) { create(:conversation, inbox: inbox, account: account) }
 
   before { create(:inbox_member, inbox: inbox, user: agent) }
-  # DELETE, não TRUNCATE: o TRUNCATE reinicia as sequências, os ids voltam a 1 e
-  # chaves que o MockRedis guarda por id (ex.: reautorização do canal) vazam para
-  # os specs seguintes.
-  after { DatabaseCleaner.clean_with(:deletion) }
+  # Só as linhas que este exemplo commitou (ver spec/support/connectei_committed_records.rb).
+  around { |example| ConnecteiCommittedRecords.isolate { example.run } }
 
   it 'makes the second request wait for the first commit and return its message' do
     lock_key = Digest::SHA256.digest("connectei:flow-effect:#{conversation.id}:fx:race")[0, 8].unpack1('q>')

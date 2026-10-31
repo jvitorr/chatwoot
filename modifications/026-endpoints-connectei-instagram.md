@@ -107,4 +107,9 @@ TZ=UTC FRONTEND_URL= POSTGRES_DATABASE=chatwoot_test bundle exec rspec \
 ```
 
 O `comment_thread_service_spec.rb` roda **sem** a transação do exemplo (concorrência de
-verdade) e trunca o banco no fim.
+verdade) e, no fim, apaga **só as linhas que o próprio exemplo commitou**
+(`spec/support/connectei_committed_records.rb`: retrato do maior `id` de cada tabela antes,
+DELETE acima dele depois). Apagar a tabela inteira quebrava specs que commitam dados no
+carregamento do arquivo (o blob do `slack_uploads_controller_spec.rb`), e TRUNCATE ainda
+reinicia as sequências — chaves que o MockRedis guarda por id passariam a valer para
+registros novos.
