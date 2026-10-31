@@ -60,6 +60,9 @@ end
 json.reauthorization_required resource.channel.try(:reauthorization_required?) if resource.instagram?
 json.instagram_id resource.channel.try(:instagram_id) if resource.instagram?
 json.expires_at resource.channel.try(:expires_at) if resource.instagram?
+# [FORK CONNECTEI] modifications/024: escopos concedidos no OAuth — o ERP avisa
+# quando o canal não tem a permissão de comentários (Comentário → DM).
+json.instagram_granted_scopes(resource.channel.try(:connectei_granted_scopes) || []) if resource.instagram?
 
 ## Tiktok Attributes
 json.reauthorization_required resource.channel.try(:reauthorization_required?) if resource.tiktok?

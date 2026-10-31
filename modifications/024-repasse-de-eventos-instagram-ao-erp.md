@@ -97,6 +97,10 @@ resposta pública → webhook), evento sem `comment_id`, `live_comments`, e cont
 - Os endpoints da mod 003 aceitam `granted_scopes` (lista, ou texto separado por vírgula —
   o formato `permissions` do OAuth) no POST e no PATCH e devolvem o valor gravado. No PATCH,
   ausente mantém; presente (inclusive `[]`) substitui. O re-subscribe usa o valor novo.
+- O JSON do inbox (`app/views/api/v1/models/_inbox.json.jbuilder`, 1 linha marcada) expõe
+  `instagram_granted_scopes` (lista, nunca `nil`) nos inboxes do Instagram — o ERP repassa a
+  listagem de canais ao front, que avisa quando o canal não tem a permissão de comentários
+  (Comentário → DM). Spec: `spec/controllers/api/v1/accounts/connectei_inbox_instagram_scopes_spec.rb`.
 
 ## Por quê — e alternativas descartadas
 
