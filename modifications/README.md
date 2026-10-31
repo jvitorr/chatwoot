@@ -39,6 +39,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [021](021-ordenacao-por-ultima-mensagem.md) | `connectei-conversations/filter`: `sort_by=last_activity_at_*` ordena pela última mensagem real, não pela coluna bumpada por atividades | nenhum — arquivo do fork (012) | Nulo |
 | [022](022-fuso-dos-filtros-de-data.md) | `connectei-conversations/filter`: `timezone` resolve o dia dos filtros de data no fuso da loja (antes: UTC) | nenhum — arquivos do fork (012) | Nulo |
 | [023](023-backport-instagram-upstream.md) | Backport de 4 commits de Instagram do upstream (#14937, #15575, #14237, #15932) | job de eventos, `Channel::Instagram`, serviços de envio, OAuth (patch idêntico ao upstream) | Baixo — o merge vê o mesmo patch dos dois lados |
+| [024](024-repasse-de-eventos-instagram-ao-erp.md) | Repasse de comentário/referral do Instagram ao ERP (HMAC, retry, fila própria) + fim do crash com comentário real; `subscribed_fields` por escopo | `instagram_events_job.rb` (2 ganchos), `channel/instagram.rb` (1 linha), `config/sidekiq.yml`, migration | **Médio** — o upstream mexe no job de eventos |
 | [028](028-instagram-graph-base-e-renovacao-de-token.md) | `INSTAGRAM_GRAPH_BASE_URL` + timeouts (5s/15s) em toda chamada à Graph do Instagram; renovação diária de token | 7 chamadas à Graph (1 linha cada), `config/schedule.yml` | Médio — linhas isoladas, mas o upstream mexe nessas URLs |
 
 ## Convenção para novas modificações

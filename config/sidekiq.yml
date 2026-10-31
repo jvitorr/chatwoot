@@ -19,6 +19,9 @@
   - high
   - medium
   - default
+  # [FORK CONNECTEI] modifications/024: repasse de comentário/referral do Instagram
+  # ao ERP. Abaixo de `default` de propósito: rajada de comentários não atrasa DM.
+  - connectei_instagram
   - mailers
   - action_mailbox_routing
   - low

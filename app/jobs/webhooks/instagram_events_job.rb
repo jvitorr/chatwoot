@@ -15,6 +15,7 @@ class Webhooks::InstagramEventsJob < MutexApplicationJob
 
   def perform(entries)
     @entries = entries
+    return process_entries(entries) if Connectei::Instagram::ChangesRouter.without_messaging?(entries) # [FORK CONNECTEI] modifications/024
 
     key = format(::Redis::Alfred::IG_MESSAGE_MUTEX, sender_id: contact_instagram_id, ig_account_id: ig_account_id)
     # Keep the lock TTL just long enough for the first job to fetch profile data and
@@ -40,6 +41,8 @@ class Webhooks::InstagramEventsJob < MutexApplicationJob
   private
 
   def process_single_entry(entry)
+    return if Connectei::Instagram::ChangesRouter.route(entry) # [FORK CONNECTEI] modifications/024
+
     if test_event?(entry)
       process_test_event(entry)
       return

@@ -27,6 +27,11 @@ class Api::V1::Accounts::Instagram::ChannelsController < Api::V1::Accounts::Base
   # and expires_at. Use after a fresh OAuth flow to refresh credentials
   # without creating a duplicate channel. Also resets the reauthorization
   # flag and re-subscribes the webhook with the new token.
+  #
+  # [FORK CONNECTEI] modifications/024: `granted_scopes` (opcional, no POST e no
+  # PATCH) grava os escopos concedidos no OAuth. Eles decidem se o webhook assina
+  # `comments`. No PATCH, ausente = mantém o que estava; presente (mesmo vazio) =
+  # substitui.
   def update
     validate_update_params!
     find_and_update_channel!
@@ -51,7 +56,8 @@ class Api::V1::Accounts::Instagram::ChannelsController < Api::V1::Accounts::Base
         access_token: params[:access_token],
         instagram_id: params[:instagram_id].to_s,
         account: Current.account,
-        expires_at: expires_at
+        expires_at: expires_at,
+        connectei_granted_scopes: granted_scopes_param || []
       )
 
       @inbox = Current.account.inboxes.create!(channel: @channel, name: params[:username])
@@ -62,7 +68,9 @@ class Api::V1::Accounts::Instagram::ChannelsController < Api::V1::Accounts::Base
     @channel = Channel::Instagram.find_by!(id: params[:id], account_id: Current.account.id)
     expires_at = Time.current + params[:expires_in].to_i.seconds
 
-    @channel.update!(access_token: params[:access_token], expires_at: expires_at)
+    attributes = { access_token: params[:access_token], expires_at: expires_at }
+    attributes[:connectei_granted_scopes] = granted_scopes_param if params.key?(:granted_scopes)
+    @channel.update!(attributes)
 
     @channel.reauthorized! if @channel.respond_to?(:reauthorized!)
     @channel.subscribe if @channel.respond_to?(:subscribe)
@@ -77,7 +85,8 @@ class Api::V1::Accounts::Instagram::ChannelsController < Api::V1::Accounts::Base
       channel_id: @channel.id,
       name: @inbox.name,
       channel_type: 'Channel::Instagram',
-      instagram_id: @channel.instagram_id
+      instagram_id: @channel.instagram_id,
+      granted_scopes: @channel.connectei_granted_scopes
     }
   end
 
@@ -89,8 +98,16 @@ class Api::V1::Accounts::Instagram::ChannelsController < Api::V1::Accounts::Base
       name: @inbox&.name,
       channel_type: 'Channel::Instagram',
       instagram_id: @channel.instagram_id,
-      expires_at: @channel.expires_at&.iso8601
+      expires_at: @channel.expires_at&.iso8601,
+      granted_scopes: @channel.connectei_granted_scopes
     }
+  end
+
+  # Lista ou texto separado por vírgula; `nil` quando o parâmetro não veio.
+  def granted_scopes_param
+    return unless params.key?(:granted_scopes)
+
+    Connectei::Instagram::SubscribedFields.normalize_scopes(params[:granted_scopes])
   end
 
   def validate_create_params!

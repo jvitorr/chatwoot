@@ -47,7 +47,7 @@ class Channel::Instagram < ApplicationRecord
     HTTParty.post(
       "#{base_uri}/#{instagram_id}/subscribed_apps",
       query: {
-        subscribed_fields: %w[messages message_reactions messaging_seen],
+        subscribed_fields: Connectei::Instagram::SubscribedFields.fields_for(self), # [FORK CONNECTEI] modifications/024
         access_token: access_token
       },
       **Connectei::Instagram::Graph::TIMEOUTS # [FORK CONNECTEI] modifications/028

@@ -10,7 +10,8 @@ FactoryBot.define do
       WebMock::API.stub_request(:post, "https://graph.instagram.com/v22.0/#{channel.instagram_id}/subscribed_apps")
                   .with(query: {
                           access_token: channel.access_token,
-                          subscribed_fields: %w[messages message_reactions messaging_seen]
+                          # [FORK CONNECTEI] modifications/024: os campos dependem dos escopos concedidos
+                          subscribed_fields: Connectei::Instagram::SubscribedFields.fields_for(channel)
                         })
                   .to_return(status: 200, body: '', headers: {})
 
