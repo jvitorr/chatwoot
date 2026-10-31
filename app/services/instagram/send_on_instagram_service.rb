@@ -1,5 +1,6 @@
 class Instagram::SendOnInstagramService < Instagram::BaseSendService
   prepend Connectei::Instagram::SendExtension # [FORK CONNECTEI] modifications/025
+  prepend Connectei::Instagram::AutomationPolicyExtension # [FORK CONNECTEI] modifications/027
 
   private
 
