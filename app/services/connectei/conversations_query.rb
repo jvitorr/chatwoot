@@ -232,10 +232,7 @@ class Connectei::ConversationsQuery
   end
 
   def team_assignee_id
-    return @team_assignee_id if defined?(@team_assignee_id)
-
-    id = params[:team_assignee_id].to_i
-    @team_assignee_id = id.positive? ? id : nil
+    @team_assignee_id ||= params[:team_assignee_id].to_i.then { |id| id if id.positive? }
   end
 
   def display_ids
