@@ -263,6 +263,73 @@ RSpec.describe 'Connectei Conversations API', type: :request do
       expect(item['contact']).to include('name')
     end
 
+    describe 'team visibility (team_ids, team_assignee_id)' do
+      let(:team) { create(:team, account: account) }
+      let(:other_team) { create(:team, account: account) }
+
+      # Conversa de outro time atribuída ao agente — o estado que a atribuição
+      # antiga e o fluxo deixavam. O time vai na criação e o responsável depois:
+      # salvar os dois juntos faria o callback do time soltar o responsável.
+      def assigned_outside_team(team:, assignee:, inbox: self.inbox, status: :open)
+        conversation = create(:conversation, account: account, inbox: inbox, status: status, team: team)
+        conversation.update!(assignee: assignee)
+        conversation
+      end
+
+      it 'restricts to the given teams, returns team_id and announces both capabilities' do
+        in_team = create(:conversation, account: account, inbox: inbox, status: :open, team: team)
+        create(:conversation, account: account, inbox: inbox, status: :open, team: other_team)
+        create(:conversation, account: account, inbox: inbox, status: :open)
+
+        filter({ team_ids: [team.id] })
+
+        expect(display_ids).to eq([in_team.display_id])
+        expect(response.parsed_body['payload'].first['team_id']).to eq(team.id)
+        expect(response.parsed_body['meta']).to include('all_count' => 1, 'team_filter' => true, 'team_assignee_filter' => true)
+      end
+
+      it 'with team_assignee_id also returns the conversation assigned to that agent outside the teams' do
+        in_team = create(:conversation, account: account, inbox: inbox, status: :open, team: team)
+        assigned = assigned_outside_team(team: other_team, assignee: agent)
+        create(:conversation, account: account, inbox: inbox, status: :open, team: other_team)
+
+        filter({ team_ids: [team.id], team_assignee_id: agent.id })
+
+        expect(display_ids).to contain_exactly(in_team.display_id, assigned.display_id)
+        expect(response.parsed_body['meta']['all_count']).to eq(2)
+      end
+
+      it 'keeps status and inbox on both sides of the OR — the exception never widens them' do
+        assigned_outside_team(team: other_team, assignee: agent, status: :resolved)
+        assigned_outside_team(team: other_team, assignee: agent, inbox: other_inbox)
+        open_in_team = create(:conversation, account: account, inbox: inbox, status: :open, team: team)
+
+        filter({ status: 'open', inbox_ids: [inbox.id], team_ids: [team.id], team_assignee_id: agent.id })
+
+        expect(display_ids).to eq([open_in_team.display_id])
+      end
+
+      it 'the unassigned queue comes only from the teams' do
+        queue = create(:conversation, account: account, inbox: inbox, status: :open, team: team)
+        create(:conversation, account: account, inbox: inbox, status: :open, team: other_team)
+        assigned_outside_team(team: other_team, assignee: agent)
+
+        filter({ status: 'open', unassigned: true, team_ids: [team.id], team_assignee_id: agent.id })
+
+        expect(display_ids).to eq([queue.display_id])
+      end
+
+      it 'without team params nothing is restricted' do
+        create(:conversation, account: account, inbox: inbox, status: :open, team: team)
+        create(:conversation, account: account, inbox: inbox, status: :open, team: other_team)
+        create(:conversation, account: account, inbox: inbox, status: :open)
+
+        filter({})
+
+        expect(response.parsed_body['meta']['all_count']).to eq(3)
+      end
+    end
+
     it 'restricts a regular agent to their own conversations plus the unassigned queue' do
       other_agent = create(:user, account: account, role: :agent)
       mine = create(:conversation, account: account, inbox: inbox, status: :open, assignee: agent)
