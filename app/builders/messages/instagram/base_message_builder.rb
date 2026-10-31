@@ -1,5 +1,6 @@
 class Messages::Instagram::BaseMessageBuilder < Messages::Messenger::MessageBuilder
   prepend Connectei::Instagram::InboundAttributesExtension # [FORK CONNECTEI] modifications/025
+  prepend Connectei::Instagram::ThreadLockExtension # [FORK CONNECTEI] modifications/026
 
   attr_reader :messaging
 

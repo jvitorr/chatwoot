@@ -1,4 +1,6 @@
 class Instagram::MessageText < Instagram::BaseMessageText
+  prepend Connectei::Instagram::PendingProfileExtension # [FORK CONNECTEI] modifications/026
+
   attr_reader :messaging
 
   def ensure_contact(ig_scope_id)
