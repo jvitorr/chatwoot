@@ -3,7 +3,7 @@ require 'rails_helper'
 # [FORK CONNECTEI] modifications/026 — comentário e DM simultâneos não abrem duas conversas.
 #
 # Concorrência de verdade exige duas conexões com dados COMMITADOS: este grupo
-# desliga a transação do exemplo e limpa o banco no fim.
+# desliga a transação do exemplo e limpa o banco (DELETE) no fim.
 describe Connectei::Instagram::CommentThreadService do
   self.use_transactional_tests = false
 
@@ -13,7 +13,10 @@ describe Connectei::Instagram::CommentThreadService do
   let(:igsid) { "igsid-#{SecureRandom.hex(4)}" }
   let!(:contact_inbox) { create(:contact_inbox, inbox: inbox, source_id: igsid) }
 
-  after { DatabaseCleaner.clean_with(:truncation) }
+  # DELETE, não TRUNCATE: o TRUNCATE reinicia as sequências, os ids voltam a 1 e
+  # chaves que o MockRedis guarda por id (ex.: reautorização do canal) vazam para
+  # os specs seguintes.
+  after { DatabaseCleaner.clean_with(:deletion) }
 
   # Outra conexão segura o advisory lock (como um DM em processamento) e cria a
   # conversa; o COMMIT só sai `hold` segundos depois de o teste seguir.
