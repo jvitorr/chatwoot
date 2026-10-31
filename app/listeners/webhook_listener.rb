@@ -107,13 +107,15 @@ class WebhookListener < BaseListener
     deliver_webhook_payloads(payload, inbox)
   end
 
-  def deliver_account_webhooks(payload, account)
+  def deliver_account_webhooks(payload, account, inbox = nil)
     account.webhooks.account_type.each do |webhook|
       next unless webhook.subscriptions.include?(payload[:event])
 
-      WebhookJob.perform_later(webhook.url, payload, :account_webhook,
-                               secret: webhook.secret,
-                               delivery_id: SecureRandom.uuid)
+      # [FORK CONNECTEI] modifications/029: evento de inbox Instagram vai por job com retry.
+      job, webhook_type = Connectei::AccountWebhookRouting.job_for(inbox)
+      job.perform_later(webhook.url, payload, webhook_type,
+                        secret: webhook.secret,
+                        delivery_id: SecureRandom.uuid)
     end
   end
 
@@ -127,7 +129,7 @@ class WebhookListener < BaseListener
   end
 
   def deliver_webhook_payloads(payload, inbox)
-    deliver_account_webhooks(payload, inbox.account)
+    deliver_account_webhooks(payload, inbox.account, inbox) # [FORK CONNECTEI] modifications/029
     deliver_api_inbox_webhooks(payload, inbox)
   end
 end

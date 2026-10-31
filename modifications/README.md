@@ -45,6 +45,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [027](027-politica-de-envio-da-automacao.md) | Automação do ERP (`flow_effect_key`) no Instagram: nunca `HUMAN_AGENT`; fora de 24h vira `failed`/`window_closed` sem chamar a Graph | 1 `prepend` em `send_on_instagram_service.rb` | Médio — sobrescreve `perform_reply`/`merge_human_agent_tag` |
 | [027b](027b-eco-e-idempotencia.md) | Eco do Instagram com `mid` desconhecido adota a mensagem pendente (sem "atendente fantasma"); `POST /messages` idempotente por `flow_effect_key` (todo canal) | `prepend` no builder do Instagram + `include` no `messages_controller.rb` (mod 007) | Médio — sobrescreve `message_already_exists?`; o controller é mexido pelo upstream |
 | [028](028-instagram-graph-base-e-renovacao-de-token.md) | `INSTAGRAM_GRAPH_BASE_URL` + timeouts (5s/15s) em toda chamada à Graph do Instagram; renovação diária de token | 7 chamadas à Graph (1 linha cada), `config/schedule.yml` | Médio — linhas isoladas, mas o upstream mexe nessas URLs |
+| [029](029-retry-do-webhook-de-conta-instagram.md) | Webhook de conta com retry (política da mod 006) para eventos de inbox Instagram | `webhook_listener.rb` (job por inbox), `lib/webhooks/trigger.rb` (tipo novo) | **Médio/alto** — o mesmo `trigger.rb` da mod 006 |
 
 ## Convenção para novas modificações
 
