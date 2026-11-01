@@ -40,12 +40,18 @@ describe Webhooks::Trigger do
 
   # Reproduz o que o execute faz ao levantar RetryableError dentro do rescue
   # do erro original (o bloco de esgotamento do job recebe essa exceção).
+  #
+  # `described_class::RetryableError`, e não a constante pelo nome: o ambiente de
+  # teste recarrega código (`cache_classes = false`) e um `travel_to` noutro spec
+  # do mesmo processo faz a próxima requisição recarregar `Webhooks::Trigger`.
+  # O `described_class` continua sendo a classe de antes — e o erro que ela
+  # levanta é o `RetryableError` DELA, não o da constante recarregada.
   def retryable_error_wrapping(original_error)
     raise original_error
   rescue original_error.class => e
     begin
-      raise Webhooks::Trigger::RetryableError.new(status: nil, message: e.message)
-    rescue Webhooks::Trigger::RetryableError => wrapped
+      raise described_class::RetryableError.new(status: nil, message: e.message)
+    rescue described_class::RetryableError => wrapped
       return wrapped
     end
   end
@@ -80,7 +86,7 @@ describe Webhooks::Trigger do
       expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('500 Internal Server Error'))
 
       expect { trigger.execute(url, payload, webhook_type) }
-        .to raise_error(Webhooks::Trigger::RetryableError) { |error| expect(error.status).to eq(500) }
+        .to raise_error(described_class::RetryableError) { |error| expect(error.status).to eq(500) }
       expect(message.reload.status).to eq('sent')
     end
 
@@ -89,7 +95,7 @@ describe Webhooks::Trigger do
 
       expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('500 Internal Server Error'))
 
-      expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+      expect { trigger.execute(url, payload, webhook_type) }.to raise_error(described_class::RetryableError)
       expect(message.reload.status).to eq('sent')
     end
 
@@ -115,7 +121,7 @@ describe Webhooks::Trigger do
       it 'raises RetryableError on read timeout so ApiInbox::WebhookJob retries before any verdict' do
         expect(SafeFetch).to receive(:fetch).and_raise(fetch_error_caused_by(Net::ReadTimeout.new))
 
-        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(described_class::RetryableError)
 
         message.reload
         expect(message.status).to eq('sent')
@@ -125,13 +131,13 @@ describe Webhooks::Trigger do
       it 'raises RetryableError on raw connection reset' do
         expect(SafeFetch).to receive(:fetch).and_raise(Errno::ECONNRESET)
 
-        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(described_class::RetryableError)
       end
 
       it 'raises RetryableError on connection refused' do
         expect(SafeFetch).to receive(:fetch).and_raise(Errno::ECONNREFUSED)
 
-        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+        expect { trigger.execute(url, payload, webhook_type) }.to raise_error(described_class::RetryableError)
       end
     end
 
@@ -424,7 +430,7 @@ describe Webhooks::Trigger do
 
     expect(SafeFetch).to receive(:fetch).and_raise(SafeFetch::HttpError.new('500 Internal Server Error'))
 
-    expect { trigger.execute(url, payload, webhook_type) }.to raise_error(Webhooks::Trigger::RetryableError)
+    expect { trigger.execute(url, payload, webhook_type) }.to raise_error(described_class::RetryableError)
     expect(message.reload.status).to eq('sent')
   end
 
