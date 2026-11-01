@@ -59,6 +59,46 @@ describe Messages::Instagram::MessageBuilder do
 
       expect(build_message(story_mention).content_attributes['ig_event']).to eq('story_mention')
     end
+
+    # O download da mídia também roda DENTRO da transação: um 404 da CDN da Meta
+    # (story expirada) ou uma conexão recusada desfaziam a menção inteira — e o
+    # ERP nunca via o evento que dispara a automação (achado no E2E local).
+    context 'when the story media can no longer be downloaded' do
+      before do
+        stub_request(:get, story_lookup)
+          .to_return(status: 200, body: { story: { mention: { id: 'story-9' } }, from: { username: 'cliente_x' } }.to_json)
+      end
+
+      it 'keeps the message, the marker and the story data when the CDN answers 404' do
+        stub_request(:get, story_url).to_return(status: 404, body: 'gone')
+
+        message = build_message(story_mention)
+
+        expect(message).to be_present
+        expect(message.content_attributes).to include('ig_event' => 'story_mention', 'image_type' => 'story_mention', 'story_id' => 'story-9')
+        expect(message.attachments.count).to eq(1)
+        expect(message.attachments.first.external_url).to eq(story_url)
+        expect(message.attachments.first.file).not_to be_attached
+      end
+
+      it 'keeps the message when the media host refuses the connection' do
+        stub_request(:get, story_url).to_raise(Errno::ECONNREFUSED)
+
+        message = build_message(story_mention)
+
+        expect(message).to be_present
+        expect(message.content_attributes['ig_event']).to eq('story_mention')
+      end
+    end
+  end
+
+  it 'keeps a shared post whose media can no longer be downloaded (marker included)' do
+    stub_request(:get, story_url).to_return(status: 404, body: 'gone')
+
+    message = build_message({ mid: 'mid-share-gone', attachments: [{ type: 'share', payload: { url: story_url } }] })
+
+    expect(message).to be_present
+    expect(message.content_attributes['ig_event']).to eq('share')
   end
 
   it 'marks a story reply as ig_event = story_reply' do

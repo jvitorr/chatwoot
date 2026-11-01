@@ -91,6 +91,14 @@ Uma exceção de transporte (timeout, conexão recusada) ou uma página de erro 
 (502 de proxy) subia, desfazia a transação e a menção **sumia** — com o marcador junto.
 Agora vira "sem dados da story": a mensagem fica, com o anexo e o `ig_event`.
 
+O **download da mídia** também roda na mesma transação (`attach_file`, do upstream). O
+arquivo de uma menção ou de uma publicação/reel compartilhado é um link da CDN da Meta que
+expira: um 404, uma conexão recusada ou um timeout faziam a menção sumir do mesmo jeito
+(achado no E2E local de Instagram, com a mídia fora do ar). O guard agora cobre também
+`attach_file` para os tipos `story_mention`, `share`, `ig_post`, `ig_reel` e `ig_story`: o
+anexo fica só com o `external_url` e a mensagem — com o `ig_event` e os dados da story —
+fica. Mídia que o próprio cliente manda (foto, áudio, vídeo, arquivo) segue o upstream.
+
 ## Por quê — e alternativas descartadas
 
 - **`prepend` em vez de editar os métodos do upstream:** cada arquivo do core ganha uma
