@@ -45,11 +45,12 @@ class Channel::Instagram < ApplicationRecord
   def subscribe
     # ref https://developers.facebook.com/docs/instagram-platform/webhooks#enable-subscriptions
     HTTParty.post(
-      "https://graph.instagram.com/v22.0/#{instagram_id}/subscribed_apps",
+      "#{base_uri}/#{instagram_id}/subscribed_apps",
       query: {
-        subscribed_fields: %w[messages message_reactions messaging_seen],
+        subscribed_fields: Connectei::Instagram::SubscribedFields.fields_for(self), # [FORK CONNECTEI] modifications/024
         access_token: access_token
-      }
+      },
+      **Connectei::Instagram::Graph::TIMEOUTS # [FORK CONNECTEI] modifications/028
     )
   rescue StandardError => e
     Rails.logger.debug { "Rescued: #{e.inspect}" }
@@ -58,10 +59,11 @@ class Channel::Instagram < ApplicationRecord
 
   def unsubscribe
     HTTParty.delete(
-      "https://graph.instagram.com/v22.0/#{instagram_id}/subscribed_apps",
+      "#{base_uri}/#{instagram_id}/subscribed_apps",
       query: {
         access_token: access_token
-      }
+      },
+      **Connectei::Instagram::Graph::TIMEOUTS # [FORK CONNECTEI] modifications/028
     )
     true
   rescue StandardError => e
@@ -71,5 +73,11 @@ class Channel::Instagram < ApplicationRecord
 
   def access_token
     Instagram::RefreshOauthTokenService.new(channel: self).access_token
+  end
+
+  private
+
+  def base_uri
+    Connectei::Instagram::Graph.versioned_base_url # [FORK CONNECTEI] modifications/028
   end
 end

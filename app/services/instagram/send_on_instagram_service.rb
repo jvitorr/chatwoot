@@ -1,4 +1,7 @@
 class Instagram::SendOnInstagramService < Instagram::BaseSendService
+  prepend Connectei::Instagram::SendExtension # [FORK CONNECTEI] modifications/025
+  prepend Connectei::Instagram::AutomationPolicyExtension # [FORK CONNECTEI] modifications/027
+
   private
 
   def channel_class
@@ -13,9 +16,10 @@ class Instagram::SendOnInstagramService < Instagram::BaseSendService
     instagram_id = channel.instagram_id.presence || 'me'
 
     response = HTTParty.post(
-      "https://graph.instagram.com/v22.0/#{instagram_id}/messages",
+      "#{Connectei::Instagram::Graph.versioned_base_url}/#{instagram_id}/messages", # [FORK CONNECTEI] modifications/028
       body: message_content,
-      query: query
+      query: query,
+      **Connectei::Instagram::Graph::TIMEOUTS # [FORK CONNECTEI] modifications/028
     )
 
     process_response(response, message_content)
@@ -24,7 +28,7 @@ class Instagram::SendOnInstagramService < Instagram::BaseSendService
   def merge_human_agent_tag(params)
     global_config = GlobalConfig.get('ENABLE_INSTAGRAM_CHANNEL_HUMAN_AGENT')
 
-    return params unless global_config['ENABLE_INSTAGRAM_CHANNEL_HUMAN_AGENT']
+    return params unless global_config['ENABLE_INSTAGRAM_CHANNEL_HUMAN_AGENT'] && human_agent_tag_applicable?
 
     params[:messaging_type] = 'MESSAGE_TAG'
     params[:tag] = 'HUMAN_AGENT'

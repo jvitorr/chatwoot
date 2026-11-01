@@ -11,10 +11,11 @@ class Webhooks::InstagramEventsJob < MutexApplicationJob
   retry_on_lock_conflict wait: ->(executions) { executions.seconds }, attempts: 3, on_exhaustion: :process_without_lock
 
   # @return [Array] We will support further events like reaction or seen in future
-  SUPPORTED_EVENTS = [:message, :read].freeze
+  SUPPORTED_EVENTS = [:message, :read, :postback].freeze
 
   def perform(entries)
     @entries = entries
+    return process_entries(entries) if Connectei::Instagram::ChangesRouter.without_messaging?(entries) # [FORK CONNECTEI] modifications/024
 
     key = format(::Redis::Alfred::IG_MESSAGE_MUTEX, sender_id: contact_instagram_id, ig_account_id: ig_account_id)
     # Keep the lock TTL just long enough for the first job to fetch profile data and
@@ -40,6 +41,8 @@ class Webhooks::InstagramEventsJob < MutexApplicationJob
   private
 
   def process_single_entry(entry)
+    return if Connectei::Instagram::ChangesRouter.route(entry) # [FORK CONNECTEI] modifications/024
+
     if test_event?(entry)
       process_test_event(entry)
       return
@@ -126,7 +129,7 @@ class Webhooks::InstagramEventsJob < MutexApplicationJob
   end
 
   def event_name(messaging)
-    @event_name ||= SUPPORTED_EVENTS.find { |key| messaging.key?(key) }
+    SUPPORTED_EVENTS.find { |key| messaging.key?(key) }
   end
 
   def message(messaging, channel)
@@ -140,6 +143,14 @@ class Webhooks::InstagramEventsJob < MutexApplicationJob
   def read(messaging, channel)
     # Use a single service to handle read status for both channel types since the params are same
     ::Instagram::ReadStatusService.new(params: messaging, channel: channel).perform
+  end
+
+  def postback(messaging, channel)
+    postback_message = {
+      mid: messaging[:postback][:mid],
+      text: messaging[:postback][:title]
+    }
+    message(messaging.merge(message: postback_message), channel)
   end
 
   def messages(entry)

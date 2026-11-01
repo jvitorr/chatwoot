@@ -142,6 +142,20 @@ Rails.application.routes.draw do
               post :filter
             end
           end
+          # Connectei — ver modifications/026 (Instagram: comentários, mídia, ice breakers, perfil).
+          resources :connectei_instagram, only: [], path: 'connectei-instagram/inboxes', param: :inbox_id do
+            member do
+              post 'comment-threads', action: :comment_threads, as: :comment_threads
+              post 'comments/:comment_id/replies', action: :create_comment_reply, as: :create_comment_reply
+              get 'comments/:comment_id/replies', action: :comment_replies, as: :comment_replies
+              get 'media', action: :media, as: :media
+              get 'media/:media_id', action: :media_item, as: :media_item
+              get 'ice-breakers', action: :ice_breakers, as: :ice_breakers
+              put 'ice-breakers', action: :update_ice_breakers, as: :update_ice_breakers
+              delete 'ice-breakers', action: :destroy_ice_breakers, as: :destroy_ice_breakers
+              get 'users/:igsid', action: :user, as: :user
+            end
+          end
           namespace :channels do
             resource :twilio_channel, only: [:create]
           end

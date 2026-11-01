@@ -1,4 +1,6 @@
 class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::Conversations::BaseController
+  include ConnecteiFlowEffectIdempotency # [FORK CONNECTEI] modifications/027b
+
   before_action :ensure_api_inbox, only: :update
 
   def index

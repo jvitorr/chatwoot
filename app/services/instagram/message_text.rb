@@ -1,4 +1,6 @@
 class Instagram::MessageText < Instagram::BaseMessageText
+  prepend Connectei::Instagram::PendingProfileExtension # [FORK CONNECTEI] modifications/026
+
   attr_reader :messaging
 
   def ensure_contact(ig_scope_id)
@@ -10,7 +12,7 @@ class Instagram::MessageText < Instagram::BaseMessageText
     fields = 'name,username,profile_pic,follower_count,is_user_follow_business,is_business_follow_user,is_verified_user'
     url = "#{base_uri}/#{ig_scope_id}?fields=#{fields}&access_token=#{@inbox.channel.access_token}"
 
-    response = HTTParty.get(url)
+    response = HTTParty.get(url, **Connectei::Instagram::Graph::TIMEOUTS) # [FORK CONNECTEI] modifications/028
 
     return process_successful_response(response) if response.success?
 
@@ -76,7 +78,7 @@ class Instagram::MessageText < Instagram::BaseMessageText
   end
 
   def base_uri
-    "https://graph.instagram.com/#{GlobalConfigService.load('INSTAGRAM_API_VERSION', 'v22.0')}"
+    Connectei::Instagram::Graph.versioned_base_url # [FORK CONNECTEI] modifications/028
   end
 
   def create_message

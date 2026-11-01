@@ -23,7 +23,8 @@ RSpec.describe Instagram::CallbacksController do
     allow(exception_tracker).to receive(:capture_exception)
 
     # Stub the exact request format that's being made
-    stub_request(:post, 'https://graph.instagram.com/v22.0/12345/subscribed_apps?access_token=long_lived_test_token&subscribed_fields%5B%5D=messages&subscribed_fields%5B%5D=message_reactions&subscribed_fields%5B%5D=messaging_seen')
+    # [FORK CONNECTEI] modifications/024: + messaging_postbacks e messaging_referral nos campos assinados
+    stub_request(:post, 'https://graph.instagram.com/v22.0/12345/subscribed_apps?access_token=long_lived_test_token&subscribed_fields%5B%5D=messages&subscribed_fields%5B%5D=message_reactions&subscribed_fields%5B%5D=messaging_seen&subscribed_fields%5B%5D=messaging_postbacks&subscribed_fields%5B%5D=messaging_referral')
       .with(
         headers: {
           'Accept' => '*/*',

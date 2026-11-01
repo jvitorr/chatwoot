@@ -1,4 +1,8 @@
 class Messages::Instagram::BaseMessageBuilder < Messages::Messenger::MessageBuilder
+  prepend Connectei::Instagram::InboundAttributesExtension # [FORK CONNECTEI] modifications/025
+  prepend Connectei::Instagram::ThreadLockExtension # [FORK CONNECTEI] modifications/026
+  prepend Connectei::Instagram::EchoAdoptionExtension # [FORK CONNECTEI] modifications/027b
+
   attr_reader :messaging
 
   def initialize(messaging, inbox, outgoing_echo: false)

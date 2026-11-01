@@ -3,6 +3,8 @@ class Webhooks::Trigger
   RETRYABLE_AGENT_BOT_STATUSES = [429, 500].freeze
   # [FORK CONNECTEI] modifications/006-webhook-inbox-api-timeout-retry.md
   RETRYABLE_API_INBOX_STATUSES = [429, 500, 502, 503, 504].freeze
+  # [FORK CONNECTEI] modifications/029: o webhook de conta de inbox Instagram usa a mesma política.
+  RETRYABLE_TRANSPORT_WEBHOOK_TYPES = %i[api_inbox_webhook instagram_account_webhook].freeze
 
   # [FORK CONNECTEI] modifications/006-webhook-inbox-api-timeout-retry.md
   # Falhas em que a requisição PODE ter sido recebida e processada pelo destino
@@ -186,7 +188,7 @@ class Webhooks::Trigger
   # 429/5xx sao transitorios -> retry. 4xx e URL invalida/bloqueada falham na
   # hora (handle_failure aplica a classificacao ambiguo vs definitivo).
   def retryable_api_inbox_error?(error)
-    @webhook_type == :api_inbox_webhook &&
+    RETRYABLE_TRANSPORT_WEBHOOK_TYPES.include?(@webhook_type&.to_sym) && # [FORK CONNECTEI] modifications/029
       (transport_error?(error) || RETRYABLE_API_INBOX_STATUSES.include?(http_status(error)))
   end
 

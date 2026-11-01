@@ -74,3 +74,10 @@ remove_orphan_conversations_job:
   cron: '0 */12 * * *'
   class: 'Internal::RemoveOrphanConversationsJob'
   queue: housekeeping
+
+# [FORK CONNECTEI] modifications/028 — executed daily at 0320 UTC
+# renews Instagram long-lived tokens that expire in the next 10 days
+connectei_instagram_token_refresh_job:
+  cron: '20 3 * * *'
+  class: 'Connectei::InstagramTokenRefreshJob'
+  queue: scheduled_jobs
