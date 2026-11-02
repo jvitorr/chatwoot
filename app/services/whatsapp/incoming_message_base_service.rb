@@ -72,9 +72,22 @@ class Whatsapp::IncomingMessageBaseService
   # processamento do webhook e não pode derrubá-lo — a Meta já recebeu 200 e o
   # inbound do atendimento tem prioridade sobre a telemetria do ERP.
   def forward_orphan_status_to_erp(status)
+    return if campaign_recipient_status?(status)
+
     Whatsapp::ForwardMessageStatusToErpJob.perform_later([status.to_h])
   rescue StandardError => e
     Rails.logger.error "[WHATSAPP][erp-status-forward] enqueue failed: #{e.message}"
+  end
+
+  # Desde a 4.17 as campanhas de WhatsApp do próprio Chatwoot (enterprise)
+  # rastreiam o envio em `CampaignRecipient`, sem criar `Message`. O status
+  # delas é tratado pelo `Enterprise::Whatsapp::IncomingMessageBaseService` e
+  # não é um disparo do ERP — repassá-lo seria ruído novo que não existia
+  # antes do sync 4.19.1 (modifications/023).
+  def campaign_recipient_status?(status)
+    return false unless ChatwootApp.enterprise?
+
+    CampaignRecipient.exists?(inbox_id: inbox.id, source_id: status[:id])
   end
 
   def update_message_with_status(message, status)
