@@ -53,7 +53,7 @@ class Whatsapp::TemplateProcessorService
     parameter_format = resolve_parameter_format(template)
     components = []
 
-    components.concat(process_header_components(processed_params))
+    components.concat(process_header_components(processed_params, template, parameter_format))
     components.concat(process_body_components(processed_params, parameter_format))
     components.concat(process_footer_components(processed_params))
     components.concat(process_button_components(processed_params))
@@ -61,55 +61,78 @@ class Whatsapp::TemplateProcessorService
     @template_params = components
   end
 
-  # The caller-provided format (from Meta, forwarded in template_params) wins so
-  # named/positional binding works even when the synced template is stale or
-  # missing; falls back to the cached template's format.
+  # [FORK CONNECTEI] modifications/002 — the caller-provided format (from Meta,
+  # forwarded in template_params) wins so named/positional binding works even
+  # when the synced template is stale or missing; falls back to the cached
+  # template's format.
   def resolve_parameter_format(template)
     requested = template_params.is_a?(Hash) ? template_params['parameter_format'] : nil
     requested.presence || template&.dig('parameter_format')
   end
 
-  def process_header_components(processed_params)
+  def process_header_components(processed_params, template, parameter_format)
     return [] if processed_params['header'].blank?
 
-    header_params = build_header_params(processed_params['header'])
+    header_params = build_header_params(processed_params['header'], template, parameter_format)
     header_params.present? ? [{ type: 'header', parameters: header_params }] : []
   end
 
-  def build_header_params(header_data)
-    header_params = []
-    header_data.each do |key, value|
-      next if value.blank?
+  def build_header_params(header_data, template, parameter_format)
+    # [FORK CONNECTEI] modifications/002 — no synced template (fallback path):
+    # there is no HEADER component to read the format from, so keep the
+    # pre-4.19 key-driven header building instead of indexing into nil.
+    return build_header_params_without_template(header_data) if template.blank?
 
-      if media_url_with_type?(key, header_data)
-        media_name = header_data['media_name']
-        media_param = parameter_builder.build_media_parameter(value, header_data['media_type'], media_name)
-        header_params << media_param if media_param
-      elsif key != 'media_type' && key != 'media_name'
-        header_params << parameter_builder.build_parameter(value)
-      end
-    end
-    header_params
+    header_component = template['components']&.find { |component| component['type'] == 'HEADER' }
+    return build_text_header_params(header_data, parameter_format) if header_component&.dig('format') == 'TEXT'
+
+    build_media_header_params(header_data)
   end
 
-  def media_url_with_type?(key, header_data)
-    key == 'media_url' && header_data['media_type'].present?
+  def build_text_header_params(header_data, parameter_format)
+    header_data.filter_map do |key, value|
+      build_text_parameter(key, value, parameter_format) if value.present?
+    end
+  end
+
+  def build_media_header_params(header_data)
+    return [] if header_data['media_url'].blank? || header_data['media_type'].blank?
+
+    media_param = parameter_builder.build_media_parameter(header_data['media_url'], header_data['media_type'], header_data['media_name'])
+    media_param ? [media_param] : []
+  end
+
+  # [FORK CONNECTEI] modifications/002 — header building used before 4.19 (when
+  # the template is not in the synced cache): media_url + media_type becomes a
+  # media parameter, any other key becomes a text parameter.
+  def build_header_params_without_template(header_data)
+    header_data.filter_map do |key, value|
+      next if value.blank? || %w[media_type media_name].include?(key)
+      next parameter_builder.build_parameter(value) unless key == 'media_url' && header_data['media_type'].present?
+
+      parameter_builder.build_media_parameter(value, header_data['media_type'], header_data['media_name'])
+    end
   end
 
   def process_body_components(processed_params, parameter_format)
     return [] if processed_params['body'].blank?
 
-    body_params = processed_params['body'].filter_map do |key, value|
+    body_parameters = processed_params['body']
+    body_parameters = body_parameters.sort_by { |key, _value| key.to_i } unless parameter_format == 'NAMED'
+
+    body_params = body_parameters.filter_map do |key, value|
       next if value.blank?
 
-      if parameter_format == 'NAMED'
-        parameter_builder.build_named_parameter(key, value)
-      else
-        parameter_builder.build_parameter(value)
-      end
+      build_text_parameter(key, value, parameter_format)
     end
 
     body_params.present? ? [{ type: 'body', parameters: body_params }] : []
+  end
+
+  def build_text_parameter(key, value, parameter_format)
+    return parameter_builder.build_named_parameter(key, value) if parameter_format == 'NAMED'
+
+    parameter_builder.build_parameter(value)
   end
 
   def process_footer_components(processed_params)
