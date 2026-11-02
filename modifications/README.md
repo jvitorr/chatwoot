@@ -39,6 +39,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [021](021-ordenacao-por-ultima-mensagem.md) | `connectei-conversations/filter`: `sort_by=last_activity_at_*` ordena pela última mensagem real, não pela coluna bumpada por atividades | nenhum — arquivo do fork (012) | Nulo |
 | [022](022-fuso-dos-filtros-de-data.md) | `connectei-conversations/filter`: `timezone` resolve o dia dos filtros de data no fuso da loja (antes: UTC) | nenhum — arquivos do fork (012) | Nulo |
 | [023](023-sync-4.19.1.md) | Sync com o upstream v4.19.1: conflitos, mudanças de comportamento do upstream que tocam o fork, guard de `CampaignRecipient` no repasse (001) e deploy | `app/services/whatsapp/template_processor_service.rb`, `app/services/whatsapp/incoming_message_base_service.rb` | — documento de sync |
+| [024](024-desliga-campanhas-nativas.md) | Campanhas nativas do chat desligadas em todas as contas e no default das novas (o ERP dispara as campanhas; na 4.19 cada status órfão enfileirava `Campaigns::UpdateRecipientStatusJob`) | `config/features.yml` (`enabled` da entrada `campaigns`), `db/schema.rb` (versão) + serviço, migration e specs novos | Baixo — uma linha no `features.yml` |
 
 ## Edições pequenas sem documento próprio
 

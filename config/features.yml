@@ -88,9 +88,11 @@
 - name: channel_website
   display_name: Website Channel
   enabled: true
+# [FORK CONNECTEI] modifications/024 — default desligado (instalação nova). Só o
+# `enabled` muda: nome, posição e coluna ficam como no upstream.
 - name: campaigns
   display_name: Campaigns
-  enabled: true
+  enabled: false
   help_url: https://chwt.app/hc/campaigns
 - name: reports
   display_name: Reports
