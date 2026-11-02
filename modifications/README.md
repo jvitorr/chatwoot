@@ -16,7 +16,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 
 | # | Modificação | Arquivos tocados no core | Risco no merge |
 |---|---|---|---|
-| [001](001-repasse-status-whatsapp-connectei.md) | Repasse de status de mensagem WhatsApp para o ERP Connectei | `app/services/whatsapp/incoming_message_base_service.rb` | **Alto** — o gancho fica dentro de um método que o upstream altera com frequência |
+| [001](001-repasse-status-whatsapp-connectei.md) | Repasse de status de mensagem WhatsApp para o ERP Connectei | `app/services/whatsapp/incoming_message_base_service.rb` | **Alto** — o gancho fica dentro de um método que o upstream altera com frequência; spec `forward_orphan_status_to_erp_spec.rb` fica vermelha se ele sumir (023) |
 | [002](002-fallback-template-nao-sincronizado.md) | Envio de template ainda não presente no cache de sincronização | `app/services/whatsapp/template_processor_service.rb` | Médio — o método é pequeno, mas a condição é sutil |
 | [003](003-rota-registro-instagram.md) | Rota de registro de canal Instagram | `config/routes.rb` + controller novo | Baixo — adição, sem alterar comportamento existente |
 | [004](004-integracao-axiom.md) | Integração com Axiom (exceções, logs e traces) | `lib/opentelemetry_config.rb`, `lib/chatwoot_exception_tracker.rb`, `Gemfile` | **Alto** — `opentelemetry_config.rb` foi refatorado de single-provider para multi-provider |
@@ -27,7 +27,7 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [009](009-retry-after-no-throttle.md) | `Retry-After` nas respostas 429 do Rack::Attack | `config/initializers/rack_attack.rb` (1 linha) | Baixo |
 | [010](010-qa-smoke-resiliencia-erp-chat.md) | QA de resiliência ERP ↔ chat: evidências de não-regressão dos canais (Instagram/WhatsApp/API) | nenhum — documento de verificação | — |
 | [011](011-dashboard-attendants.md) | `dashboard-attendants`: quadro de atendimento agregado (contagens + conversas por atendente) numa chamada | `config/routes.rb` + controller novo | Baixo — adição |
-| [012](012-connectei-conversations-filter.md) | `connectei-conversations/filter`: listagem do painel resolvida no banco (busca, ordenação, fixadas, total) + índices | `config/routes.rb` + serviços/controller novos + migration | Baixo — adição |
+| [012](012-connectei-conversations-filter.md) | `connectei-conversations/filter`: listagem do painel resolvida no banco (busca, ordenação, fixadas, total, recorte por time `team_ids[]`/`team_assignee_id` — PR #13) + índices | `config/routes.rb` + serviços/controller novos + migration | Baixo — adição |
 | [013](013-room-channel-inscricao-explicita.md) | `RoomChannel`: inscrição confirma ou rejeita, nunca silencia; token de agente basta | `app/channels/room_channel.rb` | **Médio** — o upstream mexe no arquivo |
 | [014](014-deploy-4.15.1.5.md) | Deploy da 4.15.1.5: migration de índices, verificação e rollback | nenhum — documento operacional | — |
 | [015](015-script-de-deploy-portainer.md) | `scripts/deploy-portainer.sh`: atualização via Portainer (migration, serviços e definição do stack) | nenhum — script novo | Nulo |
@@ -35,9 +35,17 @@ Cada arquivo aqui existe para responder três perguntas a essa pessoa:
 | [017](017-e2e-local-canal-api.md) | Como testar uma feature de chat ponta a ponta local (canal de API + ERP local) | nenhum — documento operacional | — |
 | [018](018-deploy-4.15.1.10.md) | Deploy da 4.15.1.10: filtros de entrada do lead/interação em `connectei-conversations/filter` + correção do `DetachError` | nenhum — documento operacional | — |
 | [019](019-connectei-lead-analytics.md) | `connectei-lead-analytics/filter`: agregação de leads (novo × recorrente) por canal e série temporal | `config/routes.rb` + controller/serviço novos | Baixo — adição |
-| [020](020-detach-error-action-view.md) | `ActionView` fora do `use_all`: fim do `DetachError` de contexto do OpenTelemetry | nenhum — lista do próprio fork (mod. 004) | Nulo — arquivo exclusivo do fork |
+| [020](020-detach-error-action-view.md) | `ActionView` fora do `use_all`: fim do `DetachError` de contexto do OpenTelemetry | `lib/opentelemetry_config.rb` (lista `UNSUPPORTED_INSTRUMENTATIONS`, mod. 004) | **Alto**, junto com a 004 — o arquivo existe no upstream (não é exclusivo do fork) |
 | [021](021-ordenacao-por-ultima-mensagem.md) | `connectei-conversations/filter`: `sort_by=last_activity_at_*` ordena pela última mensagem real, não pela coluna bumpada por atividades | nenhum — arquivo do fork (012) | Nulo |
 | [022](022-fuso-dos-filtros-de-data.md) | `connectei-conversations/filter`: `timezone` resolve o dia dos filtros de data no fuso da loja (antes: UTC) | nenhum — arquivos do fork (012) | Nulo |
+| [023](023-sync-4.19.1.md) | Sync com o upstream v4.19.1: conflitos, mudanças de comportamento do upstream que tocam o fork, guard de `CampaignRecipient` no repasse (001) e deploy | `app/services/whatsapp/template_processor_service.rb`, `app/services/whatsapp/incoming_message_base_service.rb` | — documento de sync |
+
+## Edições pequenas sem documento próprio
+
+| Edição | Arquivo | Situação |
+|---|---|---|
+| Reautorização grava o WABA id em `business_account_id` (PR #6) | `app/services/whatsapp/reauthorization_service.rb`, `embedded_signup_service.rb` | Absorvida pelo upstream na 4.16. A partir do sync 023 o código é o do upstream, mais o comentário |
+| `expires_at` do canal Instagram no payload do inbox | `app/views/api/v1/models/_inbox.json.jbuilder` (`json.expires_at ... if resource.instagram?`) | Ativa. Uma linha; conferir a cada sync |
 
 ## Convenção para novas modificações
 
