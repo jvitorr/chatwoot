@@ -33,7 +33,7 @@ describe Whatsapp::EmbeddedSignupService do
 
       phone_service = instance_double(Whatsapp::PhoneInfoService)
       allow(Whatsapp::PhoneInfoService).to receive(:new)
-        .with(params[:waba_id], params[:phone_number_id], access_token).and_return(phone_service)
+        .with(params[:waba_id], params[:phone_number_id], access_token, expected_phone_number: anything).and_return(phone_service)
       allow(phone_service).to receive(:perform).and_return(phone_info)
 
       channel_creation = instance_double(Whatsapp::ChannelCreationService)
@@ -106,8 +106,13 @@ describe Whatsapp::EmbeddedSignupService do
 
     context 'when parameters are invalid' do
       it 'raises ArgumentError for missing parameters' do
-        invalid_service = described_class.new(account: account, params: { code: '', business_id: '', waba_id: '' })
-        expect { invalid_service.perform }.to raise_error(ArgumentError, /Required parameters are missing/)
+        invalid_service = described_class.new(account: account, params: { code: '', waba_id: '' })
+        expect { invalid_service.perform }.to raise_error(ArgumentError, 'Required parameters are missing: code, waba_id')
+      end
+
+      it 'does not require business_id' do
+        coexistence_service = described_class.new(account: account, params: params.except(:business_id))
+        expect { coexistence_service.perform }.not_to raise_error
       end
     end
 
@@ -279,6 +284,9 @@ describe Whatsapp::EmbeddedSignupService do
 
         stub_request(:post, %r{graph\.facebook\.com/.*/subscribed_apps})
           .to_return(status: 200, body: { success: true }.to_json, headers: { 'Content-Type' => 'application/json' })
+        # Since 4.16 (#13817) the callback override lives on the phone number, not on the WABA.
+        stub_request(:post, %r{graph\.facebook\.com/v\d+\.\d+/#{phone_number_id}\z})
+          .to_return(status: 200, body: { success: true }.to_json, headers: { 'Content-Type' => 'application/json' })
 
         real_channel.prompt_reauthorization!
       end
@@ -304,15 +312,18 @@ describe Whatsapp::EmbeddedSignupService do
       it 'subscribes the webhook on the WABA and never on the Business Manager id' do
         perform_reauthorization
 
-        expect(WebMock).to have_requested(:post, "https://graph.facebook.com/v22.0/#{waba_id}/subscribed_apps").twice
+        expect(WebMock).to have_requested(:post, "https://graph.facebook.com/v22.0/#{waba_id}/subscribed_apps").once
         expect(WebMock).not_to have_requested(:post, %r{graph\.facebook\.com/.*/#{business_id}/subscribed_apps})
       end
 
       it 'points the webhook callback at this installation' do
         perform_reauthorization
 
-        expect(WebMock).to have_requested(:post, "https://graph.facebook.com/v22.0/#{waba_id}/subscribed_apps")
-          .with(body: hash_including('override_callback_uri' => "#{ENV.fetch('FRONTEND_URL', nil)}/webhooks/whatsapp/+5579936182380"))
+        # Since 4.16 (#13817) the override is set on the phone number, not on the WABA subscription.
+        expect(WebMock).to have_requested(:post, "https://graph.facebook.com/v22.0/#{phone_number_id}")
+          .with(body: hash_including('webhook_configuration' => hash_including(
+            'override_callback_uri' => "#{ENV.fetch('FRONTEND_URL', nil)}/webhooks/whatsapp/+5579936182380"
+          )))
       end
 
       it 'clears the reauthorization flag so the reconnect banner disappears' do
