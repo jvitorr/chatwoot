@@ -284,6 +284,9 @@ describe Whatsapp::EmbeddedSignupService do
 
         stub_request(:post, %r{graph\.facebook\.com/.*/subscribed_apps})
           .to_return(status: 200, body: { success: true }.to_json, headers: { 'Content-Type' => 'application/json' })
+        # Since 4.16 (#13817) the callback override lives on the phone number, not on the WABA.
+        stub_request(:post, %r{graph\.facebook\.com/v\d+\.\d+/#{phone_number_id}\z})
+          .to_return(status: 200, body: { success: true }.to_json, headers: { 'Content-Type' => 'application/json' })
 
         real_channel.prompt_reauthorization!
       end
@@ -309,15 +312,18 @@ describe Whatsapp::EmbeddedSignupService do
       it 'subscribes the webhook on the WABA and never on the Business Manager id' do
         perform_reauthorization
 
-        expect(WebMock).to have_requested(:post, "https://graph.facebook.com/v22.0/#{waba_id}/subscribed_apps").twice
+        expect(WebMock).to have_requested(:post, "https://graph.facebook.com/v22.0/#{waba_id}/subscribed_apps").once
         expect(WebMock).not_to have_requested(:post, %r{graph\.facebook\.com/.*/#{business_id}/subscribed_apps})
       end
 
       it 'points the webhook callback at this installation' do
         perform_reauthorization
 
-        expect(WebMock).to have_requested(:post, "https://graph.facebook.com/v22.0/#{waba_id}/subscribed_apps")
-          .with(body: hash_including('override_callback_uri' => "#{ENV.fetch('FRONTEND_URL', nil)}/webhooks/whatsapp/+5579936182380"))
+        # Since 4.16 (#13817) the override is set on the phone number, not on the WABA subscription.
+        expect(WebMock).to have_requested(:post, "https://graph.facebook.com/v22.0/#{phone_number_id}")
+          .with(body: hash_including('webhook_configuration' => hash_including(
+            'override_callback_uri' => "#{ENV.fetch('FRONTEND_URL', nil)}/webhooks/whatsapp/+5579936182380"
+          )))
       end
 
       it 'clears the reauthorization flag so the reconnect banner disappears' do
